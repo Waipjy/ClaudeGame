@@ -1,0 +1,540 @@
+<title>Pour Decisions 原型</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap">
+<style>
+/* Layout: night chemistry bench — beaker (stage) left, lab readout right, hand of vials below the beaker. Single dark look by choice. */
+:root {
+  color-scheme: dark;
+  --bg: #1b1520;
+  --bench: #2e222f;
+  --panel: #3e3546;
+  --line: #625565;
+  --fg: #e6ecdf;
+  --dim: #9babb2;
+  --chips: #4d9be6;
+  --mult: #e83b3b;
+  --gold: #f9c22b;
+  --good: #1ebc73;
+  --f-display: "Silkscreen", ui-monospace, "Courier New", monospace;
+  --f-body: "Noto Sans TC", system-ui, "Microsoft JhengHei", "PingFang TC", sans-serif;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); }
+#app {
+  max-width: 1120px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 24px;
+  display: grid; gap: 16px;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+}
+@media (max-width: 820px) { #app { grid-template-columns: minmax(0, 1fr); } }
+header.top { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(20px, 3vw, 28px); letter-spacing: .04em; margin: 0; color: var(--gold); }
+h1 small { font-family: var(--f-body); font-weight: 400; font-size: 13px; color: var(--dim); letter-spacing: 0; margin-left: 8px; }
+.top-actions { display: flex; gap: 8px; }
+button { font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--dim); }
+button:focus-visible, .card:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary { background: var(--gold); color: #2e222f; border-color: var(--gold); font-weight: 700; }
+
+.stage { display: grid; gap: 12px; min-width: 0; }
+.beaker-wrap { position: relative; background: var(--bench); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+canvas#view { display: block; width: 100%; aspect-ratio: 5 / 4; image-rendering: pixelated; border-radius: 4px; touch-action: none; cursor: crosshair; background: #2e222f; }
+.beaker-hint { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); font-size: 13px; color: var(--dim); pointer-events: none; text-align: center; background: rgba(27,21,32,.7); padding: 4px 10px; border-radius: 4px; }
+.popup { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.6); opacity: 0; font-family: var(--f-display); font-size: clamp(22px, 4vw, 40px); font-weight: 700; color: var(--gold); text-shadow: 0 2px 0 #2e222f, 0 0 18px rgba(249,194,43,.5); pointer-events: none; transition: transform .35s cubic-bezier(.2,1.6,.4,1), opacity .2s; white-space: nowrap; }
+.popup.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+
+.hand { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 8px; padding: 10px; text-align: left; display: grid; gap: 6px; align-content: start; min-height: 128px; transition: transform .12s, border-color .12s; }
+.card:hover:not(:disabled) { transform: translateY(-3px); }
+.card.sel { border-color: var(--gold); transform: translateY(-6px); box-shadow: 0 6px 0 rgba(0,0,0,.3); }
+.card .sw { height: 28px; border-radius: 4px; }
+.card .nm { font-weight: 700; font-size: 16px; }
+.card .ds { font-size: 12px; color: var(--dim); line-height: 1.45; }
+@media (max-width: 520px) { .hand { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+aside.readout { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.box { background: var(--bench); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; }
+.box h2 { margin: 0; font-size: 12px; letter-spacing: .12em; color: var(--dim); font-weight: 700; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stat { display: grid; gap: 2px; }
+.stat .k { font-size: 12px; color: var(--dim); }
+.stat .v { font-family: var(--f-display); font-size: 22px; font-variant-numeric: tabular-nums; }
+.progress { height: 10px; background: #2a2030; border-radius: 5px; overflow: hidden; border: 1px solid var(--line); }
+.progress > i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .4s; }
+.calc { display: flex; align-items: stretch; gap: 8px; font-family: var(--f-display); font-variant-numeric: tabular-nums; }
+.calc .chips, .calc .mult { flex: 1; text-align: center; border-radius: 6px; padding: 8px 4px; font-size: 26px; font-weight: 700; color: #fff; }
+.calc .chips { background: var(--chips); }
+.calc .mult { background: var(--mult); }
+.calc .x { align-self: center; font-size: 22px; color: var(--dim); }
+.bump { animation: bump .25s; }
+@keyframes bump { 50% { transform: scale(1.12); } }
+.rx { display: grid; gap: 4px; font-size: 13px; max-height: 210px; overflow: auto; }
+.rx .row { display: grid; grid-template-columns: 12px 1fr auto auto; gap: 8px; align-items: center; }
+.rx .dot { width: 10px; height: 10px; border-radius: 2px; }
+.rx .n { font-variant-numeric: tabular-nums; color: var(--dim); }
+.rx .p { font-variant-numeric: tabular-nums; color: var(--chips); min-width: 48px; text-align: right; }
+.rx .empty { color: var(--dim); }
+.cats { display: grid; gap: 6px; }
+.cat { font-size: 13px; padding: 8px 10px; background: var(--panel); border-radius: 6px; border-left: 3px solid var(--gold); }
+.cat b { display: block; font-size: 14px; }
+.cat span { color: var(--dim); }
+.deck { font-size: 13px; color: var(--dim); display: flex; flex-wrap: wrap; gap: 6px; }
+.deck i { font-style: normal; display: inline-flex; align-items: center; gap: 4px; background: var(--panel); padding: 2px 8px; border-radius: 10px; }
+.deck i::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--c); }
+
+.overlay { position: fixed; inset: 0; background: rgba(15,11,18,.82); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.sheet { background: var(--bench); border: 1px solid var(--line); border-radius: 12px; padding: 22px; width: min(720px, 100%); max-height: calc(100% - 32px); overflow: auto; display: grid; gap: 16px; }
+.sheet h3 { margin: 0; font-family: var(--f-display); font-size: 24px; color: var(--gold); }
+.sheet p { margin: 0; line-height: 1.7; color: var(--fg); max-width: 62ch; }
+.sheet .muted { color: var(--dim); font-size: 13px; }
+.shop { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 520px) { .shop { grid-template-columns: minmax(0,1fr); } }
+.item { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 6px; text-align: left; }
+.item .tag { font-size: 11px; letter-spacing: .1em; color: var(--dim); }
+.item .nm { font-weight: 700; }
+.item .ds { font-size: 13px; color: var(--dim); line-height: 1.5; }
+.item .pr { font-family: var(--f-display); color: var(--gold); }
+.item.bought { opacity: .35; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+.money { font-family: var(--f-display); font-size: 22px; color: var(--gold); }
+.howto { display: grid; gap: 8px; margin: 0; padding-left: 20px; line-height: 1.7; }
+@media (prefers-reduced-motion: reduce) { .card, .popup, .progress > i { transition: none; } .bump { animation: none; } }
+</style>
+
+<div id="app">
+  <header class="top">
+    <h1>POUR DECISIONS<small>落沙煉金 原型 v0.1</small></h1>
+    <div class="top-actions">
+      <button id="btnSound" type="button" aria-pressed="false">音效：關</button>
+      <button id="btnHelp" type="button">玩法</button>
+      <button id="btnRestart" type="button">重新開始</button>
+    </div>
+  </header>
+
+  <section class="stage">
+    <div class="beaker-wrap">
+      <canvas id="view" width="640" height="512" aria-label="燒杯：在這裡按住倒料"></canvas>
+      <div class="beaker-hint" id="hint">先選一瓶材料，再在燒杯上按住倒料</div>
+      <div class="popup" id="popup"></div>
+    </div>
+    <div class="hand" id="hand"></div>
+  </section>
+
+  <aside class="readout">
+    <div class="box">
+      <h2>第 <span id="roundNo">1</span> / 8 回合</h2>
+      <div class="stats">
+        <div class="stat"><span class="k">目標</span><span class="v" id="target">0</span></div>
+        <div class="stat"><span class="k">本回合得分</span><span class="v" id="score">0</span></div>
+        <div class="stat"><span class="k">剩餘倒料</span><span class="v" id="pours">4</span></div>
+      </div>
+      <div class="progress"><i id="prog"></i></div>
+    </div>
+    <div class="box">
+      <h2>這一倒</h2>
+      <div class="calc"><div class="chips" id="chips">0</div><div class="x">×</div><div class="mult" id="mult">1</div></div>
+      <div class="rx" id="rx"><div class="empty">還沒有反應。每種不同的反應會讓倍率 +1。</div></div>
+    </div>
+    <div class="box">
+      <h2>催化劑 <span id="catCount">0</span>/5</h2>
+      <div class="cats" id="cats"><div class="muted">還沒有。過關後可以在商店購買。</div></div>
+    </div>
+    <div class="box">
+      <h2>牌組（<span id="deckSize">0</span> 瓶）</h2>
+      <div class="deck" id="deck"></div>
+    </div>
+  </aside>
+</div>
+
+<div class="overlay" id="overlay" hidden></div>
+
+<script>
+/*SIM*/
+</script>
+<script>
+(function () {
+"use strict";
+const { W, H, M, RX, createSim, mulberry32 } = window.PDSim;
+
+// ---------- content ----------
+const VIALS = {
+  [M.SAND]:   { nm: "沙",   ds: "會堆積成斜坡。熔岩會把它燒成玻璃。", c: "#e6904e" },
+  [M.WATER]:  { nm: "水",   ds: "澆熄火、讓熔岩凝成岩石、讓種子發芽。", c: "#4d9be6" },
+  [M.OIL]:    { nm: "油",   ds: "浮在水面上，遇到火會大面積燃燒。", c: "#905ea9" },
+  [M.EMBER]:  { nm: "火星", ds: "落下的火種，點燃所有可燃物。", c: "#fb6b1d" },
+  [M.LAVA]:   { nm: "熔岩", ds: "遇水凝岩、遇沙熔玻、遇冰融化。", c: "#ea4f36" },
+  [M.ACID]:   { nm: "酸液", ds: "溶蝕沙、岩石、玻璃、冰和植物。", c: "#91db69" },
+  [M.POWDER]: { nm: "火藥", ds: "遇火爆炸，而且會連鎖引爆。", c: "#7f708a" },
+  [M.ICE]:    { nm: "冰屑", ds: "遇熱融成水，也會讓旁邊的水結凍。", c: "#8ff8e2" },
+  [M.SEED]:   { nm: "種子", ds: "遇水發芽並往水裡蔓延，植物可以燃燒。", c: "#a2a947" },
+};
+const RXINFO = {
+  burn:     { nm: "燃燒", c: "#fb6b1d" },
+  quench:   { nm: "淬熄", c: "#c7dcd0" },
+  solidify: { nm: "凝岩", c: "#92a984" },
+  dissolve: { nm: "溶蝕", c: "#d5e04b" },
+  blast:    { nm: "爆炸", c: "#f9c22b" },
+  vitrify:  { nm: "熔玻", c: "#8fd3ff" },
+  melt:     { nm: "融冰", c: "#8ff8e2" },
+  freeze:   { nm: "結凍", c: "#ffffff" },
+  bloom:    { nm: "萌芽", c: "#1ebc73" },
+  condense: { nm: "凝結", c: "#4d65b4" },
+  boil:     { nm: "沸騰", c: "#ea4f36" },
+};
+const CATS = [
+  { id: "pyro",       nm: "縱火狂",     ds: "燃燒 +3 分。", price: 5 },
+  { id: "tower",      nm: "冷凝塔",     ds: "淬熄、凝結、沸騰的分數 ×3。", price: 6 },
+  { id: "glass",      nm: "吹玻璃工坊", ds: "這一倒每熔出 10 格玻璃，倍率 +1。", price: 6 },
+  { id: "demolition", nm: "爆破專家",   ds: "爆炸範圍變大，爆炸 +12 分。", price: 6 },
+  { id: "greenhouse", nm: "溫室",       ds: "植物蔓延速度 3 倍，萌芽 +2 分。", price: 5 },
+  { id: "alkahest",   nm: "萬能溶劑",   ds: "酸液有 70% 機率不被消耗。", price: 5 },
+  { id: "nozzle",     nm: "大口徑噴嘴", ds: "每瓶倒出的量 +50%。", price: 7 },
+  { id: "hotplate",   nm: "加熱板",     ds: "杯底會把水煮沸、把冰融化。", price: 5 },
+  { id: "diverse",    nm: "多元反應",   ds: "每種不同的反應提供倍率 +1.5（原本 +1）。", price: 7 },
+  { id: "chain",      nm: "連鎖反應",   ds: "任一種反應在這一倒達到 50 次，倍率 +2。", price: 6 },
+  { id: "spare",      nm: "備用量杯",   ds: "每回合多 1 次倒料。", price: 7 },
+  { id: "magma",      nm: "地心熔爐",   ds: "凝岩 +8 分。", price: 5 },
+  { id: "freezer",    nm: "冷凍庫",     ds: "水遇冰的結凍機率 ×10，結凍 +3 分。", price: 5 },
+];
+const TARGETS = [800, 2000, 4500, 9000, 15000, 25000, 40000, 60000];
+const START_DECK = [M.SAND, M.SAND, M.WATER, M.WATER, M.OIL, M.EMBER, M.EMBER, M.LAVA];
+const SHOP_VIALS = [M.ACID, M.POWDER, M.ICE, M.SEED, M.LAVA, M.OIL, M.WATER, M.EMBER, M.SAND];
+const POUR_AMOUNT = 420, HAND = 4, BASE_POURS = 4, MAX_CATS = 5;
+
+// ---------- palette (Resurrect 64 subset, see art-direction skill) ----------
+function hex(h) { return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+const RAMP = {};
+function ramp(m, list) { RAMP[m] = list.map(hex); }
+ramp(M.E, ["#2e222f"]);
+ramp(M.SAND, ["#cd683d", "#e6904e", "#e6904e", "#fbb954"]);
+ramp(M.WATER, ["#4d65b4", "#4d9be6", "#4d9be6", "#4d9be6"]);
+ramp(M.OIL, ["#45293f", "#6b3e75", "#6b3e75", "#905ea9"]);
+ramp(M.FIRE, ["#e83b3b", "#fb6b1d", "#f9c22b", "#fff6c2"]);
+ramp(M.EMBER, ["#fb6b1d", "#f9c22b", "#fb6b1d", "#ffffff"]);
+ramp(M.LAVA, ["#ae2334", "#ea4f36", "#ea4f36", "#f79617"]);
+ramp(M.STONE, ["#625565", "#7f708a", "#7f708a", "#9babb2"]);
+ramp(M.STEAM, ["#9babb2", "#c7dcd0", "#c7dcd0", "#ffffff"]);
+ramp(M.ACID, ["#239063", "#91db69", "#91db69", "#d5e04b"]);
+ramp(M.POWDER, ["#3e3546", "#45293f", "#3e3546", "#6e2727"]);
+ramp(M.ICE, ["#9babb2", "#c7dcd0", "#8ff8e2", "#ffffff"]);
+ramp(M.GLASS, ["#4d9be6", "#8fd3ff", "#8fd3ff", "#ffffff"]);
+ramp(M.SEED, ["#4c3e24", "#676633", "#676633", "#a2a947"]);
+ramp(M.PLANT, ["#165a4c", "#239063", "#1ebc73", "#91db69"]);
+ramp(M.SMOKE, ["#3e3546", "#4a3f52", "#4a3f52", "#625565"]);
+ramp(M.WALL, ["#c7dcd0"]);
+const EMISSIVE = new Set([M.FIRE, M.EMBER, M.LAVA]);
+
+// ---------- state ----------
+let G, S;
+const canvas = document.getElementById("view");
+const ctx = canvas.getContext("2d");
+const off = document.createElement("canvas"); off.width = W; off.height = H;
+const octx = off.getContext("2d");
+const glow = document.createElement("canvas"); glow.width = W; glow.height = H;
+const gctx = glow.getContext("2d");
+const img = octx.createImageData(W, H), gimg = gctx.createImageData(W, H);
+
+function newGame(seed) {
+  G = {
+    seed: seed || ((Math.random() * 1e9) | 0),
+    round: 0, money: 4, deck: START_DECK.slice(), cats: [],
+    draw: [], hand: [], disc: [], pours: BASE_POURS, roundScore: 0,
+    sel: -1, phase: "idle", pourLeft: 0, pourX: 50, holding: false, turnFrames: 0,
+    reroll: 1, shopItems: [],
+  };
+  G.rng = mulberry32(G.seed);
+  startRound();
+}
+function mods() { const o = {}; for (const c of G.cats) o[c] = true; return o; }
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = (G.rng() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function startRound() {
+  S = createSim(G.seed + G.round * 101, mods());
+  S.onEvent = onEvent;
+  G.draw = shuffle(G.deck.slice()); G.hand = []; G.disc = [];
+  while (G.hand.length < HAND && G.draw.length) G.hand.push(G.draw.pop());
+  G.pours = BASE_POURS + (G.cats.includes("spare") ? 1 : 0);
+  G.roundScore = 0; G.sel = -1; G.phase = "idle";
+  S.resetCounts();
+  render(); renderHand(); renderRx(); renderSide();
+}
+
+// ---------- scoring ----------
+function ptsOf(type) {
+  let p = RX[type].pts;
+  if (type === "burn" && G.cats.includes("pyro")) p += 3;
+  if (type === "blast" && G.cats.includes("demolition")) p += 12;
+  if (type === "bloom" && G.cats.includes("greenhouse")) p += 2;
+  if (type === "solidify" && G.cats.includes("magma")) p += 8;
+  if (type === "freeze" && G.cats.includes("freezer")) p += 3;
+  if ((type === "quench" || type === "condense" || type === "boil") && G.cats.includes("tower")) p *= 3;
+  return p;
+}
+function calc(counts) {
+  let chips = 0, mult = 0;
+  const per = G.cats.includes("diverse") ? 1.5 : 1;
+  for (const k in counts) { chips += counts[k] * ptsOf(k); mult += per; }
+  if (G.cats.includes("glass") && counts.vitrify) mult += Math.floor(counts.vitrify / 10);
+  if (G.cats.includes("chain")) for (const k in counts) if (counts[k] >= 50) mult += 2;
+  mult = Math.max(1, Math.round(mult * 10) / 10);
+  return { chips, mult, total: Math.round(chips * mult) };
+}
+
+// ---------- audio (optional, tiny) ----------
+let AC = null, soundOn = false; const lastBeep = {};
+const NOTE = { burn: 196, quench: 392, solidify: 131, dissolve: 523, blast: 82, vitrify: 659, melt: 440, freeze: 784, bloom: 330, condense: 587, boil: 247 };
+function beep(f, dur, vol, type) {
+  if (!soundOn || !AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || "triangle"; o.frequency.value = f;
+  g.gain.setValueAtTime(vol, AC.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
+  o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime + dur);
+}
+function onEvent(type) {
+  const now = performance.now();
+  if (now - (lastBeep[type] || 0) < (type === "blast" ? 60 : 90)) return;
+  lastBeep[type] = now;
+  beep(NOTE[type] * (0.95 + Math.random() * 0.1), type === "blast" ? 0.25 : 0.08, type === "blast" ? 0.18 : 0.04, type === "blast" ? "sawtooth" : "triangle");
+}
+
+// ---------- rendering ----------
+function render() {
+  const d = img.data, gd = gimg.data, t = S.t, sh = S.shade, life = S.life, fl = S.flash;
+  for (let p = 0, i = 0; p < W * H; p++, i += 4) {
+    const m = t[p];
+    let c;
+    const r = RAMP[m] || RAMP[M.E];
+    if (m === M.FIRE) c = r[Math.min(3, (life[p] / 8) | 0)];
+    else if (m === M.E) {
+      const y = (p / W) | 0;
+      c = (y % 8 === 0 && (p % W) % 2 === 0) ? [62, 53, 70] : r[0];
+    } else c = r[(sh[p] & 3) % r.length];
+    let R = c[0], Gc = c[1], B = c[2];
+    if (m === M.LAVA && ((sh[p] + S.frame) & 31) < 3) { R = 247; Gc = 150; B = 23; }
+    if (fl[p]) { const f = fl[p] / 255 * 0.6; R += (255 - R) * f; Gc += (255 - Gc) * f; B += (255 - B) * f; }
+    d[i] = R; d[i + 1] = Gc; d[i + 2] = B; d[i + 3] = 255;
+    const em = EMISSIVE.has(m) || fl[p] > 120;
+    gd[i] = em ? R : 0; gd[i + 1] = em ? Gc : 0; gd[i + 2] = em ? B : 0; gd[i + 3] = em ? 255 : 0;
+  }
+  octx.putImageData(img, 0, 0); gctx.putImageData(gimg, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalCompositeOperation = "source-over"; ctx.filter = "none";
+  ctx.drawImage(off, 0, 0, canvas.width, canvas.height);
+  try {
+    ctx.globalCompositeOperation = "lighter"; ctx.filter = "blur(10px)"; ctx.globalAlpha = 0.55; ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(glow, 0, 0, canvas.width, canvas.height);
+  } catch (e) {}
+  ctx.globalAlpha = 1; ctx.filter = "none"; ctx.globalCompositeOperation = "source-over"; ctx.imageSmoothingEnabled = false;
+  // nozzle
+  if (G.sel >= 0 || G.phase === "pouring") {
+    const m = G.phase === "pouring" ? G.pourMat : G.hand[G.sel];
+    const sx = canvas.width / W;
+    const x = (G.pourX + 0.5) * sx;
+    ctx.fillStyle = VIALS[m].c; ctx.globalAlpha = G.phase === "pouring" ? 1 : 0.6;
+    ctx.beginPath(); ctx.moveTo(x - 14, 0); ctx.lineTo(x + 14, 0); ctx.lineTo(x + 4, 14); ctx.lineTo(x - 4, 14); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+const elHand = document.getElementById("hand");
+function renderHand() {
+  elHand.innerHTML = "";
+  G.hand.forEach((m, i) => {
+    const v = VIALS[m];
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "card" + (G.sel === i ? " sel" : "");
+    b.disabled = G.phase !== "idle" || G.pours <= 0;
+    b.innerHTML = `<div class="sw" style="background:${v.c}"></div><div class="nm">${v.nm}</div><div class="ds">${v.ds}</div>`;
+    b.addEventListener("click", () => { G.sel = G.sel === i ? -1 : i; renderHand(); updateHint(); render(); });
+    elHand.appendChild(b);
+  });
+  for (let i = G.hand.length; i < HAND; i++) { const d = document.createElement("div"); elHand.appendChild(d); }
+  updateHint();
+}
+function updateHint() {
+  const h = document.getElementById("hint");
+  if (G.phase === "pouring" || G.phase === "settling") h.textContent = "反應中…";
+  else if (G.sel >= 0) h.textContent = `按住燒杯倒出「${VIALS[G.hand[G.sel]].nm}」，拖曳可移動位置`;
+  else h.textContent = "先選一瓶材料，再在燒杯上按住倒料";
+  h.hidden = G.phase === "settling";
+}
+function fmt(n) { return n >= 100000 ? (n / 1000).toFixed(0) + "k" : n.toLocaleString("en-US"); }
+let lastCalc = { chips: 0, mult: 1 };
+function renderRx() {
+  const el = document.getElementById("rx");
+  const keys = Object.keys(S.counts).sort((a, b) => S.counts[b] * ptsOf(b) - S.counts[a] * ptsOf(a));
+  if (!keys.length) el.innerHTML = `<div class="empty">還沒有反應。每種不同的反應會讓倍率 +1。</div>`;
+  else el.innerHTML = keys.map(k => `<div class="row"><span class="dot" style="background:${RXINFO[k].c}"></span><span>${RXINFO[k].nm}</span><span class="n">×${S.counts[k]}</span><span class="p">${fmt(S.counts[k] * ptsOf(k))}</span></div>`).join("");
+  const c = calc(S.counts);
+  const ec = document.getElementById("chips"), em = document.getElementById("mult");
+  ec.textContent = fmt(c.chips); em.textContent = c.mult;
+  if (c.mult !== lastCalc.mult) { em.classList.remove("bump"); void em.offsetWidth; em.classList.add("bump"); }
+  lastCalc = c;
+}
+function renderSide() {
+  document.getElementById("roundNo").textContent = G.round + 1;
+  document.getElementById("target").textContent = fmt(TARGETS[G.round]);
+  document.getElementById("score").textContent = fmt(G.roundScore);
+  document.getElementById("pours").textContent = G.pours;
+  document.getElementById("prog").style.width = Math.min(100, G.roundScore / TARGETS[G.round] * 100) + "%";
+  const cats = document.getElementById("cats");
+  document.getElementById("catCount").textContent = G.cats.length;
+  cats.innerHTML = G.cats.length ? G.cats.map(id => { const c = CATS.find(x => x.id === id); return `<div class="cat"><b>${c.nm}</b><span>${c.ds}</span></div>`; }).join("") : `<div class="muted">還沒有。過關後可以在商店購買。</div>`;
+  const cnt = {}; for (const m of G.deck) cnt[m] = (cnt[m] || 0) + 1;
+  document.getElementById("deckSize").textContent = G.deck.length;
+  document.getElementById("deck").innerHTML = Object.keys(cnt).map(m => `<i style="--c:${VIALS[m].c}">${VIALS[m].nm} ×${cnt[m]}</i>`).join("");
+}
+function popup(text) {
+  const p = document.getElementById("popup");
+  p.textContent = text; p.classList.remove("show"); void p.offsetWidth; p.classList.add("show");
+  setTimeout(() => p.classList.remove("show"), 1300);
+}
+
+// ---------- input ----------
+function xFromEvent(e) {
+  const r = canvas.getBoundingClientRect();
+  return Math.max(2, Math.min(W - 3, Math.floor((e.clientX - r.left) / r.width * W)));
+}
+canvas.addEventListener("pointermove", e => { if (G.phase === "idle" || (G.phase === "pouring" && G.holding)) { G.pourX = xFromEvent(e); if (G.phase === "idle") render(); } });
+canvas.addEventListener("pointerdown", e => {
+  if (G.phase !== "idle" || G.sel < 0 || G.pours <= 0) return;
+  ensureAudio();
+  canvas.setPointerCapture(e.pointerId);
+  G.pourX = xFromEvent(e); G.holding = true;
+  G.pourMat = G.hand[G.sel];
+  G.disc.push(G.hand.splice(G.sel, 1)[0]); G.sel = -1;
+  G.pourLeft = Math.round(POUR_AMOUNT * (G.cats.includes("nozzle") ? 1.5 : 1));
+  G.pours--; G.phase = "pouring"; G.turnFrames = 0;
+  S.resetCounts(); S.lastEventFrame = S.frame;
+  renderHand(); renderSide(); renderRx();
+});
+const release = () => { G.holding = false; };
+canvas.addEventListener("pointerup", release); canvas.addEventListener("pointercancel", release);
+
+// ---------- loop ----------
+let rxTick = 0;
+function loop() {
+  if (G.phase === "pouring" || G.phase === "settling") {
+    if (G.phase === "pouring") {
+      G.pourLeft -= S.pour(G.pourMat, G.pourX, 8);
+      if (G.pourLeft <= 0) G.phase = "settling";
+    }
+    S.step(); S.step(); G.turnFrames++;
+    if (++rxTick % 4 === 0) renderRx();
+    if (G.phase === "settling" && ((G.turnFrames > 40 && S.frame - (S.lastEventFrame || 0) > 150) || G.turnFrames > 480)) endTurn();
+  } else if (G.phase === "idle" && (S.frame % 2 === 0)) {
+    S.step(); // keep ambient motion (steam drifting etc.) without scoring pressure
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+function endTurn() {
+  G.phase = "idle";
+  const c = calc(S.counts);
+  renderRx();
+  G.roundScore += c.total;
+  popup(c.total > 0 ? `+${fmt(c.total)}` : "沒有反應");
+  if (c.total > 0) { beep(523, .12, .08); setTimeout(() => beep(784, .18, .08), 90); }
+  if (G.draw.length === 0 && G.disc.length) { G.draw = shuffle(G.disc.splice(0)); }
+  while (G.hand.length < HAND && G.draw.length) G.hand.push(G.draw.pop());
+  S.resetCounts();
+  renderSide(); renderHand();
+  if (G.roundScore >= TARGETS[G.round]) setTimeout(roundClear, 900);
+  else if (G.pours <= 0) setTimeout(gameOver, 900);
+}
+
+// ---------- overlays ----------
+const ov = document.getElementById("overlay");
+function showOverlay(html) { ov.innerHTML = `<div class="sheet" role="dialog" aria-modal="true">${html}</div>`; ov.hidden = false; }
+function hideOverlay() { ov.hidden = true; ov.innerHTML = ""; }
+
+function roundClear() {
+  const target = TARGETS[G.round];
+  const over = Math.min(3, Math.floor((G.roundScore - target) / target * 2));
+  const earned = 3 + G.pours + Math.max(0, over);
+  G.money += earned;
+  if (G.round === TARGETS.length - 1) { victory(); return; }
+  G.round++; G.reroll = 1;
+  rollShop();
+  showShop(`第 ${G.round} 回合過關！獲得 $${earned}（基本 3、剩餘倒料 ${G.pours}、超額 ${Math.max(0, over)}）`);
+}
+function rollShop() {
+  const vials = shuffle(SHOP_VIALS.slice()).slice(0, 2).map(m => ({ kind: "vial", m, price: 3 }));
+  const pool = CATS.filter(c => !G.cats.includes(c.id));
+  const cats = shuffle(pool.slice()).slice(0, 2).map(c => ({ kind: "cat", c, price: c.price }));
+  G.shopItems = [...vials, ...cats];
+}
+function showShop(msg) {
+  const items = G.shopItems.map((it, i) => {
+    const bought = it.bought ? " bought" : "";
+    if (it.kind === "vial") { const v = VIALS[it.m]; return `<button type="button" class="item${bought}" data-i="${i}" ${it.bought ? "disabled" : ""}><span class="tag">材料瓶 · 加入牌組</span><span class="nm" style="color:${v.c}">${v.nm}</span><span class="ds">${v.ds}</span><span class="pr">$${it.price}</span></button>`; }
+    return `<button type="button" class="item${bought}" data-i="${i}" ${it.bought ? "disabled" : ""}><span class="tag">催化劑 · 永久效果</span><span class="nm">${it.c.nm}</span><span class="ds">${it.c.ds}</span><span class="pr">$${it.price}</span></button>`;
+  }).join("");
+  showOverlay(`
+    <h3>商店</h3>
+    <p class="muted">${msg}</p>
+    <div class="row-actions"><span class="money">$${G.money}</span><button type="button" id="reroll">重抽商品 $${G.reroll}</button></div>
+    <div class="shop">${items}</div>
+    <div class="row-actions"><span class="muted">下一回合目標：${fmt(TARGETS[G.round])}</span><button type="button" class="primary" id="next">開始第 ${G.round + 1} 回合</button></div>`);
+  ov.querySelectorAll(".item").forEach(b => b.addEventListener("click", () => buy(+b.dataset.i)));
+  document.getElementById("reroll").addEventListener("click", () => {
+    if (G.money < G.reroll) { flashMsg("錢不夠"); return; }
+    G.money -= G.reroll; G.reroll++; rollShop(); showShop("已重抽。");
+  });
+  document.getElementById("next").addEventListener("click", () => { hideOverlay(); startRound(); });
+}
+function flashMsg(t) { const m = ov.querySelector(".muted"); if (m) m.textContent = t; }
+function buy(i) {
+  const it = G.shopItems[i]; if (!it || it.bought) return;
+  if (G.money < it.price) { flashMsg("錢不夠"); return; }
+  if (it.kind === "cat" && G.cats.length >= MAX_CATS) { flashMsg("催化劑最多 5 個"); return; }
+  G.money -= it.price; it.bought = true;
+  if (it.kind === "vial") G.deck.push(it.m); else G.cats.push(it.c.id);
+  renderSide(); showShop(it.kind === "vial" ? `已把「${VIALS[it.m].nm}」加入牌組。` : `已裝上「${it.c.nm}」。`);
+}
+function gameOver() {
+  showOverlay(`<h3>實驗失敗</h3>
+    <p>第 ${G.round + 1} 回合：${fmt(G.roundScore)} / ${fmt(TARGETS[G.round])} 分。</p>
+    <p class="muted">提示：先倒「材料」佈置燒杯，最後再用火星或熔岩引爆；同一倒裡出現越多種反應，倍率越高。</p>
+    <div class="row-actions"><span></span><button type="button" class="primary" id="again">再試一次</button></div>`);
+  document.getElementById("again").addEventListener("click", () => { hideOverlay(); newGame(); });
+}
+function victory() {
+  showOverlay(`<h3>全部 8 回合通關！</h3>
+    <p>最後一回合得分 ${fmt(G.roundScore)}。你用了 ${G.cats.length} 個催化劑、${G.deck.length} 瓶材料。</p>
+    <div class="row-actions"><span></span><button type="button" class="primary" id="again">再玩一局</button></div>`);
+  document.getElementById("again").addEventListener("click", () => { hideOverlay(); newGame(); });
+}
+function showHelp(first) {
+  showOverlay(`<h3>${first ? "POUR DECISIONS" : "玩法"}</h3>
+    <ol class="howto">
+      <li>從手牌選一瓶材料，在燒杯上<b>按住</b>倒出，按住時可以左右拖曳。</li>
+      <li>材料會真的互相反應：水澆熄火、熔岩遇水凝成岩石、油遇火燃燒、酸溶蝕沙石、火藥連鎖爆炸……</li>
+      <li>每一倒的分數 = 反應分數（藍）× 倍率（紅）。<b>同一倒裡每多一種反應，倍率 +1</b>，所以先佈置、再引爆。</li>
+      <li>燒杯裡的東西會保留到回合結束。每回合 4 次倒料，達到目標就過關，到商店買新材料和催化劑。</li>
+    </ol>
+    <p class="muted">這是驗證核心玩法的灰盒原型：畫面、音效、數值都是暫定。</p>
+    <div class="row-actions"><span></span><button type="button" class="primary" id="go">${first ? "開始實驗" : "繼續"}</button></div>`);
+  document.getElementById("go").addEventListener("click", hideOverlay);
+}
+function ensureAudio() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+}
+document.getElementById("btnSound").addEventListener("click", e => {
+  ensureAudio(); soundOn = !soundOn;
+  e.currentTarget.textContent = soundOn ? "音效：開" : "音效：關";
+  e.currentTarget.setAttribute("aria-pressed", String(soundOn));
+});
+document.getElementById("btnHelp").addEventListener("click", () => showHelp(false));
+document.getElementById("btnRestart").addEventListener("click", () => newGame());
+
+newGame();
+showHelp(true);
+requestAnimationFrame(loop);
+})();
+</script>

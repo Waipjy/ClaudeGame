@@ -7,8 +7,9 @@
 - [x] 競品模式 → docs/research/02_competitor_patterns.md
 - [x] 素材與法規 → docs/research/03_assets_legal.md
 - [x] 候選概念評估、選題 → docs/design/00_concepts.md
-- [~] 瀏覽器灰盒原型（核心循環），交 HSU 試玩
-- [ ] 各職能知識包 skill（.claude/skills/）
+- [x] 瀏覽器灰盒原型（核心循環）→ prototype/web/，已發布 artifact
+- [~] 等 HSU 試玩回饋
+- [x] 各職能知識包 skill（.claude/skills/）
 - [ ] 平衡模擬原型（sim/，Python 離線跑材料×催化劑組合）
 - [ ] 根據試玩回饋寫 GDD v1 → docs/design/GDD.md
 - [ ] 範圍與排程（里程碑、上架時間表、Next Fest 目標）
