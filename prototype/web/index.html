@@ -531,6 +531,9 @@ const STR = {
     "shop.title": "藥鋪", "shop.vials": "瓶", "shop.charms": "護符", "shop.reroll": "重抽", "shop.exit": "離開", "shop.deck": "牌組",
     "end.fail": "失敗", "end.win": "通關", "end.again": "再來一局",
     "set.title": "設定", "set.close": "關閉", "set.sound": "音效", "set.anim": "動畫速度", "set.lang": "語言", "set.vib": "震動", "set.tut": "重看教學", "set.on": "開", "set.off": "關", "set.done": "已設定",
+    "rx.burn": "燃燒", "rx.blueflame": "藍焰", "rx.blast": "爆炸", "rx.quench": "淬熄", "rx.condense": "凝結", "rx.melt": "融冰", "rx.freeze": "結凍", "rx.acidrain": "酸雨", "rx.solidify": "凝岩", "rx.vitrify": "熔玻", "rx.dissolve": "溶蝕", "rx.bake": "燒陶", "rx.bloom": "萌芽", "rx.boil": "沸騰", "rx.fume": "硫煙", "rx.lidpop": "爆蓋",
+    "trait.burst": "爆發", "trait.sustain": "持續", "trait.chain": "連鎖", "trait.break": "破壞", "trait.residue": "殘渣", "trait.catalyst": "觸媒",
+    "ui.total": "合計", "ui.sink": "沉底", "ui.float": "浮面", "ui.stack": "堆疊", "ui.delay": "延時", "ui.trig": "觸發", "ui.per100": "每{0}格", "ui.eachBlast": "每次", "tab.rx": "反應", "tab.mat": "材料", "ui.dens": "密度", "ui.none": "無反應",
     "lang.zh": "繁中", "lang.en": "English",
   },
   en: {
@@ -546,12 +549,199 @@ const STR = {
     "shop.title": "Apothecary", "shop.vials": "Vials", "shop.charms": "Charms", "shop.reroll": "Reroll", "shop.exit": "Leave", "shop.deck": "Deck",
     "end.fail": "Failed", "end.win": "Cleared", "end.again": "Again",
     "set.title": "Settings", "set.close": "Close", "set.sound": "Sound", "set.anim": "Anim speed", "set.lang": "Language", "set.vib": "Vibration", "set.tut": "Replay intro", "set.on": "On", "set.off": "Off", "set.done": "Done",
+    "rx.burn": "Burn", "rx.blueflame": "Blue flame", "rx.blast": "Blast", "rx.quench": "Quench", "rx.condense": "Condense", "rx.melt": "Melt", "rx.freeze": "Freeze", "rx.acidrain": "Acid rain", "rx.solidify": "Solidify", "rx.vitrify": "Vitrify", "rx.dissolve": "Dissolve", "rx.bake": "Bake", "rx.bloom": "Bloom", "rx.boil": "Boil", "rx.fume": "Fume", "rx.lidpop": "Lid pop",
+    "trait.burst": "Burst", "trait.sustain": "Sustain", "trait.chain": "Chain", "trait.break": "Break", "trait.residue": "Residue", "trait.catalyst": "Catalyst",
+    "ui.total": "Total", "ui.sink": "Sinks", "ui.float": "Floats", "ui.stack": "Stacks", "ui.delay": "Delayed", "ui.trig": "Trigger", "ui.per100": "Per {0}", "ui.eachBlast": "Each", "tab.rx": "Reactions", "tab.mat": "Materials", "ui.dens": "Density", "ui.none": "No reaction",
     "lang.zh": "繁中", "lang.en": "English",
   },
 };
 if (typeof module !== "undefined") module.exports = STR;
 
 const { W, H, M, KIND, RX, RXK, RULES, createRound, scoreLedger, rxVals, mulberry32 } = window.PDSim;
+// B3 preview estimator (V04_SPEC §5). Shared by the browser (inlined into game.js) and node (calibrate_preview.js). Pure: reads sim state, never writes it.
+// estimatePour / estimateMatch / estimateLid return { items, lo, hi, mult }: gold range for ONE new ledger (what the player gets credited for this action).
+(function (root) {
+  const P = root.PDSim || (typeof require !== 'undefined' ? require('../sim.js') : null);
+  const { W, H, M, KIND, DEN, RX, RULES, scoreLedger } = P;
+  const HALF = 4, ROWS = 4, BFS_CAP = 2000;
+
+  // ---------- sensing the beaker ----------
+  function colContact(S, col, half) { // first non-empty (or fire) cell under columns col-half..col+half
+    let best = H - 1;
+    for (let dx = -half; dx <= half; dx++) {
+      const x = col + dx; if (x < 1 || x >= W - 1) continue;
+      for (let y = 0; y < H - 1; y++) { const m = S.t[y * W + x]; if (m !== M.E && (KIND[m] !== 3 || m === M.FIRE)) { if (y < best) best = y; break; } }
+    }
+    return best;
+  }
+  const seen = new Uint32Array(W * H), queue = new Int32Array(BFS_CAP + 8);
+  let gen = 0;
+  function blockSize(S, seeds, mat) { // same-material 4-neighbour block containing the seed cells, capped
+    gen++; let qh = 0, qt = 0; const t = S.t;
+    for (const p of seeds) if (seen[p] !== gen) { seen[p] = gen; queue[qt++] = p; }
+    while (qh < qt && qt < BFS_CAP) {
+      const p = queue[qh++], x = p % W;
+      for (let i = 0; i < 4; i++) {
+        const q = i === 0 ? p - W : i === 1 ? p + W : i === 2 ? (x > 1 ? p - 1 : -1) : (x < W - 2 ? p + 1 : -1);
+        if (q < 0 || q >= W * H || seen[q] === gen || t[q] !== mat) continue; seen[q] = gen; queue[qt++] = q; if (qt >= BFS_CAP) break;
+      }
+    }
+    return qt;
+  }
+  function contactInfo(S, col) { // materials in the 9 x 4 patch under the contact face + size of the block each belongs to
+    const cy = colContact(S, col, HALF), seeds = {}, tally = {};
+    for (let dx = -HALF; dx <= HALF; dx++) for (let dy = 0; dy < ROWS; dy++) {
+      const x = col + dx, y = cy + dy; if (x < 1 || x >= W - 1 || y >= H - 1) continue;
+      const p = y * W + x, m = S.t[p]; if (m === M.E) continue;
+      tally[m] = (tally[m] || 0) + 1; (seeds[m] || (seeds[m] = [])).push(p);
+    }
+    const vol = {}; for (const m in seeds) vol[m] = blockSize(S, seeds[m], +m);
+    return { col, cy, tally, vol };
+  }
+  function census(S) { // whole-beaker counts per material (index 23 = burning sulfur)
+    const c = new Int32Array(24), t = S.t, life = S.life;
+    for (let p = 0; p < W * H; p++) { const m = t[p]; c[m]++; if (m === M.SULFUR && life[p] > 0) c[23]++; }
+    return c;
+  }
+  function matchInfo(S, cx, cy) { // a match: what is in its 3-radius disc, and the size of the blocks it touches
+    const r = 3, seeds = {}, tally = {};
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      if (dx * dx + dy * dy > r * r) continue;
+      const x = cx + dx, y = cy + dy; if (x < 1 || x >= W - 1 || y < 0 || y >= H - 1) continue;
+      const p = y * W + x, m = S.t[p]; if (m === M.E || (KIND[m] === 3 && m !== M.FIRE)) continue;
+      tally[m] = (tally[m] || 0) + 1; (seeds[m] || (seeds[m] = [])).push(p);
+    }
+    const vol = {}; for (const m in seeds) vol[m] = blockSize(S, seeds[m], +m);
+    return { cx, cy, tally, vol };
+  }
+
+  // ---------- reaction pairs (poured A meets B) : [A, B, reaction, conv, qty]  qty: 'A' = scales with the pour (B is a source that keeps going), 'min' = min(pour, whole-beaker B) ----------
+  // conv = cells of reaction events per unit quantity, medians from bot data (calibrate_preview.js prints them again); see CONV below for the final numbers
+  const PAIRS = [
+    [M.EMBER, M.OIL, 'burn', 1.0, 'min'], [M.EMBER, M.SEED, 'burn', 0.8, 'min'], [M.EMBER, M.PLANT, 'burn', 0.8, 'min'], [M.EMBER, M.SULFUR, 'blueflame', 0.93, 'min'],
+    [M.EMBER, M.POWDER, 'blast', 0.05, 'min'], [M.EMBER, M.WATER, 'quench', 0.65, 'min'], [M.EMBER, M.ICE, 'melt', 0.5, 'min'],
+    [M.LAVA, M.OIL, 'burn', 1.0, 'min'], [M.LAVA, M.SEED, 'burn', 1.0, 'min'], [M.LAVA, M.PLANT, 'burn', 1.0, 'min'], [M.LAVA, M.SULFUR, 'blueflame', 1.0, 'min'], [M.LAVA, M.POWDER, 'blast', 0.05, 'min'],
+    [M.LAVA, M.WATER, 'solidify', 0.1, 'min'], [M.LAVA, M.SAND, 'vitrify', 0.05, 'min'], [M.LAVA, M.MUD, 'bake', 0.054, 'min'], [M.LAVA, M.ICE, 'melt', 1.0, 'min'],
+    [M.OIL, M.FIRE, 'burn', 1.0, 'A'], [M.OIL, M.LAVA, 'burn', 1.0, 'A'], [M.SEED, M.FIRE, 'burn', 0.7, 'A'], [M.SEED, M.LAVA, 'burn', 1.0, 'A'],
+    [M.SULFUR, M.FIRE, 'blueflame', 0.8, 'A'], [M.SULFUR, M.LAVA, 'blueflame', 1.0, 'A'], [M.POWDER, M.FIRE, 'blast', 0.07, 'A'], [M.POWDER, M.LAVA, 'blast', 0.07, 'A'],
+    [M.WATER, M.FIRE, 'quench', 0.012, 'A'], [M.SEED, M.WATER, 'bloom', 0.8, 'min'], [M.WATER, M.EMBER, 'quench', 0.3, 'min'], [M.WATER, M.LAVA, 'solidify', 0.14, 'A'], [M.WATER, M.SEED, 'bloom', 0.45, 'min'], [M.WATER, M.PLANT, 'bloom', 0.5, 'min'], [M.WATER, M.ICE, 'freeze', 0.6, 'min'],
+    [M.ICE, M.LAVA, 'melt', 1.0, 'min'], [M.ICE, M.FIRE, 'melt', 0.5, 'A'], [M.ICE, M.WATER, 'freeze', 1.0, 'min'],
+    [M.SAND, M.LAVA, 'vitrify', 0.9, 'min'], [M.SAND, M.ACID, 'dissolve', 1.26, 'min'],
+    [M.ACID, M.SAND, 'dissolve', 1.0, 'min'], [M.ACID, M.ICE, 'dissolve', 1.0, 'min'], [M.ACID, M.SEED, 'dissolve', 1.0, 'min'], [M.ACID, M.PLANT, 'dissolve', 1.0, 'min'],
+    [M.ACID, M.POWDER, 'dissolve', 1.0, 'min'], [M.ACID, M.MUD, 'dissolve', 1.0, 'min'], [M.ACID, M.STONE, 'dissolve', 1.0, 'min'], [M.ACID, M.GLASS, 'dissolve', 1.0, 'min'],
+    [M.ICE, M.ACID, 'dissolve', 1.0, 'min'], [M.SEED, M.ACID, 'dissolve', 1.0, 'min'], [M.POWDER, M.ACID, 'dissolve', 1.0, 'min'],
+  ];
+  const RULEOF = {}; PAIRS.forEach((p, i) => { (RULEOF[p[0]] || (RULEOF[p[0]] = {}))[p[1]] = p; });
+  // pairs of vial materials for the codex / hand tips (A + B -> reaction), order-free, only combos a player can make from the shop
+  const COMBOS = [['burn', M.EMBER, M.OIL], ['burn', M.LAVA, M.OIL], ['burn', M.EMBER, M.SEED], ['blueflame', M.EMBER, M.SULFUR], ['blueflame', M.LAVA, M.SULFUR], ['blast', M.EMBER, M.POWDER], ['blast', M.LAVA, M.POWDER],
+    ['quench', M.EMBER, M.WATER], ['melt', M.LAVA, M.ICE], ['melt', M.EMBER, M.ICE], ['freeze', M.WATER, M.ICE], ['acidrain', M.SULFUR, M.WATER], ['solidify', M.LAVA, M.WATER], ['vitrify', M.LAVA, M.SAND],
+    ['dissolve', M.ACID, M.SAND], ['dissolve', M.ACID, M.ICE], ['dissolve', M.ACID, M.SEED], ['dissolve', M.ACID, M.POWDER], ['bake', M.LAVA, M.MUD], ['bloom', M.WATER, M.SEED]];
+
+  // what a pour does when nothing reacts: sinks / floats / stacks (V04_SPEC §3.2, last paragraph)
+  function physicsKind(m, x) {
+    if (m === M.EMBER) return 'delay';
+    const kx = KIND[x];
+    if (kx === 2) { if (m === M.SULFUR) return 'float'; return DEN[m] > DEN[x] ? 'sink' : DEN[m] < DEN[x] ? 'float' : 'stack'; }
+    if (kx === 1 || kx === 4) return 'stack';
+    return 'stack';
+  }
+
+  // ---------- the estimate, from features only (so node can replay recorded pours) ----------
+  // interval factors on the central estimate (tuned by calibrate_preview.js; the scoring numbers are never touched)
+  const CONV = { lo: 0.35, hi: 3, reach: 0.7, wet: 40 };
+  // cascade ratios: secondary reactions per primary one when water is in the beaker (least-squares fit on bot ledgers, calibrate_preview.js --fit)
+  const CASCADE = { condensePerSolid: 0.05, condensePerBoil: 0.06, boilPerWater: 0.17, quenchPerBurn: 0.12, fumePerBlue: 0.27, rainPerBlue: 0.42, dissolvePerBlue: 0.48 };
+  const pr10 = (v, up) => up ? Math.ceil(v / 10) * 10 : Math.floor(v / 10) * 10;
+  const scoreOf = (counts, maxGen, mods) => scoreLedger({ counts, evs: counts, resN: {}, maxGen }, mods);
+  const baseOf = (rx, n, mods) => scoreLedger({ counts: { [rx]: n }, evs: { [rx]: n }, resN: {}, maxGen: 1 }, mods).matter;
+  const add = (o, k, v) => { if (v > 0) o[k] = (o[k] || 0) + v; };
+
+  // secondary reactions that follow from the primary ones (burning sulfur near water makes acid rain, fire next to water quenches ...)
+  function cascade(c, glob) {
+    const wet = glob[M.WATER] + glob[M.STEAM] > CONV.wet, o = Object.assign({}, c);
+    if (wet) add(o, 'quench', CASCADE.quenchPerBurn * (c.burn || 0));
+    if (c.boil) add(o, 'condense', CASCADE.condensePerBoil * c.boil);
+    if (c.solidify) add(o, 'condense', CASCADE.condensePerSolid * c.solidify);
+    if (c.blueflame) { add(o, 'fume', CASCADE.fumePerBlue * c.blueflame); if (wet) { add(o, 'acidrain', CASCADE.rainPerBlue * c.blueflame); add(o, 'dissolve', CASCADE.dissolvePerBlue * c.blueflame); } }
+    return o;
+  }
+  function depthOf(c) { return 1 + (c.quench || c.fume ? 1 : 0) + (c.acidrain ? 1 : 0) + (c.dissolve && c.acidrain ? 1 : 0); }
+  // one scenario (lo or hi): primary counts scaled by k, then cascade, then the real scoring formula
+  function scenario(prim, k, glob, mods, extra) {
+    const c = {}; for (const r in prim) c[r] = prim[r] * k;
+    if (extra) for (const r in extra) add(c, r, extra[r] * k);
+    const full = cascade(c, glob);
+    return scoreOf(full, depthOf(full) + (k > 1 && (full.quench || full.acidrain) ? 1 : 0), mods);
+  }
+  function finish(items, prim, reach, glob, mods) {
+    const lo = scenario(prim, CONV.lo, glob, mods), hi = scenario(prim, CONV.hi, glob, mods, reach);
+    for (const it of items) { it.lo = baseOf(it.rx, it.n * CONV.lo, mods); it.hi = baseOf(it.rx, it.n * CONV.hi, mods); }
+    const lg = pr10(lo.gold, false), hg = Math.max(lg, pr10(hi.gold, true));
+    return { items, lo: lg, hi: hg, mult: hi.elem, lit: hi.lit };
+  }
+  function primaryOf(m, tally, glob, amount, mods) {
+    const items = [], prim = {}, reach = {};
+    for (const xs of Object.keys(tally)) {
+      const x = +xs, rule = RULEOF[m] && RULEOF[m][x]; if (!rule) continue;
+      const rx = rule[2], n = rule[3] * (rule[4] === 'A' ? amount : Math.min(amount, glob[x])); if (n <= 0) continue;
+      add(prim, rx, n); items.push({ kind: 'rx', a: m, b: x, rx, trait: RX[rx].trait, n });
+    }
+    if (m === M.WATER && mods.hotplate) { const n = CASCADE.boilPerWater * amount; add(prim, 'boil', n); items.push({ kind: 'rx', a: m, b: M.MUD, rx: 'boil', trait: RX.boil.trait, n }); }
+    // partners that are in the beaker but not under the pour: a flowing pour may still reach them (adds to the high end only)
+    for (const xs in RULEOF[m] || {}) {
+      const x = +xs, rule = RULEOF[m][x]; if (tally[x] || glob[x] <= 0 || x === M.FIRE || !(KIND[m] === 2 || KIND[x] === 2 || m === M.EMBER)) continue;
+      add(reach, rule[2], CONV.reach * rule[3] * (rule[4] === 'A' ? amount : Math.min(amount, glob[x])));
+    }
+    return { items, prim, reach };
+  }
+  function estimateFromFeatures(m, info, glob, amount, mods) {
+    const { items, prim, reach } = primaryOf(m, info.tally, glob, amount, mods);
+    if (!items.length) {
+      let dom = 0, dn = 0; for (const x in info.tally) if (info.tally[x] > dn) { dn = info.tally[x]; dom = +x; }
+      const ex = Object.keys(reach).length ? finish([], {}, reach, glob, mods) : { lo: 0, hi: 0, mult: 1, lit: [0, 0, 0, 0] };
+      ex.items = [dom ? { kind: physicsKind(m, dom), a: m, b: dom, lo: 0, hi: 0 } : { kind: 'stack', a: m, b: M.MUD, lo: 0, hi: 0 }];
+      return ex;
+    }
+    return finish(items, prim, reach, glob, mods);
+  }
+
+  // ---------- live entry points ----------
+  let cache = { key: '', val: null };
+  function cached(key, fn) { if (cache.key === key) return cache.val; const v = fn(); cache = { key, val: v }; return v; }
+  function estimatePour(S, mods, m, col, amount, frameKey) {
+    return cached('p' + m + ':' + col + ':' + frameKey, () => {
+      const info = contactInfo(S, col), v = estimateFromFeatures(m, info, census(S), amount, mods);
+      v.col = col; v.cy = info.cy; v.info = info; return v;
+    });
+  }
+  const FLAM = [M.OIL, M.SULFUR, M.SEED, M.PLANT, M.POWDER];
+  const MATCH_RULES = { [M.OIL]: ["burn", 1.0], [M.PLANT]: ['burn', 0.8], [M.SEED]: ['burn', 0.8], [M.SULFUR]: ["blueflame", 0.59], [M.POWDER]: ['blast', 0.015] };
+  function matchFromFeatures(info, glob, mods) {
+    const items = [], prim = {};
+    for (const xs of Object.keys(info.tally)) {
+      const x = +xs, r = MATCH_RULES[x]; if (!r) continue;
+      const n = r[1] * glob[x]; if (n <= 0) continue;
+      add(prim, r[0], n); items.push({ kind: 'rx', a: -1, b: x, rx: r[0], trait: RX[r[0]].trait, n });
+    }
+    if (!items.length) return { items: [], lo: 0, hi: 0, mult: 1, lit: [0, 0, 0, 0] };
+    return finish(items, prim, {}, glob, mods);
+  }
+  function estimateMatch(S, mods, cx, cy, frameKey) {
+    return cached('m' + cx + ':' + cy + ':' + frameKey, () => { const info = matchInfo(S, cx, cy), v = matchFromFeatures(info, census(S), mods); v.info = info; return v; });
+  }
+  // lid: will the gas reach the cap within `secs` seconds (slope in cells per R.frame)? then the burst is worth about trig + vol*cap/100, times a multiplier of at least air + 1
+  function estimateLid(S, mods, slope, secs) {
+    const will = S.lid && (S.gas + Math.max(0, slope) * 60 * (secs || 3)) >= S.lidMax;
+    const v = P.rxVals('lidpop', mods), base = v.trig + v.vol * S.lidMax / RULES.VOL_DIV, lo = pr10(base * 2, false);
+    return { will, lo };
+  }
+
+  const api = { colContact, blockSize, contactInfo, matchInfo, census, estimateFromFeatures, matchFromFeatures, estimatePour, estimateMatch, estimateLid,
+    PAIRS, COMBOS, CONV, HALF, ROWS, BFS_CAP, physicsKind, FLAM };
+  if (typeof module !== 'undefined') module.exports = api; else root.PDEst = api;
+})(typeof window !== 'undefined' ? window : this);
+
+const EST = window.PDEst;
 const ICP = 3;           // ink-layer pixels per cell (fixed); on screen it is scaled to L.cp
 const LW = 390;          // logical width; logical height follows the window (600..880)
 
@@ -581,20 +771,6 @@ const FLAMMABLE = [M.OIL, M.PLANT, M.SEED, M.SULFUR, M.POWDER];
 const DISCOVER = { burn: [M.OIL, M.EMBER], blueflame: [M.SULFUR, M.EMBER], blast: [M.POWDER, M.EMBER], quench: [M.WATER, M.EMBER], condense: [M.WATER, M.WATER],
   melt: [M.ICE, M.LAVA], freeze: [M.WATER, M.ICE], acidrain: [M.SULFUR, M.WATER], solidify: [M.LAVA, M.WATER], vitrify: [M.SAND, M.LAVA], dissolve: [M.ACID, M.SAND],
   bake: [M.LAVA, M.SAND], bloom: [M.SEED, M.WATER], boil: [M.WATER, M.LAVA], fume: [M.SULFUR, M.EMBER], lidpop: [M.EMBER, M.EMBER] };
-// what a falling material does to what it lands on (used for the ghost preview only)
-const PRE = {
-  [M.LAVA]: { [M.WATER]: ["solidify", "steam"], [M.ICE]: ["melt", "solidify"], [M.SAND]: ["vitrify"], [M.MUD]: ["bake"], [M.OIL]: ["burn"], [M.PLANT]: ["burn"], [M.SEED]: ["burn"], [M.SULFUR]: ["blueflame"], [M.POWDER]: ["blast"] },
-  [M.WATER]: { [M.SEED]: ["bloom"], [M.PLANT]: ["bloom"], [M.ICE]: ["freeze"], [M.FIRE]: ["quench", "steam"], [M.LAVA]: ["solidify", "steam"] },
-  [M.ACID]: { [M.SAND]: ["dissolve"], [M.STONE]: ["dissolve"], [M.GLASS]: ["dissolve"], [M.ICE]: ["dissolve"], [M.PLANT]: ["dissolve"], [M.SEED]: ["dissolve"], [M.POWDER]: ["dissolve"], [M.MUD]: ["dissolve"] },
-  [M.OIL]: { [M.FIRE]: ["burn"], [M.LAVA]: ["burn"] },
-  [M.POWDER]: { [M.FIRE]: ["blast"], [M.LAVA]: ["blast"] },
-  [M.ICE]: { [M.WATER]: ["freeze"], [M.LAVA]: ["melt"], [M.FIRE]: ["melt"] },
-  [M.SEED]: { [M.WATER]: ["bloom"], [M.LAVA]: ["burn"], [M.FIRE]: ["burn"] },
-  [M.SAND]: { [M.LAVA]: ["vitrify"], [M.ACID]: ["dissolve"] },
-  [M.EMBER]: { [M.OIL]: ["burn"], [M.SULFUR]: ["blueflame"], [M.POWDER]: ["blast"], [M.SEED]: ["burn"], [M.PLANT]: ["burn"] },
-  [M.SULFUR]: { [M.FIRE]: ["blueflame"], [M.LAVA]: ["blueflame"] },
-};
-
 // ---------------- state ----------------
 const canvas = document.getElementById("view");
 const ctx = canvas.getContext("2d");
@@ -610,7 +786,6 @@ const inkImg = ictx.createImageData(W * ICP, H * ICP), ink32 = new Uint32Array(i
 let bgC = null, bgS = null, WASH_BLUR = !QS.has("noblur");
 const fx = { floats: [], buckets: new Map(), chains: [], gold: [], tallyQ: [], tally: null, lidFly: null, shake: 0, disc: [], coins: [], bump: {} };
 const meta = new Map();
-const seen = new Set();
 let mode = "play"; // play | shop | lose | win
 let soundOn = true, AC = null, lastBeep = {};
 const ptr = { x: -1, y: -1, down: false, type: "mouse", inside: false };
@@ -629,6 +804,23 @@ function saveSet() { try { localStorage.setItem("pd.settings", JSON.stringify(SE
 function T(key) { const a = arguments; const t = (STR[SET.lang] && STR[SET.lang][key]) || STR.zh[key] || key; return t.replace(/\{(\d)\}/g, (m, i) => a[+i + 1]); }
 const FONT = "'Noto Serif TC','Songti TC','PMingLiU','Noto Serif CJK TC',serif";
 const MATKEY = { [M.SAND]: "mat.sand", [M.WATER]: "mat.water", [M.OIL]: "mat.oil", [M.LAVA]: "mat.lava", [M.ACID]: "mat.acid", [M.POWDER]: "mat.powder", [M.ICE]: "mat.ice", [M.SEED]: "mat.seed", [M.EMBER]: "mat.ember", [M.SULFUR]: "mat.sulfur" };
+// ---------------- codex (V04_SPEC §3.4): discoveries persist in localStorage["pd.codex"]; every access is guarded, a failing store just means a fresh player each session ----------------
+const CODEX = { rx: new Set(), mat: new Set(), arc: new Set(), ack: 0, open: false, tab: 0, rects: [] };
+try {
+  const o = JSON.parse(localStorage.getItem("pd.codex") || "null");
+  if (o && typeof o === "object") {
+    for (const k of Array.isArray(o.rx) ? o.rx : []) if (RX[k]) CODEX.rx.add(k);
+    for (const m of Array.isArray(o.mat) ? o.mat : []) if (MATKEY[m] !== undefined) CODEX.mat.add(+m);
+    for (const a of Array.isArray(o.arc) ? o.arc : []) if (ARCANA.some(q => q.id === a)) CODEX.arc.add(a);
+    if (Number.isInteger(o.ack)) CODEX.ack = Math.max(0, Math.min(o.ack, CODEX.rx.size));
+  }
+} catch (e) {}
+function saveCodex() { try { localStorage.setItem("pd.codex", JSON.stringify({ rx: [...CODEX.rx], mat: [...CODEX.mat], arc: [...CODEX.arc], ack: CODEX.ack })); } catch (e) {} }
+const pendDisc = new Set();   // reactions found this session that still owe their collision animation
+function discoverRx(type) { if (CODEX.rx.has(type)) return; CODEX.rx.add(type); pendDisc.add(type); saveCodex(); }
+function noteMat(m) { if (MATKEY[m] !== undefined && !CODEX.mat.has(m)) { CODEX.mat.add(m); saveCodex(); } }
+function noteArc(id) { if (id && !CODEX.arc.has(id)) { CODEX.arc.add(id); saveCodex(); } }
+const codexDot = () => CODEX.rx.size > CODEX.ack;
 function tplParts(key, args) { const src = (STR[SET.lang] && STR[SET.lang][key]) || STR.zh[key] || key; return src.split(/(\{\d\})/).filter(x => x !== "").map(x => /^\{\d\}$/.test(x) ? { n: String((args || [])[+x[1]]) } : { t: x }); }
 // label = a short word or phrase from the string table; the only legal way to put text on the canvas
 function drawLabel(g, key, x, y, size, opt) {
@@ -681,9 +873,12 @@ const GLYPH = {
   "%": g => { g.moveTo(1.9, 1.2); g.ellipse(1.1, 1.2, 0.8, 0.9, 0, 0, Math.PI * 2); g.moveTo(3.7, 4.8); g.ellipse(2.9, 4.8, 0.8, 0.9, 0, 0, Math.PI * 2); g.moveTo(3.5, 0); g.lineTo(0.5, 6); },
   ".": g => { g.moveTo(0.9, 5.7); g.lineTo(0.92, 5.7); },
   ",": g => { g.moveTo(2.2, 5.3); g.lineTo(1.6, 6.7); },
+  "≈": g => { g.moveTo(0.3, 2.3); g.quadraticCurveTo(1.1, 1.1, 2, 2.3); g.quadraticCurveTo(2.9, 3.5, 3.7, 2.3); g.moveTo(0.3, 4.1); g.quadraticCurveTo(1.1, 2.9, 2, 4.1); g.quadraticCurveTo(2.9, 5.3, 3.7, 4.1); },
+  "–": g => { g.moveTo(0.2, 3); g.lineTo(3.8, 3); },
+  "?": g => { g.moveTo(0.5, 1.5); g.bezierCurveTo(0.5, -0.5, 3.6, -0.5, 3.5, 1.6); g.bezierCurveTo(3.4, 3, 2, 3, 2, 4.2); g.moveTo(2, 5.7); g.lineTo(2.02, 5.7); },
   "k": g => { g.moveTo(0.7, 0); g.lineTo(0.7, 6); g.moveTo(3.4, 1.9); g.lineTo(0.7, 3.9); g.moveTo(1.7, 3.3); g.lineTo(3.7, 6); },
 };
-const ADV = { "1": 4, ".": 2.2, ",": 2.4, "-": 4.4, "−": 4.4, "k": 4.6 };
+const ADV = { "1": 4, ".": 2.2, ",": 2.4, "-": 4.4, "−": 4.4, "–": 4.6, "k": 4.6 };
 function numWidth(str, size) { let w = 0; const s = size / 6; for (const ch of String(str)) w += (ADV[ch] || 5) * s; return w - 0.8 * s; }
 // size = glyph height in logical px. opt: color, align (l/c/r), halo (paper outline), wt (stroke weight, in 1/6 size units)
 function drawNum(g, str, x, y, size, opt) {
@@ -968,6 +1163,27 @@ function drawBadge(g, id, x, y, r, rare, dim) {
   g.restore();
 }
 
+// ---- B3 additions: sink / float arrows, a cell-material token for things that are not vials, a "?" silhouette ----
+function drawVert(g, x, y, s, up) { // sink (down) / float (up): arrow over a wavy surface line
+  g.save(); g.translate(x, y); g.lineCap = "round"; g.lineJoin = "round";
+  g.beginPath(); g.moveTo(-s, up ? s * .75 : -s * .75); g.quadraticCurveTo(-s * .5, (up ? s * .75 : -s * .75) - s * .35, 0, up ? s * .75 : -s * .75); g.quadraticCurveTo(s * .5, (up ? s * .75 : -s * .75) + s * .35, s, up ? s * .75 : -s * .75); ink(g, 1.2);
+  const a = up ? -1 : 1; g.beginPath(); g.moveTo(0, -a * s * .65); g.lineTo(0, a * s * .55); g.moveTo(-s * .45, a * s * .1); g.lineTo(0, a * s * .6); g.lineTo(s * .45, a * s * .1); ink(g, 1.7);
+  g.restore();
+}
+function drawStackIc(g, x, y, s) { g.save(); g.translate(x, y); for (let i = 0; i < 3; i++) { g.beginPath(); g.rect(-s * (.9 - i * .15), s * (.55 - i * .55) - s * .25, s * (1.8 - i * .3), s * .45); wash(g, COL.sand, .8); ink(g, 1.2); } g.restore(); }
+function drawDelayIc(g, x, y, s) { g.save(); g.translate(x, y); g.beginPath(); g.arc(0, 0, s * .85, 0, 7); wash(g, "rgba(246,238,214,.9)", 1); ink(g, 1.5); g.beginPath(); g.moveTo(0, -s * .5); g.lineTo(0, 0); g.lineTo(s * .38, s * .25); ink(g, 1.6); g.restore(); }
+// non-vial cell materials (fire, stone, plant, glass, mud, steam) as small tokens
+function drawCellMat(g, m, x, y, s) {
+  if (m === M.FIRE) drawRx(g, "burn", x, y, s); else if (m === M.STONE) drawRx(g, "solidify", x, y, s); else if (m === M.GLASS) drawRx(g, "vitrify", x, y, s);
+  else if (m === M.PLANT) drawRx(g, "bloom", x, y, s); else if (m === M.MUD) drawMud(g, x, y, s * .9); else if (m === M.STEAM) drawRx(g, "steam", x, y, s);
+  else if (m === M.FUME) drawRx(g, "fume", x, y, s); else if (m === M.SMOKE) drawRx(g, "steam", x, y, s);
+  else { g.save(); g.beginPath(); g.arc(x, y, s * .7, 0, 7); wash(g, "#9a9088", .8); ink(g, 1.2); g.restore(); }
+}
+function drawQ(g, x, y, s, a) { // dashed ring + question mark: "not discovered yet"
+  g.save(); g.translate(x, y); g.globalAlpha = a == null ? 1 : a; g.beginPath(); g.arc(0, 0, s, 0, 7); g.setLineDash([2, 2]); g.strokeStyle = "rgba(42,28,18,.55)"; g.lineWidth = 1; g.stroke(); g.setLineDash([]);
+  drawNum(g, "?", 0, 0, s * 1.15, { color: "rgba(42,28,18,.65)", wt: 1.2 }); g.restore();
+}
+
 let paperTile = null;
 function makeNoise(seed, P) {
   P = P || 64;
@@ -1203,6 +1419,7 @@ function startRound() {
   R.onOpen = onOpen; R.onClose = onClose; R.onRx = onRx; R.S.onLidPop = onLidPop;
   if (G.round === 0) { G.hand = FIRST_HAND.slice(); G.draw = FIRST_DRAW.slice().reverse(); G.disc = []; G.tut = 0; }
   else { G.tut = 9; G.draw = shuffle(G.deck.slice()); G.hand = []; G.disc = []; while (G.hand.length < HAND && G.draw.length) G.hand.push(G.draw.pop()); }
+  for (const m of G.hand) noteMat(m); for (const c of G.arc) noteArc(c);
   G.sel = -1; G.matchMode = false; G.pourP = null; G.holding = false; G.displayGold = 0; G.ended = false; G.reachedFlag = false; G.lidUsed = false; G.pourN = 0; G.idleSince = NOW();
   fx.floats = []; fx.buckets.clear(); fx.chains = []; fx.gold = []; fx.tallyQ = []; fx.tally = null; fx.lidFly = null; fx.disc = []; fx.coins = [];
   meta.clear(); gasHist.length = 0; D = null; TIP = null; LP = null; G.card = { t0: null }; G.fillHint = 0;
@@ -1247,6 +1464,7 @@ function onRx(Lg, type, p, g) {
   }
   if (!b) { b = { uid: Lg.uid, type, n: 0, x: 0, y: 0, t0: NOW() }; fx.buckets.set(fx.bucketId = (fx.bucketId || 0) + 1, b); }
   b.n++; b.x += x; b.y += y;
+  discoverRx(type);
   if (type === "blast" || type === "lidpop") fx.shake = Math.min(7, fx.shake + (type === "lidpop" ? 1.2 : 0.5));
   sfx(type);
 }
@@ -1266,7 +1484,7 @@ function flushBuckets(now) {
       if (!hit) { placed = true; break; } fy0 -= 6;
     }
     if (!placed && b.type !== "lidpop" && b.type !== "blast") continue;
-    const first = !seen.has(b.type); seen.add(b.type);
+    const first = pendDisc.delete(b.type);
     fx.floats.push({ type: b.type, trait: RX[b.type].trait, val, w: fw, x: clamp(fx0, fw / 2, W - fw / 2), y: Math.max(8, fy0), born: now, big: b.type === "lidpop" || b.type === "blast" });
     if (first) fx.disc.push({ type: b.type, x: clamp(fx0, 14, W - 14), y: Math.max(14, fy0 - 10), born: now });
   }
@@ -1353,8 +1571,9 @@ canvas.addEventListener("pointerdown", e => {
   try { canvas.setPointerCapture(e.pointerId); } catch (er) {}
   G.idleSince = NOW();
   if (SETUI.open) return settingsDown(x, y);
+  if (CODEX.open) return codexDown(x, y);
   if (inRect(x, y, L.top.gear)) { openSettings(true); tone(500, 0.06); return; }
-  if (inRect(x, y, L.top.book)) { nudge("book"); tone(420, 0.06); return; }
+  if (inRect(x, y, L.top.book)) { openCodex(true); tone(420, 0.06); return; }
   if (G.card && G.card.t0 != null && mode === "play") G.card.t0 = Math.min(G.card.t0, NOW() - (1200 / SET.anim - 320));
   const tg = tipTargets().find(t => inRect(x, y, t.rect));
   LP = tg ? { x, y, t0: NOW(), target: tg, fired: false } : null; TIP = null;
@@ -1399,6 +1618,9 @@ function finishDrag(e) {
 }
 canvas.addEventListener("pointerup", finishDrag); canvas.addEventListener("pointercancel", () => { D = null; LP = null; PENDING = null; ptr.down = false; G.holding = false; });
 window.addEventListener("keydown", e => {
+  if (e.key === "Escape" && CODEX.open) { openCodex(false); return; }
+  if (CODEX.open) return;
+  if ((e.key === "c" || e.key === "C") && !SETUI.open && G) { openCodex(true); return; }
   if (e.key === "Escape") { if (SETUI.open) openSettings(false); else if (G && mode === "play" && (G.sel >= 0 || G.matchMode)) { G.sel = -1; G.matchMode = false; } else openSettings(true); return; }
   if (SETUI.open) return;
   if (!G || mode !== "play") { if (e.key === "Enter") screenDown(-1, -1, true); return; }
@@ -1413,7 +1635,7 @@ function pourFromSlot(i, col, hold) {
   G.pourP = P; G.holding = hold;
   G.disc.push(G.hand.splice(i, 1)[0]);
   if (G.draw.length === 0 && G.disc.length && G.round > 0) G.draw = shuffle(G.disc.splice(0));
-  if (G.draw.length) { G.hand.splice(i, 0, G.draw.pop()); G.slideIn[i] = NOW(); }
+  if (G.draw.length) { G.hand.splice(i, 0, G.draw.pop()); G.slideIn[i] = NOW(); noteMat(G.hand[i]); }
   G.sel = -1; G.pourN++; P.anim = NOW(); P.vm = mat;
   advanceTut("pour", mat);
   tone(300, 0.2, "sine", 0.05, 0.6); buzz(12);
@@ -1432,12 +1654,15 @@ let TIP = null, LP = null, PENDING = null;
 const SETUI = { open: false, rects: [] };
 const RED = "#b8381e";
 function openSettings(v) { SETUI.open = !!v; if (v) { TIP = null; LP = null; D = null; G.sel = -1; G.matchMode = false; } }
+function openCodex(v) { CODEX.open = !!v; if (v) { TIP = null; LP = null; D = null; PENDING = null; ptr.down = false; if (G) { G.sel = -1; G.matchMode = false; G.holding = false; } CODEX.ack = CODEX.rx.size; saveCodex(); } }
+const paused = () => SETUI.open || CODEX.open;
 function itemRC(i) { return G.shopItems[i].kind === "vial" ? [0, i] : [1, i - 2]; }
 function tipTargets() {
   const out = [];
-  if (!G || SETUI.open) return out;
+  if (!G || SETUI.open || CODEX.open) return out;
   if (mode === "play") {
     out.push({ id: "match", rect: L.btn.match }, { id: "lid", rect: L.btn.lid }, { id: "seal", rect: L.btn.seal });
+    for (let i = 0; i < HAND; i++) if (G.hand[i] !== undefined) out.push({ id: "v" + i, rect: L.slot(i) });
     for (let e = 0; e < 4; e++) out.push({ id: "el" + e, rect: { x: L.rx0, y: L.elY(e) - 12, w: L.rw, h: 24 } });
     G.arc.forEach((c, i) => out.push({ id: "ch" + i, rect: { x: L.rcx - 13, y: L.charmY(i) - 13, w: 26, h: 26 } }));
   } else if (mode === "shop") {
@@ -1449,13 +1674,29 @@ function tipTargets() {
 }
 // a row is a list of tokens: "icon-id" strings, {t:key,args,c} labels, {n:text,c} numbers
 function arcRows(id) { const [ic, tag] = ARC_ICON[id]; return [[{ t: "arc." + id }], [ic === "vial" ? "m:" + M.WATER : ic === "match" ? "match" : "rx:" + ic, { n: tag }]]; }
+const matTok = m => MATKEY[m] !== undefined ? "m:" + m : "mat:" + m;
+function vialTipRows(m) { // V04_SPEC §3.5: what this vial does, only discovered reactions spelled out
+  const rows = [[{ t: MATKEY[m] }]]; let unk = 0, shown = 0;
+  for (const [rx, a, b] of EST.COMBOS) {
+    if (a !== m && b !== m) continue;
+    if (CODEX.rx.has(rx)) { if (shown < 4) { rows.push(["plus", matTok(a === m ? b : a), "arrow", "rx:" + rx, { t: "rx." + rx }]); shown++; } } else unk++;
+  }
+  if (unk) rows.push(["plus", "q", "arrow", "q", { n: "×" + unk }]);
+  return rows;
+}
 function tipRows(id) {
+  if (/^v\d$/.test(id)) { const m = G.hand[+id[1]]; return m === undefined ? [] : vialTipRows(m); }
   if (id === "match") return [["match", "arrow", "m:" + M.OIL, "m:" + M.SULFUR, "m:" + M.POWDER, "m:" + M.SEED], [{ t: "ui.each" }, { n: BASE_MATCHES + (R.mods.matchbox ? 1 : 0) }]];
-  if (id === "lid") return [["lid", "arrow", "gas", { t: "ui.full" }, "arrow", "rx:lidpop", { n: "150" }], [{ t: "ui.lidOn" }, "m:" + M.WATER, "x"]];
+  if (id === "lid") {
+    const rows = [["lid", "arrow", "gas", { t: "ui.full" }, "arrow", "rx:lidpop", { n: "150" }], [{ t: "ui.lidOn" }, "m:" + M.WATER, "x"]];
+    const lp = EST.estimateLid(R.S, R.mods, lidSlope(), 3);
+    if (lp.will) rows.push(["rx:lidpop", { n: "≈" }, { n: fmt(lp.lo) + "+", c: "#8a6410" }]);   // gas is on course to pop the lid within 3 s
+    return rows;
+  }
   if (id === "seal") { const rows = [[{ t: "ui.left" }, "pip", { n: "×" + R.pours }, "arrow", { n: "+" + R.pours }, "coin"]]; if (R.gold < R.target) rows.push([{ t: "ui.miss", c: RED }, "arrow", { t: "ui.fail", c: RED }]); return rows; }
   if (id.startsWith("el")) {
     const e = +id.slice(2), row = ["el:" + e];
-    for (const k of RXK) if (RX[k].el.includes(e) && row.length < 6) row.push(seen.has(k) ? "rx:" + k : "q");
+    for (const k of RXK) if (RX[k].el.includes(e) && row.length < 6) row.push(CODEX.rx.has(k) ? "rx:" + k : "q");
     return [row, [{ t: "ui.perLamp" }, { n: "+1" }, { t: "ui.allLamp" }, { n: "+2" }]];
   }
   if (id.startsWith("ch")) return arcRows(G.arc[+id.slice(2)]);
@@ -1463,7 +1704,7 @@ function tipRows(id) {
   return [];
 }
 function tokW(t) {
-  if (typeof t === "string") return t === "arrow" ? 22 : t === "x" ? 14 : t.startsWith("m:") || t === "pip" ? 14 : 20;
+  if (typeof t === "string") return t === "arrow" ? 22 : t === "x" ? 14 : t === "plus" ? 13 : t.startsWith("m:") || t === "pip" || t.startsWith("tr:") ? 15 : t.startsWith("mat:") ? 17 : 20;
   if (t.t != null) return labelW(t.t, 12, t.args) + 4;
   return numWidth(String(t.n), 12) + 4;
 }
@@ -1474,7 +1715,13 @@ function drawTok(t, x, cy) {
     else if (t === "match") drawMatch(ctx, cx - 2, cy + 1, 10, false, 1); else if (t === "lid") drawLid(ctx, cx, cy, 9, false);
     else if (t === "coin") drawCoin(ctx, cx, cy, 6.5); else if (t === "pip") drawPip(ctx, cx - 5, cy - 8, 10, 15, false);
     else if (t === "gas") drawRx(ctx, "steam", cx, cy, 8);
-    else if (t === "q") { ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, 8, 0, 7); ctx.setLineDash([2, 2]); ctx.strokeStyle = "rgba(42,28,18,.5)"; ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]); ctx.beginPath(); ctx.arc(cx, cy - 1.5, 2.6, Math.PI, Math.PI * 2.6); ctx.lineTo(cx, cy + 1.5); ctx.strokeStyle = "rgba(42,28,18,.6)"; ctx.stroke(); ctx.beginPath(); ctx.arc(cx, cy + 4, 0.8, 0, 7); ctx.fillStyle = "rgba(42,28,18,.6)"; ctx.fill(); ctx.restore(); }
+    else if (t === "plus") drawNum(ctx, "+", cx, cy, 11, { color: INK, wt: 1 });
+    else if (t === "sink" || t === "float") drawVert(ctx, cx, cy, 8, t === "float");
+    else if (t === "stack") drawStackIc(ctx, cx, cy, 8); else if (t === "delay") drawDelayIc(ctx, cx, cy, 8);
+    else if (t.startsWith("tr:")) drawTrait(ctx, t.slice(3), cx, cy, 5.5);
+    else if (t.startsWith("mat:")) drawCellMat(ctx, +t.slice(4), cx, cy, 8);
+    else if (t === "q") { drawQ(ctx, cx, cy, 8); }
+    else if (t === "q_old") { ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, 8, 0, 7); ctx.setLineDash([2, 2]); ctx.strokeStyle = "rgba(42,28,18,.5)"; ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]); ctx.beginPath(); ctx.arc(cx, cy - 1.5, 2.6, Math.PI, Math.PI * 2.6); ctx.lineTo(cx, cy + 1.5); ctx.strokeStyle = "rgba(42,28,18,.6)"; ctx.stroke(); ctx.beginPath(); ctx.arc(cx, cy + 4, 0.8, 0, 7); ctx.fillStyle = "rgba(42,28,18,.6)"; ctx.fill(); ctx.restore(); }
     else if (t.startsWith("m:")) drawVial(ctx, +t.slice(2), cx - 6, cy - 9, 12, 18, {});
     else if (t.startsWith("rx:")) drawRx(ctx, t.slice(3), cx, cy, 8);
     else if (t.startsWith("el:")) drawEl(ctx, +t.slice(3), cx, cy, 8, true, false, 0);
@@ -1498,7 +1745,7 @@ let tipHold = { id: null, since: 0 };
 function updateTip(now) {
   if (TIP && TIP.until && now > TIP.until) TIP = null;
   if (LP && !LP.fired && now - LP.t0 >= 400 && ptr.down) { LP.fired = true; TIP = { id: LP.target.id, rect: LP.target.rect, hover: false, until: 0 }; D = null; G.holding = false; buzz(8); }
-  if (ptr.inside && ptr.type === "mouse" && !ptr.down && !D && !SETUI.open) {
+  if (ptr.inside && ptr.type === "mouse" && !ptr.down && !D && !paused()) {
     const t = tipTargets().find(q => inRect(ptr.x, ptr.y, q.rect));
     if (!t) { tipHold.id = null; if (TIP && TIP.hover) TIP = null; }
     else { if (tipHold.id !== t.id) { tipHold = { id: t.id, since: now }; if (TIP && TIP.hover) TIP = null; } if (now - tipHold.since >= 300 && !TIP) TIP = { id: t.id, rect: t.rect, hover: true, until: 0 }; }
@@ -1543,6 +1790,80 @@ function drawSettings(now) {
 }
 function settingsDown(x, y) { for (const r of SETUI.rects) if (inRect(x, y, r.rect)) { r.act(); saveSet(); if (!SETUI.open) tone(500, 0.05); else tone(440, 0.04); return; } }
 
+// ---------------- codex panel (V04_SPEC §3.4): reactions found so far, materials, charms ----------------
+const CARD_IN = (() => { const o = {}; for (const [rx, a, b] of EST.COMBOS) if (!o[rx]) o[rx] = [a, b]; return Object.assign(o, { condense: [M.STEAM], boil: [M.WATER, M.MUD], fume: [M.SULFUR, M.FIRE], lidpop: ["lid", "gas"] }); })();
+const DENS_ORDER = [M.EMBER, M.OIL, M.SULFUR, M.WATER, M.ACID, M.ICE, M.LAVA, M.SEED, M.POWDER, M.SAND];
+function inTok(v) { return typeof v === "string" ? v : (MATKEY[v] !== undefined && !CODEX.mat.has(v)) ? "q" : matTok(v); }
+function tokRow(toks, cx, cy) { const w = toks.reduce((a, t) => a + tokW(t), 0); let x = cx - w / 2; for (const t of toks) x += drawTok(t, x, cy); return w; }
+function drawRxCard(k, x, y, w, h) {
+  const known = CODEX.rx.has(k), r = RX[k], cx = x + w / 2, inp = CARD_IN[k] || [];
+  ctx.save();
+  if (known) { ctx.fillStyle = "rgba(246,238,214,.78)"; ctx.fillRect(x, y, w, h); wob(ctx, x, y, w, h, 200 + RXK.indexOf(k), 1.4); }
+  else { ctx.fillStyle = "rgba(42,28,18,.07)"; ctx.fillRect(x, y, w, h); ctx.setLineDash([3, 3]); ctx.strokeStyle = "rgba(42,28,18,.4)"; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); ctx.setLineDash([]); }
+  if (!known) { drawQ(ctx, cx, y + h * 0.5, 16, 0.8); ctx.restore(); return; }   // only found reactions are listed: a lost one is just a silhouette, no hints
+  const t1 = []; if (inp[0] !== undefined) t1.push(inTok(inp[0])); if (inp[1] !== undefined) t1.push("plus", inTok(inp[1]));
+  tokRow(t1, cx, y + h * 0.12);
+  ctx.save(); ctx.translate(cx, y + h * 0.27); ctx.rotate(Math.PI / 2); drawArrow(ctx, 0, 0, 6); ctx.restore();
+  drawRx(ctx, k, cx, y + h * 0.43, 11);
+  tokRow(["tr:" + r.trait, { t: "rx." + k }], cx, y + h * 0.6);
+  if (r.trig > 0) tokRow([{ t: r.trait === "burst" ? "ui.eachBlast" : "ui.trig" }, { n: String(r.trig), c: RED }], cx, y + h * 0.74);
+  if (r.vol > 0) tokRow([{ t: "ui.per100", args: [100] }, { n: String(r.vol) }], cx, y + h * 0.86);
+  r.el.forEach((e, i) => drawEl(ctx, e, cx + (i - (r.el.length - 1) / 2) * 17, y + h - 11, 6, true, false, 0));
+  ctx.restore();
+}
+function drawCodex(now) {
+  if (!CODEX.open) return;
+  CODEX.rects = [];
+  ctx.drawImage(bgS, 0, 0, bgS.width / (DPR * L.sc), bgS.height / (DPR * L.sc));
+  drawLabel(ctx, "ui.codex", 195, 36, 24);
+  drawNum(ctx, CODEX.rx.size + "/" + RXK.length, 14, 36, 15, { align: "l", color: INK, halo: true, wt: 1 });
+  const cr = { x: LW - 58, y: 6, w: 52, h: 56 };
+  drawCross(ctx, cr.x + 26, 26, 9, INK); drawLabel(ctx, "set.close", cr.x + 26, 50, 11);
+  CODEX.rects.push({ rect: cr, act: () => { openCodex(false); tone(500, 0.05); } });
+  // tabs
+  const tabs = ["tab.rx", "tab.mat", "ui.charms"], tw = (LW - 16 - 2 * 6) / 3;
+  tabs.forEach((k, i) => {
+    const r = { x: 8 + i * (tw + 6), y: 70, w: tw, h: 36 }, on = CODEX.tab === i;
+    if (on) { ctx.fillStyle = "rgba(168,119,74,.38)"; ctx.fillRect(r.x, r.y, r.w, r.h); }
+    wob(ctx, r.x, r.y, r.w, r.h, 140 + i, on ? 2.2 : 1.1);
+    drawLabel(ctx, k, r.x + r.w / 2, r.y + r.h / 2, 14, { halo: false });
+    CODEX.rects.push({ rect: r, act: () => { CODEX.tab = i; tone(440, 0.04); } });
+  });
+  const top = 116, bot = L.Hl - 10;
+  if (CODEX.tab === 0) {
+    const gap = 6, cw = (LW - 16 - 3 * gap) / 4, ch = (bot - top - 3 * gap) / 4;
+    RXK.forEach((k, i) => drawRxCard(k, 8 + (i % 4) * (cw + gap), top + Math.floor(i / 4) * (ch + gap), cw, ch));
+  } else if (CODEX.tab === 1) {
+    const rh = Math.min(66, (bot - top) / DENS_ORDER.length);
+    DENS_ORDER.forEach((m, i) => {
+      const y = top + i * rh + rh / 2, known = CODEX.mat.has(m);
+      ctx.fillStyle = i % 2 ? "rgba(246,238,214,.35)" : "rgba(246,238,214,.6)"; ctx.fillRect(8, y - rh / 2 + 1, LW - 16, rh - 2);
+      if (!known) { drawQ(ctx, 34, y, Math.min(14, rh * 0.3)); return; }
+      const vh = Math.min(rh - 8, 34); drawVial(ctx, m, 22, y - vh / 2, vh * 0.62, vh, {});
+      drawLabel(ctx, MATKEY[m], 54, y, 13, { align: "l" });
+      // density ruler: light (float) at the left, heavy (sink) at the right
+      const rx0 = 128, rx1 = 238, dx = rx0 + (rx1 - rx0) * clamp((window.PDSim.DEN[m] - 0.5) / 6.5, 0, 1);
+      ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(rx0, y); ctx.lineTo(rx1, y); ctx.stroke();
+      for (let t = 0; t <= 6; t++) { const tx = rx0 + (rx1 - rx0) * t / 6; ctx.beginPath(); ctx.moveTo(tx, y - 3); ctx.lineTo(tx, y + 3); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(dx, y - 4); ctx.lineTo(dx - 5, y - 13); ctx.lineTo(dx + 5, y - 13); ctx.closePath(); ctx.fillStyle = RED; ctx.fill(); ctx.stroke();
+      // discovered reactions this material takes part in
+      const mine = EST.COMBOS.filter(c => (c[1] === m || c[2] === m) && CODEX.rx.has(c[0])).map(c => c[0]).filter((v, j, a) => a.indexOf(v) === j).slice(0, 5);
+      mine.forEach((rk, j) => drawRx(ctx, rk, 262 + j * 25, y, 8.5));
+    });
+  } else {
+    const gap = 6, cw = (LW - 16 - 3 * gap) / 4, ch = Math.min(96, (bot - top - 3 * gap) / 4);
+    ARCANA.forEach((a, i) => {
+      const x = 8 + (i % 4) * (cw + gap), y = top + Math.floor(i / 4) * (ch + gap), known = CODEX.arc.has(a.id);
+      ctx.fillStyle = "rgba(246,238,214,.5)"; ctx.fillRect(x, y, cw, ch);
+      if (!known) { ctx.setLineDash([3, 3]); ctx.strokeStyle = "rgba(42,28,18,.4)"; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, cw - 1, ch - 1); ctx.setLineDash([]); drawQ(ctx, x + cw / 2, y + ch / 2, 14); return; }
+      wob(ctx, x, y, cw, ch, 300 + i, 1.2);
+      drawBadge(ctx, a.id, x + cw / 2, y + ch * 0.4, 20, a.rare);
+      drawLabel(ctx, "arc." + a.id, x + cw / 2, y + ch - 13, 11);
+    });
+  }
+}
+function codexDown(x, y) { for (const r of CODEX.rects) if (inRect(x, y, r.rect)) { r.act(); return; } }
+
 // ---------------- round-start card ----------------
 function drawRoundCard(now) {
   const c = G.card; if (!c || mode !== "play") return;
@@ -1568,26 +1889,7 @@ function drawRoundCard(now) {
 }
 
 // ---------------- previews (ghost) ----------------
-function colContact(col, half) {
-  const S = R.S; let best = H - 1;
-  for (let dx = -half; dx <= half; dx++) {
-    const x = col + dx; if (x < 1 || x >= W - 1) continue;
-    for (let y = 0; y < H - 1; y++) { const m = S.t[y * W + x]; if (m !== M.E && (KIND[m] !== 3 || m === M.FIRE)) { if (y < best) best = y; break; } }
-  }
-  return best;
-}
-function previewVial(m, col) {
-  const S = R.S, half = 4, cy = colContact(col, half);
-  const tally = {};
-  for (let dx = -half; dx <= half; dx++) for (let dy = 0; dy < 4; dy++) {
-    const x = col + dx, y = cy + dy; if (x < 1 || x >= W - 1 || y >= H - 1) continue;
-    const t = S.t[y * W + x]; if (t !== M.E) tally[t] = (tally[t] || 0) + 1;
-  }
-  const items = [], table = PRE[m] || {};
-  for (const k of Object.keys(tally)) { const rxs = table[k]; if (!rxs) continue; for (const r of rxs) if (!items.find(i => i.type === r)) items.push({ type: r, n: tally[k] }); }
-  for (const it of items) it.est = RX[it.type] ? Math.round(rxVals(it.type, R.mods).vol * clamp(it.n * 3, 3, 120) / RULES.VOL_DIV + rxVals(it.type, R.mods).trig) : 0;
-  return { col, cy, half, items: items.slice(0, 3) };
-}
+const colContact = (col, half) => EST.colContact(R.S, col, half);
 function previewMatch(cx, cy) {
   const S = R.S, r = 3, cells = []; let blast = false, water = false;
   for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
@@ -1597,11 +1899,8 @@ function previewMatch(cx, cy) {
   return { cx, cy, cells, blast, water };
 }
 const gasHist = [];
-function predictFrac() {
-  const S = R.S; let slope = 0;
-  if (gasHist.length > 4) slope = Math.max(0, (gasHist[gasHist.length - 1].g - gasHist[0].g) / Math.max(1, gasHist[gasHist.length - 1].f - gasHist[0].f));
-  return clamp((S.gas + slope * 180) / S.lidMax, 0, 1);
-}
+function lidSlope() { return gasHist.length > 4 ? Math.max(0, (gasHist[gasHist.length - 1].g - gasHist[0].g) / Math.max(1, gasHist[gasHist.length - 1].f - gasHist[0].f)) : 0; }
+function predictFrac() { return clamp((R.S.gas + lidSlope() * 180) / R.S.lidMax, 0, 1); }
 
 // ---------------- rendering ----------------
 function renderBeakerLayers() {
@@ -1638,6 +1937,7 @@ function drawTopBar(now) {
   drawLabel(ctx, "ui.settings", 34, 31, 11);
   ctx.save(); ctx.translate(nudgeOff("book", now), 0); drawBook(ctx, 86, 14, 10); ctx.restore();
   drawLabel(ctx, "ui.codex", 86, 31, 11);
+  if (codexDot()) { const k = (Math.sin(now / 260) + 1) / 2; ctx.beginPath(); ctx.arc(97, 6, 4.2 + k * 0.8, 0, 7); ctx.fillStyle = "#b8381e"; ctx.fill(); ctx.strokeStyle = PAPER; ctx.lineWidth = 1.2; ctx.stroke(); }
   // act + round
   const rr = G.round % 3, act = Math.floor(G.round / 3) + 1;
   const aw = drawLabel(ctx, "ui.act", 122, 15, 13, { align: "l", args: [act] });
@@ -1689,6 +1989,19 @@ function drawGoalBar(now) {
   }
   if (frac > 1) { ctx.fillStyle = "rgba(240,210,122,.75)"; ctx.fillRect(gl.x + gl.w, gl.y + 1, gl.ext * Math.min(0.5, frac - 1) / 0.5, gl.h - 2); }
   wob(ctx, gl.x, gl.y, gl.w, gl.h, 71, 1.5);
+  // estimate segment (V04_SPEC §5.3): hatched [now + low, now + high] while a vial or match is held
+  let willClear = false;
+  if (G.est) {
+    const base = Math.max(cur, R.gold), at = v => { const f = v / target; return gl.x + (f <= 1 ? gl.w * f : gl.w + gl.ext * Math.min(0.5, f - 1) / 0.5); };
+    const x0 = at(base + G.est.lo), x1 = Math.max(x0 + 3, at(base + G.est.hi));
+    willClear = base + G.est.lo >= target;
+    ctx.save(); ctx.beginPath(); ctx.rect(x0, gl.y, x1 - x0, gl.h); ctx.clip();
+    ctx.fillStyle = "rgba(200,150,30,.28)"; ctx.fillRect(x0, gl.y, x1 - x0, gl.h);
+    ctx.strokeStyle = "#7a5410"; ctx.lineWidth = 1.1; for (let x = x0 - gl.h; x < x1 + gl.h; x += 4) { ctx.beginPath(); ctx.moveTo(x, gl.y + gl.h); ctx.lineTo(x + gl.h, gl.y); ctx.stroke(); }
+    ctx.restore();
+    ctx.save(); ctx.setLineDash([3, 2]); ctx.strokeStyle = "#7a5410"; ctx.lineWidth = 1.2; ctx.strokeRect(x0, gl.y - 1, x1 - x0, gl.h + 2); ctx.restore();
+  }
+  G.willClear = willClear;
   // target line + label
   const lx = gl.x + gl.w;
   ctx.strokeStyle = reached ? "#a87814" : "#b8381e"; ctx.lineWidth = flash || hintFlash ? 4 : 2.4; ctx.beginPath(); ctx.moveTo(lx, gl.y - 5); ctx.lineTo(lx, gl.y + gl.h + 5); ctx.stroke();
@@ -1696,7 +2009,8 @@ function drawGoalBar(now) {
   // numbers: current / target
   const tw = numWidth(fmt(target), 11), cw = numWidth(fmt(Math.round(cur)), 11), sl = numWidth("/", 11);
   const nx = gl.numX; L.goalNum = { x: nx - tw - sl - cw - 4, y: gl.midY - 8, w: tw + sl + cw + 4, h: 16, tx: nx - tw / 2, ty: gl.midY };
-  drawNum(ctx, fmt(target), nx, gl.midY, 11, { align: "r", color: reached ? COL.gold : "#b8381e", halo: true, wt: flash ? 1.2 : 0.95 });
+  const lift = willClear ? -Math.abs(Math.sin(now / 130)) * 2.5 : 0;
+  drawNum(ctx, fmt(target), nx, gl.midY + lift, 11, { align: "r", color: reached || willClear ? COL.gold : "#b8381e", halo: true, wt: flash || willClear ? 1.2 : 0.95 });
   drawNum(ctx, "/", nx - tw - 1, gl.midY, 11, { align: "r", color: INK, halo: true });
   drawNum(ctx, fmt(Math.round(cur)), nx - tw - sl - 3, gl.midY, 11, { align: "r", color: COL.gold === "" ? INK : "#8a6410", halo: true, wt: 0.95 });
   // first-gold hint label
@@ -1894,8 +2208,65 @@ function drawPours(now) {
   }
 }
 
+// ---- B3 preview card: what touches what, what it becomes, about how many points (V04_SPEC §3.3) ----
+const GOLD_D = "#8a6410";
+const fmtRange = (lo, hi) => lo === hi ? fmt(lo) : fmt(lo) + "–" + fmt(hi);
+function estRows(est) {
+  const rows = []; let unknown = false, known = 0;
+  for (const it of est.items.slice(0, 3)) {
+    const a = it.a >= 0 ? matTok(it.a) : "match";
+    if (it.kind === "rx") {
+      if (CODEX.rx.has(it.rx)) { known++; rows.push({ toks: ["tr:" + it.trait, a, "plus", matTok(it.b), "arrow", "rx:" + it.rx, { t: "rx." + it.rx }, { n: "≈" }, { n: fmtRange(it.lo, it.hi), c: INK }], label: 6 }); }
+      else { unknown = true; rows.push({ toks: [a, "plus", matTok(it.b), "arrow", "q", { n: "?" }] }); }
+    } else rows.push({ toks: [matTok(it.a), it.kind, { t: "ui." + it.kind }] });
+  }
+  if (!est.items.length) rows.push({ toks: ["match", { t: "ui.none" }] });
+  if (known || unknown) {
+    const tot = [{ t: "ui.total" }, { n: "≈" }];
+    if (unknown) tot.push("q"); else tot.push({ n: fmtRange(est.lo, est.hi), c: GOLD_D }, { n: "×" + est.mult, c: RED });
+    rows.push({ toks: tot, total: true });
+  }
+  return rows;
+}
+const rectsHit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+const overlapArea = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+// card goes above the contact point; if that hits the top bar, a finger or the carried vial it slides up / to the side / below: candidates are ranked by overlap first, distance second
+function placeCard(w, h, ax, ay, avoid) {
+  const top = 80, bot = L.Hl - 6, cands = [];
+  for (const g of [16, 34, 58, 90, 130]) cands.push({ x: ax - w / 2, y: ay - g - h, side: "up" });
+  for (const dy of [0, -h - 8, h * 0.5 + 8, -h * 1.5 - 20]) { cands.push({ x: ax - w - 18, y: ay - h / 2 + dy, side: "left" }, { x: ax + 18, y: ay - h / 2 + dy, side: "right" }); }
+  for (const g of [18, 40]) cands.push({ x: ax - w / 2, y: ay + g, side: "down" });
+  let best = null;
+  for (const c of cands) {
+    const r = { x: clamp(c.x, 4, LW - 4 - w), y: clamp(c.y, top, bot - h), w, h };
+    const ov = avoid.reduce((a, v) => a + overlapArea(r, v), 0), moved = Math.abs(r.y - c.y) + Math.abs(r.x - c.x) * (c.side === "up" || c.side === "down" ? 0.2 : 1);
+    const dist = Math.hypot(r.x + w / 2 - ax, r.y + h / 2 - ay);
+    const sc = ov * 1000 + moved * 4 + dist;
+    if (!best || sc < best.sc) best = { r, sc, side: c.side };
+  }
+  return best;
+}
+function drawEstCard(est, ax, ay, avoid) {
+  const rows = estRows(est), rh = 24, maxW = 250;
+  const rw = rows.map(r => r.toks.reduce((a, t) => a + tokW(t), 0));
+  rows.forEach((r, i) => { if (r.label != null && rw[i] > maxW - 14) { r.toks.splice(r.label, 1); rw[i] = r.toks.reduce((a, t) => a + tokW(t), 0); } });
+  const w = Math.min(maxW, Math.max(80, Math.max(...rw) + 16)), h = rows.length * rh + 10;
+  const pl = placeCard(w, h, ax, ay, avoid), x = pl.r.x, y = pl.r.y;
+  G.cardRect = { x, y, w, h };
+  ctx.save(); ctx.globalAlpha = 0.97; ctx.fillStyle = "rgba(244,236,212,.98)"; ctx.fillRect(x, y, w, h); wob(ctx, x, y, w, h, 93, 1.5);
+  ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.beginPath();  // stem toward the contact ring
+  const sx = pl.side === "up" ? clamp(ax, x + 8, x + w - 8) : pl.side === "down" ? clamp(ax, x + 8, x + w - 8) : pl.side === "left" ? x + w : x;
+  const sy = pl.side === "up" ? y + h : pl.side === "down" ? y : clamp(ay, y + 4, y + h - 4);
+  ctx.moveTo(sx, sy); ctx.lineTo(ax + (pl.side === "left" ? -6 : pl.side === "right" ? 6 : 0), ay + (pl.side === "up" ? -6 : pl.side === "down" ? 6 : 0)); ctx.stroke();
+  rows.forEach((r, i) => {
+    let tx = x + (w - rw[i]) / 2; const cy = y + 5 + rh * i + rh / 2;
+    if (r.total) { ctx.fillStyle = "rgba(200,150,30,.14)"; ctx.fillRect(x + 3, y + 5 + rh * i + 1, w - 6, rh - 2); }
+    for (const t of r.toks) tx += drawTok(t, tx, cy);
+  });
+  ctx.restore();
+}
 function drawPreview(now) {
-  G.preview = null;
+  G.preview = null; G.est = null; G.cardRect = null; G.cardAvoid = null;
   let tip = null, kind = null, mat = 0;
   if (D && D.moved && (D.kind === "vial" || D.kind === "match")) { const t = tipOf(); tip = { x: D.x, y: D.y - t.off }; kind = D.kind; mat = D.m; }
   else if (ptr.inside && ptr.type === "mouse" && !ptr.down && !D) {
@@ -1904,39 +2275,40 @@ function drawPreview(now) {
   }
   if (!tip || !inBeakerTip(tip.x, tip.y)) return;
   const { cp, bx, by } = L;
+  // things the card must stay clear of: the finger / cursor and the vial or match being carried
+  const fx0 = D ? D.x : ptr.x, fy0 = D ? D.y : ptr.y, touch = ptr.type === "touch" || ptr.type === "pen";
+  const avoid = [touch && D ? { x: fx0 - 40, y: fy0 - 62, w: 80, h: 130 } : { x: fx0 - 10, y: fy0 - 10, w: 28, h: 30 }];
+  if (D && D.moved) avoid.push(kind === "vial" ? { x: D.x - 24, y: D.y - 98, w: 48, h: 80 } : { x: D.x - 20, y: D.y - 84, w: 40, h: 52 });
   if (kind === "vial") {
-    const col = dropCol(tip.x), pv = previewVial(mat, col); G.preview = pv;
-    const x = cellX(col), yEnd = by + pv.cy * L.cpy, hw = 4.5 * cp;
+    const col = dropCol(tip.x), est = EST.estimatePour(R.S, R.mods, mat, col, R.pourAmount, R.frame);
+    G.preview = { items: est.items.filter(i => i.kind === "rx").map(i => ({ type: i.rx })) };
+    if (est.hi > 0 && est.items.every(i => i.kind === "rx" ? CODEX.rx.has(i.rx) : true)) G.est = { lo: est.lo, hi: est.hi };
+    const x = cellX(col), yEnd = by + est.cy * L.cpy, hw = 4.5 * cp;
     ctx.save();
     ctx.fillStyle = "rgba(168,119,74,.16)"; ctx.fillRect(x - hw, by, hw * 2, Math.max(2, yEnd - by));
     ctx.strokeStyle = INK; ctx.globalAlpha = 0.55; ctx.lineWidth = 1.2; ctx.setLineDash([5, 4]); ctx.lineDashOffset = -now / 40;
     ctx.beginPath(); ctx.moveTo(x - hw, by); ctx.lineTo(x - hw, yEnd); ctx.moveTo(x + hw, by); ctx.lineTo(x + hw, yEnd); ctx.stroke(); ctx.setLineDash([]);
-    ctx.beginPath(); ctx.ellipse(x, yEnd, hw, 3.5, 0, 0, 7); ctx.stroke(); ctx.restore();
+    ctx.beginPath(); ctx.ellipse(x, yEnd, hw, 3.5, 0, 0, 7); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(x, yEnd, 5, 0, 7); ctx.stroke(); ctx.restore();   // contact ring
+    avoid.push({ x: x - 8, y: yEnd - 8, w: 16, h: 16 });
     // carried vial (kept clear of the finger)
     if (D && D.moved) { ctx.save(); ctx.translate(D.x, D.y - 66 + 8); ctx.rotate(clamp((D.vx || 0) * 0.03, -0.5, 0.5)); ctx.globalAlpha = 0.92; drawVial(ctx, mat, -22, -38, 44, 76, {}); ctx.restore(); }
-    // result symbols, at least 60px above the finger
-    const fingerY = D ? D.y : ptr.y;
-    const iy = Math.min(yEnd - 22, fingerY - 70), n = pv.items.length;
-    pv.items.forEach((it, i) => {
-      const ix = clamp(x + (i - (n - 1) / 2) * 44, L.bx + 24, L.bx + L.bw - 24), bob = Math.sin(now / 260 + i) * 2;
-      ctx.save(); ctx.globalAlpha = 0.92; ctx.translate(ix, Math.max(by + 12, iy) + bob);
-      ctx.beginPath(); ctx.arc(0, 0, 16, 0, 7); ctx.fillStyle = "rgba(239,228,200,.88)"; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.setLineDash([3, 2]); ctx.stroke(); ctx.setLineDash([]);
-      drawRx(ctx, it.type, 0, 0, 10);
-      if (it.est) drawNum(ctx, "+" + fmt(it.est), 0, 26, 9, { color: "rgba(42,28,18,.55)", halo: true, wt: 0.8 });
-      ctx.restore();
-    });
+    drawEstCard(est, x, yEnd, avoid);
   } else if (kind === "match") {
-    const [cx, cy] = pxToCell(tip.x, tip.y), pm = previewMatch(cx, cy); G.preview = { items: pm.cells.length ? [{ type: "burn" }] : [] };
+    const [cx, cy] = pxToCell(tip.x, tip.y), pm = previewMatch(cx, cy), est = EST.estimateMatch(R.S, R.mods, clamp(cx, 2, W - 3), clamp(cy, 1, H - 3), R.frame);
+    G.preview = { items: pm.cells.length ? [{ type: "burn" }] : [] };
+    if (est.hi > 0 && est.items.every(i => CODEX.rx.has(i.rx))) G.est = { lo: est.lo, hi: est.hi };
     const x = cellX(cx), y = cellY(cy), r = 3.5 * cp;
     ctx.save(); ctx.strokeStyle = "#b8381e"; ctx.lineWidth = 1.6; ctx.setLineDash([3, 3]); ctx.lineDashOffset = -now / 50; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke(); ctx.setLineDash([]);
     const k = (Math.sin(now / 90) + 1) / 2; ctx.fillStyle = `rgba(232,117,47,${0.35 + k * 0.4})`; ctx.strokeStyle = "#e8752f";
     for (const [fx_, fy_] of pm.cells) { ctx.fillRect(L.bx + fx_ * cp - 0.5, L.by + fy_ * L.cpy - 0.5, cp + 1, L.cpy + 1); }
     if (!pm.cells.length) { ctx.strokeStyle = "rgba(42,28,18,.7)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 6, y - 6); ctx.lineTo(x + 6, y + 6); ctx.moveTo(x + 6, y - 6); ctx.lineTo(x - 6, y + 6); ctx.stroke(); }
-    if (pm.blast) { drawRx(ctx, "blast", x, y - r - 14, 11); }
-    else if (pm.water && pm.cells.length < 3) { drawRx(ctx, "steam", x, y - r - 12, 9); }
     ctx.restore();
+    avoid.push({ x: x - r - 4, y: y - r - 4, w: 2 * r + 8, h: 2 * r + 8 });
     if (D && D.moved) { drawMatch(ctx, D.x, D.y - 60, 16, true, 1); }
+    drawEstCard(est, x, y, avoid);
   }
+  G.cardAvoid = avoid;
 }
 
 function drawTallyFx(now) {
@@ -2012,6 +2384,7 @@ function rollShop() {
   const pool = ARCANA.filter(c => !G.arc.includes(c.id) && (!c.rare || G.round >= 2));
   const arc = shuffle(pool.slice()).slice(0, 2).map(c => ({ kind: "arc", c, price: c.price, born: NOW() }));
   G.shopItems = [...vials, ...arc]; G.shopT = NOW();
+  for (const it of G.shopItems) { if (it.kind === "vial") noteMat(it.m); else noteArc(it.c.id); }
 }
 function enterShop(earned) {
   mode = "shop"; G.round++; G.reroll = 1; rollShop(); TIP = null; LP = null;
@@ -2114,7 +2487,7 @@ let slowAcc = 0, slowN = 0;
 function loop(now) {
   const dt = Math.min(100, now - lastT); lastT = now;
   if (WASH_BLUR && mode === "play") { slowAcc += dt; if (++slowN === 120) { if (slowAcc / slowN > 21) WASH_BLUR = false; slowAcc = 0; slowN = 0; } }
-  if (G && R && mode === "play" && !G.ended && !SETUI.open) {
+  if (G && R && mode === "play" && !G.ended && !paused()) {
     acc += dt;
     const waiting = R.pours === 0 && R.matches === 0 && R.active.length === 0;
     const speed = waiting ? 3 : 1;
@@ -2124,7 +2497,7 @@ function loop(now) {
     window.__perf.simMs += performance.now() - t0;
     flushBuckets(now); updateTally(now);
     checkEnd(now);
-  } else if (G && R && mode === "play" && !SETUI.open) { updateTally(now); }
+  } else if (G && R && mode === "play" && !paused()) { updateTally(now); }
   if (G && R) {
     const t1 = performance.now();
     if (G.shownMoney !== G.money && mode === "play") G.shownMoney = G.money;
@@ -2145,7 +2518,7 @@ function loop(now) {
       drawRoundCard(now);
       if (mode === "lose" || mode === "win") drawEndScreen(now);
     }
-    drawTip(now); drawSettings(now);
+    drawTip(now); drawSettings(now); drawCodex(now);
     window.__perf.drawMs += performance.now() - t1; window.__perf.frames++; frameN++;
   }
   requestAnimationFrame(loop);
@@ -2183,6 +2556,8 @@ window.__game = {
   clientOf, cellClient: (cx, cy) => clientOf(cellX(cx), cellY(cy)), slotClient: i => { const s = L.slot(i); return clientOf(s.x + s.w / 2, s.y + s.h / 2); },
   get ui() { return { goalRect: L.goal && { x: L.goal.x, y: L.goal.y, w: L.goal.w, h: L.goal.h }, goalNum: L.goalNum, card: !!(G && G.card), tip: TIP && TIP.id, settingsOpen: SETUI.open, set: SET, top: L.top }; },
   showCard: () => { G.card = { t0: null }; }, openSettings, setLang: v => { SET.lang = v; saveSet(); },
+  get codex() { return { rx: [...CODEX.rx], mat: [...CODEX.mat], arc: [...CODEX.arc], ack: CODEX.ack, open: CODEX.open, tab: CODEX.tab, dot: codexDot() }; },
+  openCodex, setCodexTab: v => { CODEX.tab = v; }, discoverRx, noteMat, noteArc, EST, get preview() { return { card: G.cardRect, avoid: G.cardAvoid, est: G.est, Hl: L.Hl, LW }; }, resetCodex: () => { CODEX.rx.clear(); CODEX.mat.clear(); CODEX.arc.clear(); CODEX.ack = 0; saveCodex(); },
   btnClient: k => { const b = L.btn[k]; return clientOf(b.x + b.w / 2, b.y + b.h / 2); }, shopPos: () => { const S = shopLayout(); return { items: G.shopItems.map((it, i) => { const r = it.kind === 'vial' ? 0 : 1, idx = it.kind === 'vial' ? i : i - 2; return S.item(r, idx); }), reroll: S.reroll, exit: S.exit }; }, setSound: v => { soundOn = v; },
   drawIcons: () => drawIconSheet(),
 };

@@ -27,9 +27,12 @@ const GLYPH = {
   "%": g => { g.moveTo(1.9, 1.2); g.ellipse(1.1, 1.2, 0.8, 0.9, 0, 0, Math.PI * 2); g.moveTo(3.7, 4.8); g.ellipse(2.9, 4.8, 0.8, 0.9, 0, 0, Math.PI * 2); g.moveTo(3.5, 0); g.lineTo(0.5, 6); },
   ".": g => { g.moveTo(0.9, 5.7); g.lineTo(0.92, 5.7); },
   ",": g => { g.moveTo(2.2, 5.3); g.lineTo(1.6, 6.7); },
+  "≈": g => { g.moveTo(0.3, 2.3); g.quadraticCurveTo(1.1, 1.1, 2, 2.3); g.quadraticCurveTo(2.9, 3.5, 3.7, 2.3); g.moveTo(0.3, 4.1); g.quadraticCurveTo(1.1, 2.9, 2, 4.1); g.quadraticCurveTo(2.9, 5.3, 3.7, 4.1); },
+  "–": g => { g.moveTo(0.2, 3); g.lineTo(3.8, 3); },
+  "?": g => { g.moveTo(0.5, 1.5); g.bezierCurveTo(0.5, -0.5, 3.6, -0.5, 3.5, 1.6); g.bezierCurveTo(3.4, 3, 2, 3, 2, 4.2); g.moveTo(2, 5.7); g.lineTo(2.02, 5.7); },
   "k": g => { g.moveTo(0.7, 0); g.lineTo(0.7, 6); g.moveTo(3.4, 1.9); g.lineTo(0.7, 3.9); g.moveTo(1.7, 3.3); g.lineTo(3.7, 6); },
 };
-const ADV = { "1": 4, ".": 2.2, ",": 2.4, "-": 4.4, "−": 4.4, "k": 4.6 };
+const ADV = { "1": 4, ".": 2.2, ",": 2.4, "-": 4.4, "−": 4.4, "–": 4.6, "k": 4.6 };
 function numWidth(str, size) { let w = 0; const s = size / 6; for (const ch of String(str)) w += (ADV[ch] || 5) * s; return w - 0.8 * s; }
 // size = glyph height in logical px. opt: color, align (l/c/r), halo (paper outline), wt (stroke weight, in 1/6 size units)
 function drawNum(g, str, x, y, size, opt) {
@@ -312,4 +315,25 @@ function drawBadge(g, id, x, y, r, rare, dim) {
   g.save(); g.translate(x, y);
   if (tag && r >= 12) { const tw = numWidth(tag, r * .5) + 4; g.beginPath(); g.rect(r * .85 - tw, r * .45, tw, r * .6); g.fillStyle = "rgba(246,238,214,.95)"; g.fill(); g.strokeStyle = INK; g.lineWidth = 1; g.stroke(); drawNum(g, tag, r * .85 - tw / 2, r * .75, r * .42, { color: "#b8381e" }); }
   g.restore();
+}
+
+// ---- B3 additions: sink / float arrows, a cell-material token for things that are not vials, a "?" silhouette ----
+function drawVert(g, x, y, s, up) { // sink (down) / float (up): arrow over a wavy surface line
+  g.save(); g.translate(x, y); g.lineCap = "round"; g.lineJoin = "round";
+  g.beginPath(); g.moveTo(-s, up ? s * .75 : -s * .75); g.quadraticCurveTo(-s * .5, (up ? s * .75 : -s * .75) - s * .35, 0, up ? s * .75 : -s * .75); g.quadraticCurveTo(s * .5, (up ? s * .75 : -s * .75) + s * .35, s, up ? s * .75 : -s * .75); ink(g, 1.2);
+  const a = up ? -1 : 1; g.beginPath(); g.moveTo(0, -a * s * .65); g.lineTo(0, a * s * .55); g.moveTo(-s * .45, a * s * .1); g.lineTo(0, a * s * .6); g.lineTo(s * .45, a * s * .1); ink(g, 1.7);
+  g.restore();
+}
+function drawStackIc(g, x, y, s) { g.save(); g.translate(x, y); for (let i = 0; i < 3; i++) { g.beginPath(); g.rect(-s * (.9 - i * .15), s * (.55 - i * .55) - s * .25, s * (1.8 - i * .3), s * .45); wash(g, COL.sand, .8); ink(g, 1.2); } g.restore(); }
+function drawDelayIc(g, x, y, s) { g.save(); g.translate(x, y); g.beginPath(); g.arc(0, 0, s * .85, 0, 7); wash(g, "rgba(246,238,214,.9)", 1); ink(g, 1.5); g.beginPath(); g.moveTo(0, -s * .5); g.lineTo(0, 0); g.lineTo(s * .38, s * .25); ink(g, 1.6); g.restore(); }
+// non-vial cell materials (fire, stone, plant, glass, mud, steam) as small tokens
+function drawCellMat(g, m, x, y, s) {
+  if (m === M.FIRE) drawRx(g, "burn", x, y, s); else if (m === M.STONE) drawRx(g, "solidify", x, y, s); else if (m === M.GLASS) drawRx(g, "vitrify", x, y, s);
+  else if (m === M.PLANT) drawRx(g, "bloom", x, y, s); else if (m === M.MUD) drawMud(g, x, y, s * .9); else if (m === M.STEAM) drawRx(g, "steam", x, y, s);
+  else if (m === M.FUME) drawRx(g, "fume", x, y, s); else if (m === M.SMOKE) drawRx(g, "steam", x, y, s);
+  else { g.save(); g.beginPath(); g.arc(x, y, s * .7, 0, 7); wash(g, "#9a9088", .8); ink(g, 1.2); g.restore(); }
+}
+function drawQ(g, x, y, s, a) { // dashed ring + question mark: "not discovered yet"
+  g.save(); g.translate(x, y); g.globalAlpha = a == null ? 1 : a; g.beginPath(); g.arc(0, 0, s, 0, 7); g.setLineDash([2, 2]); g.strokeStyle = "rgba(42,28,18,.55)"; g.lineWidth = 1; g.stroke(); g.setLineDash([]);
+  drawNum(g, "?", 0, 0, s * 1.15, { color: "rgba(42,28,18,.65)", wt: 1.2 }); g.restore();
 }

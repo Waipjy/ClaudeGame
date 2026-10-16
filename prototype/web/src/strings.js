@@ -13,6 +13,9 @@ const STR = {
     "shop.title": "藥鋪", "shop.vials": "瓶", "shop.charms": "護符", "shop.reroll": "重抽", "shop.exit": "離開", "shop.deck": "牌組",
     "end.fail": "失敗", "end.win": "通關", "end.again": "再來一局",
     "set.title": "設定", "set.close": "關閉", "set.sound": "音效", "set.anim": "動畫速度", "set.lang": "語言", "set.vib": "震動", "set.tut": "重看教學", "set.on": "開", "set.off": "關", "set.done": "已設定",
+    "rx.burn": "燃燒", "rx.blueflame": "藍焰", "rx.blast": "爆炸", "rx.quench": "淬熄", "rx.condense": "凝結", "rx.melt": "融冰", "rx.freeze": "結凍", "rx.acidrain": "酸雨", "rx.solidify": "凝岩", "rx.vitrify": "熔玻", "rx.dissolve": "溶蝕", "rx.bake": "燒陶", "rx.bloom": "萌芽", "rx.boil": "沸騰", "rx.fume": "硫煙", "rx.lidpop": "爆蓋",
+    "trait.burst": "爆發", "trait.sustain": "持續", "trait.chain": "連鎖", "trait.break": "破壞", "trait.residue": "殘渣", "trait.catalyst": "觸媒",
+    "ui.total": "合計", "ui.sink": "沉底", "ui.float": "浮面", "ui.stack": "堆疊", "ui.delay": "延時", "ui.trig": "觸發", "ui.per100": "每{0}格", "ui.eachBlast": "每次", "tab.rx": "反應", "tab.mat": "材料", "ui.dens": "密度", "ui.none": "無反應",
     "lang.zh": "繁中", "lang.en": "English",
   },
   en: {
@@ -28,6 +31,9 @@ const STR = {
     "shop.title": "Apothecary", "shop.vials": "Vials", "shop.charms": "Charms", "shop.reroll": "Reroll", "shop.exit": "Leave", "shop.deck": "Deck",
     "end.fail": "Failed", "end.win": "Cleared", "end.again": "Again",
     "set.title": "Settings", "set.close": "Close", "set.sound": "Sound", "set.anim": "Anim speed", "set.lang": "Language", "set.vib": "Vibration", "set.tut": "Replay intro", "set.on": "On", "set.off": "Off", "set.done": "Done",
+    "rx.burn": "Burn", "rx.blueflame": "Blue flame", "rx.blast": "Blast", "rx.quench": "Quench", "rx.condense": "Condense", "rx.melt": "Melt", "rx.freeze": "Freeze", "rx.acidrain": "Acid rain", "rx.solidify": "Solidify", "rx.vitrify": "Vitrify", "rx.dissolve": "Dissolve", "rx.bake": "Bake", "rx.bloom": "Bloom", "rx.boil": "Boil", "rx.fume": "Fume", "rx.lidpop": "Lid pop",
+    "trait.burst": "Burst", "trait.sustain": "Sustain", "trait.chain": "Chain", "trait.break": "Break", "trait.residue": "Residue", "trait.catalyst": "Catalyst",
+    "ui.total": "Total", "ui.sink": "Sinks", "ui.float": "Floats", "ui.stack": "Stacks", "ui.delay": "Delayed", "ui.trig": "Trigger", "ui.per100": "Per {0}", "ui.eachBlast": "Each", "tab.rx": "Reactions", "tab.mat": "Materials", "ui.dens": "Density", "ui.none": "No reaction",
     "lang.zh": "繁中", "lang.en": "English",
   },
 };

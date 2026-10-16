@@ -2,6 +2,8 @@
 "use strict";
 /*STRINGS*/
 const { W, H, M, KIND, RX, RXK, RULES, createRound, scoreLedger, rxVals, mulberry32 } = window.PDSim;
+/*ESTIMATE*/
+const EST = window.PDEst;
 const ICP = 3;           // ink-layer pixels per cell (fixed); on screen it is scaled to L.cp
 const LW = 390;          // logical width; logical height follows the window (600..880)
 
@@ -31,20 +33,6 @@ const FLAMMABLE = [M.OIL, M.PLANT, M.SEED, M.SULFUR, M.POWDER];
 const DISCOVER = { burn: [M.OIL, M.EMBER], blueflame: [M.SULFUR, M.EMBER], blast: [M.POWDER, M.EMBER], quench: [M.WATER, M.EMBER], condense: [M.WATER, M.WATER],
   melt: [M.ICE, M.LAVA], freeze: [M.WATER, M.ICE], acidrain: [M.SULFUR, M.WATER], solidify: [M.LAVA, M.WATER], vitrify: [M.SAND, M.LAVA], dissolve: [M.ACID, M.SAND],
   bake: [M.LAVA, M.SAND], bloom: [M.SEED, M.WATER], boil: [M.WATER, M.LAVA], fume: [M.SULFUR, M.EMBER], lidpop: [M.EMBER, M.EMBER] };
-// what a falling material does to what it lands on (used for the ghost preview only)
-const PRE = {
-  [M.LAVA]: { [M.WATER]: ["solidify", "steam"], [M.ICE]: ["melt", "solidify"], [M.SAND]: ["vitrify"], [M.MUD]: ["bake"], [M.OIL]: ["burn"], [M.PLANT]: ["burn"], [M.SEED]: ["burn"], [M.SULFUR]: ["blueflame"], [M.POWDER]: ["blast"] },
-  [M.WATER]: { [M.SEED]: ["bloom"], [M.PLANT]: ["bloom"], [M.ICE]: ["freeze"], [M.FIRE]: ["quench", "steam"], [M.LAVA]: ["solidify", "steam"] },
-  [M.ACID]: { [M.SAND]: ["dissolve"], [M.STONE]: ["dissolve"], [M.GLASS]: ["dissolve"], [M.ICE]: ["dissolve"], [M.PLANT]: ["dissolve"], [M.SEED]: ["dissolve"], [M.POWDER]: ["dissolve"], [M.MUD]: ["dissolve"] },
-  [M.OIL]: { [M.FIRE]: ["burn"], [M.LAVA]: ["burn"] },
-  [M.POWDER]: { [M.FIRE]: ["blast"], [M.LAVA]: ["blast"] },
-  [M.ICE]: { [M.WATER]: ["freeze"], [M.LAVA]: ["melt"], [M.FIRE]: ["melt"] },
-  [M.SEED]: { [M.WATER]: ["bloom"], [M.LAVA]: ["burn"], [M.FIRE]: ["burn"] },
-  [M.SAND]: { [M.LAVA]: ["vitrify"], [M.ACID]: ["dissolve"] },
-  [M.EMBER]: { [M.OIL]: ["burn"], [M.SULFUR]: ["blueflame"], [M.POWDER]: ["blast"], [M.SEED]: ["burn"], [M.PLANT]: ["burn"] },
-  [M.SULFUR]: { [M.FIRE]: ["blueflame"], [M.LAVA]: ["blueflame"] },
-};
-
 // ---------------- state ----------------
 const canvas = document.getElementById("view");
 const ctx = canvas.getContext("2d");
@@ -60,7 +48,6 @@ const inkImg = ictx.createImageData(W * ICP, H * ICP), ink32 = new Uint32Array(i
 let bgC = null, bgS = null, WASH_BLUR = !QS.has("noblur");
 const fx = { floats: [], buckets: new Map(), chains: [], gold: [], tallyQ: [], tally: null, lidFly: null, shake: 0, disc: [], coins: [], bump: {} };
 const meta = new Map();
-const seen = new Set();
 let mode = "play"; // play | shop | lose | win
 let soundOn = true, AC = null, lastBeep = {};
 const ptr = { x: -1, y: -1, down: false, type: "mouse", inside: false };
@@ -79,6 +66,23 @@ function saveSet() { try { localStorage.setItem("pd.settings", JSON.stringify(SE
 function T(key) { const a = arguments; const t = (STR[SET.lang] && STR[SET.lang][key]) || STR.zh[key] || key; return t.replace(/\{(\d)\}/g, (m, i) => a[+i + 1]); }
 const FONT = "'Noto Serif TC','Songti TC','PMingLiU','Noto Serif CJK TC',serif";
 const MATKEY = { [M.SAND]: "mat.sand", [M.WATER]: "mat.water", [M.OIL]: "mat.oil", [M.LAVA]: "mat.lava", [M.ACID]: "mat.acid", [M.POWDER]: "mat.powder", [M.ICE]: "mat.ice", [M.SEED]: "mat.seed", [M.EMBER]: "mat.ember", [M.SULFUR]: "mat.sulfur" };
+// ---------------- codex (V04_SPEC §3.4): discoveries persist in localStorage["pd.codex"]; every access is guarded, a failing store just means a fresh player each session ----------------
+const CODEX = { rx: new Set(), mat: new Set(), arc: new Set(), ack: 0, open: false, tab: 0, rects: [] };
+try {
+  const o = JSON.parse(localStorage.getItem("pd.codex") || "null");
+  if (o && typeof o === "object") {
+    for (const k of Array.isArray(o.rx) ? o.rx : []) if (RX[k]) CODEX.rx.add(k);
+    for (const m of Array.isArray(o.mat) ? o.mat : []) if (MATKEY[m] !== undefined) CODEX.mat.add(+m);
+    for (const a of Array.isArray(o.arc) ? o.arc : []) if (ARCANA.some(q => q.id === a)) CODEX.arc.add(a);
+    if (Number.isInteger(o.ack)) CODEX.ack = Math.max(0, Math.min(o.ack, CODEX.rx.size));
+  }
+} catch (e) {}
+function saveCodex() { try { localStorage.setItem("pd.codex", JSON.stringify({ rx: [...CODEX.rx], mat: [...CODEX.mat], arc: [...CODEX.arc], ack: CODEX.ack })); } catch (e) {} }
+const pendDisc = new Set();   // reactions found this session that still owe their collision animation
+function discoverRx(type) { if (CODEX.rx.has(type)) return; CODEX.rx.add(type); pendDisc.add(type); saveCodex(); }
+function noteMat(m) { if (MATKEY[m] !== undefined && !CODEX.mat.has(m)) { CODEX.mat.add(m); saveCodex(); } }
+function noteArc(id) { if (id && !CODEX.arc.has(id)) { CODEX.arc.add(id); saveCodex(); } }
+const codexDot = () => CODEX.rx.size > CODEX.ack;
 function tplParts(key, args) { const src = (STR[SET.lang] && STR[SET.lang][key]) || STR.zh[key] || key; return src.split(/(\{\d\})/).filter(x => x !== "").map(x => /^\{\d\}$/.test(x) ? { n: String((args || [])[+x[1]]) } : { t: x }); }
 // label = a short word or phrase from the string table; the only legal way to put text on the canvas
 function drawLabel(g, key, x, y, size, opt) {
@@ -210,6 +214,7 @@ function startRound() {
   R.onOpen = onOpen; R.onClose = onClose; R.onRx = onRx; R.S.onLidPop = onLidPop;
   if (G.round === 0) { G.hand = FIRST_HAND.slice(); G.draw = FIRST_DRAW.slice().reverse(); G.disc = []; G.tut = 0; }
   else { G.tut = 9; G.draw = shuffle(G.deck.slice()); G.hand = []; G.disc = []; while (G.hand.length < HAND && G.draw.length) G.hand.push(G.draw.pop()); }
+  for (const m of G.hand) noteMat(m); for (const c of G.arc) noteArc(c);
   G.sel = -1; G.matchMode = false; G.pourP = null; G.holding = false; G.displayGold = 0; G.ended = false; G.reachedFlag = false; G.lidUsed = false; G.pourN = 0; G.idleSince = NOW();
   fx.floats = []; fx.buckets.clear(); fx.chains = []; fx.gold = []; fx.tallyQ = []; fx.tally = null; fx.lidFly = null; fx.disc = []; fx.coins = [];
   meta.clear(); gasHist.length = 0; D = null; TIP = null; LP = null; G.card = { t0: null }; G.fillHint = 0;
@@ -254,6 +259,7 @@ function onRx(Lg, type, p, g) {
   }
   if (!b) { b = { uid: Lg.uid, type, n: 0, x: 0, y: 0, t0: NOW() }; fx.buckets.set(fx.bucketId = (fx.bucketId || 0) + 1, b); }
   b.n++; b.x += x; b.y += y;
+  discoverRx(type);
   if (type === "blast" || type === "lidpop") fx.shake = Math.min(7, fx.shake + (type === "lidpop" ? 1.2 : 0.5));
   sfx(type);
 }
@@ -273,7 +279,7 @@ function flushBuckets(now) {
       if (!hit) { placed = true; break; } fy0 -= 6;
     }
     if (!placed && b.type !== "lidpop" && b.type !== "blast") continue;
-    const first = !seen.has(b.type); seen.add(b.type);
+    const first = pendDisc.delete(b.type);
     fx.floats.push({ type: b.type, trait: RX[b.type].trait, val, w: fw, x: clamp(fx0, fw / 2, W - fw / 2), y: Math.max(8, fy0), born: now, big: b.type === "lidpop" || b.type === "blast" });
     if (first) fx.disc.push({ type: b.type, x: clamp(fx0, 14, W - 14), y: Math.max(14, fy0 - 10), born: now });
   }
@@ -360,8 +366,9 @@ canvas.addEventListener("pointerdown", e => {
   try { canvas.setPointerCapture(e.pointerId); } catch (er) {}
   G.idleSince = NOW();
   if (SETUI.open) return settingsDown(x, y);
+  if (CODEX.open) return codexDown(x, y);
   if (inRect(x, y, L.top.gear)) { openSettings(true); tone(500, 0.06); return; }
-  if (inRect(x, y, L.top.book)) { nudge("book"); tone(420, 0.06); return; }
+  if (inRect(x, y, L.top.book)) { openCodex(true); tone(420, 0.06); return; }
   if (G.card && G.card.t0 != null && mode === "play") G.card.t0 = Math.min(G.card.t0, NOW() - (1200 / SET.anim - 320));
   const tg = tipTargets().find(t => inRect(x, y, t.rect));
   LP = tg ? { x, y, t0: NOW(), target: tg, fired: false } : null; TIP = null;
@@ -406,6 +413,9 @@ function finishDrag(e) {
 }
 canvas.addEventListener("pointerup", finishDrag); canvas.addEventListener("pointercancel", () => { D = null; LP = null; PENDING = null; ptr.down = false; G.holding = false; });
 window.addEventListener("keydown", e => {
+  if (e.key === "Escape" && CODEX.open) { openCodex(false); return; }
+  if (CODEX.open) return;
+  if ((e.key === "c" || e.key === "C") && !SETUI.open && G) { openCodex(true); return; }
   if (e.key === "Escape") { if (SETUI.open) openSettings(false); else if (G && mode === "play" && (G.sel >= 0 || G.matchMode)) { G.sel = -1; G.matchMode = false; } else openSettings(true); return; }
   if (SETUI.open) return;
   if (!G || mode !== "play") { if (e.key === "Enter") screenDown(-1, -1, true); return; }
@@ -420,7 +430,7 @@ function pourFromSlot(i, col, hold) {
   G.pourP = P; G.holding = hold;
   G.disc.push(G.hand.splice(i, 1)[0]);
   if (G.draw.length === 0 && G.disc.length && G.round > 0) G.draw = shuffle(G.disc.splice(0));
-  if (G.draw.length) { G.hand.splice(i, 0, G.draw.pop()); G.slideIn[i] = NOW(); }
+  if (G.draw.length) { G.hand.splice(i, 0, G.draw.pop()); G.slideIn[i] = NOW(); noteMat(G.hand[i]); }
   G.sel = -1; G.pourN++; P.anim = NOW(); P.vm = mat;
   advanceTut("pour", mat);
   tone(300, 0.2, "sine", 0.05, 0.6); buzz(12);
@@ -439,12 +449,15 @@ let TIP = null, LP = null, PENDING = null;
 const SETUI = { open: false, rects: [] };
 const RED = "#b8381e";
 function openSettings(v) { SETUI.open = !!v; if (v) { TIP = null; LP = null; D = null; G.sel = -1; G.matchMode = false; } }
+function openCodex(v) { CODEX.open = !!v; if (v) { TIP = null; LP = null; D = null; PENDING = null; ptr.down = false; if (G) { G.sel = -1; G.matchMode = false; G.holding = false; } CODEX.ack = CODEX.rx.size; saveCodex(); } }
+const paused = () => SETUI.open || CODEX.open;
 function itemRC(i) { return G.shopItems[i].kind === "vial" ? [0, i] : [1, i - 2]; }
 function tipTargets() {
   const out = [];
-  if (!G || SETUI.open) return out;
+  if (!G || SETUI.open || CODEX.open) return out;
   if (mode === "play") {
     out.push({ id: "match", rect: L.btn.match }, { id: "lid", rect: L.btn.lid }, { id: "seal", rect: L.btn.seal });
+    for (let i = 0; i < HAND; i++) if (G.hand[i] !== undefined) out.push({ id: "v" + i, rect: L.slot(i) });
     for (let e = 0; e < 4; e++) out.push({ id: "el" + e, rect: { x: L.rx0, y: L.elY(e) - 12, w: L.rw, h: 24 } });
     G.arc.forEach((c, i) => out.push({ id: "ch" + i, rect: { x: L.rcx - 13, y: L.charmY(i) - 13, w: 26, h: 26 } }));
   } else if (mode === "shop") {
@@ -456,13 +469,29 @@ function tipTargets() {
 }
 // a row is a list of tokens: "icon-id" strings, {t:key,args,c} labels, {n:text,c} numbers
 function arcRows(id) { const [ic, tag] = ARC_ICON[id]; return [[{ t: "arc." + id }], [ic === "vial" ? "m:" + M.WATER : ic === "match" ? "match" : "rx:" + ic, { n: tag }]]; }
+const matTok = m => MATKEY[m] !== undefined ? "m:" + m : "mat:" + m;
+function vialTipRows(m) { // V04_SPEC §3.5: what this vial does, only discovered reactions spelled out
+  const rows = [[{ t: MATKEY[m] }]]; let unk = 0, shown = 0;
+  for (const [rx, a, b] of EST.COMBOS) {
+    if (a !== m && b !== m) continue;
+    if (CODEX.rx.has(rx)) { if (shown < 4) { rows.push(["plus", matTok(a === m ? b : a), "arrow", "rx:" + rx, { t: "rx." + rx }]); shown++; } } else unk++;
+  }
+  if (unk) rows.push(["plus", "q", "arrow", "q", { n: "×" + unk }]);
+  return rows;
+}
 function tipRows(id) {
+  if (/^v\d$/.test(id)) { const m = G.hand[+id[1]]; return m === undefined ? [] : vialTipRows(m); }
   if (id === "match") return [["match", "arrow", "m:" + M.OIL, "m:" + M.SULFUR, "m:" + M.POWDER, "m:" + M.SEED], [{ t: "ui.each" }, { n: BASE_MATCHES + (R.mods.matchbox ? 1 : 0) }]];
-  if (id === "lid") return [["lid", "arrow", "gas", { t: "ui.full" }, "arrow", "rx:lidpop", { n: "150" }], [{ t: "ui.lidOn" }, "m:" + M.WATER, "x"]];
+  if (id === "lid") {
+    const rows = [["lid", "arrow", "gas", { t: "ui.full" }, "arrow", "rx:lidpop", { n: "150" }], [{ t: "ui.lidOn" }, "m:" + M.WATER, "x"]];
+    const lp = EST.estimateLid(R.S, R.mods, lidSlope(), 3);
+    if (lp.will) rows.push(["rx:lidpop", { n: "≈" }, { n: fmt(lp.lo) + "+", c: "#8a6410" }]);   // gas is on course to pop the lid within 3 s
+    return rows;
+  }
   if (id === "seal") { const rows = [[{ t: "ui.left" }, "pip", { n: "×" + R.pours }, "arrow", { n: "+" + R.pours }, "coin"]]; if (R.gold < R.target) rows.push([{ t: "ui.miss", c: RED }, "arrow", { t: "ui.fail", c: RED }]); return rows; }
   if (id.startsWith("el")) {
     const e = +id.slice(2), row = ["el:" + e];
-    for (const k of RXK) if (RX[k].el.includes(e) && row.length < 6) row.push(seen.has(k) ? "rx:" + k : "q");
+    for (const k of RXK) if (RX[k].el.includes(e) && row.length < 6) row.push(CODEX.rx.has(k) ? "rx:" + k : "q");
     return [row, [{ t: "ui.perLamp" }, { n: "+1" }, { t: "ui.allLamp" }, { n: "+2" }]];
   }
   if (id.startsWith("ch")) return arcRows(G.arc[+id.slice(2)]);
@@ -470,7 +499,7 @@ function tipRows(id) {
   return [];
 }
 function tokW(t) {
-  if (typeof t === "string") return t === "arrow" ? 22 : t === "x" ? 14 : t.startsWith("m:") || t === "pip" ? 14 : 20;
+  if (typeof t === "string") return t === "arrow" ? 22 : t === "x" ? 14 : t === "plus" ? 13 : t.startsWith("m:") || t === "pip" || t.startsWith("tr:") ? 15 : t.startsWith("mat:") ? 17 : 20;
   if (t.t != null) return labelW(t.t, 12, t.args) + 4;
   return numWidth(String(t.n), 12) + 4;
 }
@@ -481,7 +510,13 @@ function drawTok(t, x, cy) {
     else if (t === "match") drawMatch(ctx, cx - 2, cy + 1, 10, false, 1); else if (t === "lid") drawLid(ctx, cx, cy, 9, false);
     else if (t === "coin") drawCoin(ctx, cx, cy, 6.5); else if (t === "pip") drawPip(ctx, cx - 5, cy - 8, 10, 15, false);
     else if (t === "gas") drawRx(ctx, "steam", cx, cy, 8);
-    else if (t === "q") { ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, 8, 0, 7); ctx.setLineDash([2, 2]); ctx.strokeStyle = "rgba(42,28,18,.5)"; ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]); ctx.beginPath(); ctx.arc(cx, cy - 1.5, 2.6, Math.PI, Math.PI * 2.6); ctx.lineTo(cx, cy + 1.5); ctx.strokeStyle = "rgba(42,28,18,.6)"; ctx.stroke(); ctx.beginPath(); ctx.arc(cx, cy + 4, 0.8, 0, 7); ctx.fillStyle = "rgba(42,28,18,.6)"; ctx.fill(); ctx.restore(); }
+    else if (t === "plus") drawNum(ctx, "+", cx, cy, 11, { color: INK, wt: 1 });
+    else if (t === "sink" || t === "float") drawVert(ctx, cx, cy, 8, t === "float");
+    else if (t === "stack") drawStackIc(ctx, cx, cy, 8); else if (t === "delay") drawDelayIc(ctx, cx, cy, 8);
+    else if (t.startsWith("tr:")) drawTrait(ctx, t.slice(3), cx, cy, 5.5);
+    else if (t.startsWith("mat:")) drawCellMat(ctx, +t.slice(4), cx, cy, 8);
+    else if (t === "q") { drawQ(ctx, cx, cy, 8); }
+    else if (t === "q_old") { ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, 8, 0, 7); ctx.setLineDash([2, 2]); ctx.strokeStyle = "rgba(42,28,18,.5)"; ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]); ctx.beginPath(); ctx.arc(cx, cy - 1.5, 2.6, Math.PI, Math.PI * 2.6); ctx.lineTo(cx, cy + 1.5); ctx.strokeStyle = "rgba(42,28,18,.6)"; ctx.stroke(); ctx.beginPath(); ctx.arc(cx, cy + 4, 0.8, 0, 7); ctx.fillStyle = "rgba(42,28,18,.6)"; ctx.fill(); ctx.restore(); }
     else if (t.startsWith("m:")) drawVial(ctx, +t.slice(2), cx - 6, cy - 9, 12, 18, {});
     else if (t.startsWith("rx:")) drawRx(ctx, t.slice(3), cx, cy, 8);
     else if (t.startsWith("el:")) drawEl(ctx, +t.slice(3), cx, cy, 8, true, false, 0);
@@ -505,7 +540,7 @@ let tipHold = { id: null, since: 0 };
 function updateTip(now) {
   if (TIP && TIP.until && now > TIP.until) TIP = null;
   if (LP && !LP.fired && now - LP.t0 >= 400 && ptr.down) { LP.fired = true; TIP = { id: LP.target.id, rect: LP.target.rect, hover: false, until: 0 }; D = null; G.holding = false; buzz(8); }
-  if (ptr.inside && ptr.type === "mouse" && !ptr.down && !D && !SETUI.open) {
+  if (ptr.inside && ptr.type === "mouse" && !ptr.down && !D && !paused()) {
     const t = tipTargets().find(q => inRect(ptr.x, ptr.y, q.rect));
     if (!t) { tipHold.id = null; if (TIP && TIP.hover) TIP = null; }
     else { if (tipHold.id !== t.id) { tipHold = { id: t.id, since: now }; if (TIP && TIP.hover) TIP = null; } if (now - tipHold.since >= 300 && !TIP) TIP = { id: t.id, rect: t.rect, hover: true, until: 0 }; }
@@ -550,6 +585,80 @@ function drawSettings(now) {
 }
 function settingsDown(x, y) { for (const r of SETUI.rects) if (inRect(x, y, r.rect)) { r.act(); saveSet(); if (!SETUI.open) tone(500, 0.05); else tone(440, 0.04); return; } }
 
+// ---------------- codex panel (V04_SPEC §3.4): reactions found so far, materials, charms ----------------
+const CARD_IN = (() => { const o = {}; for (const [rx, a, b] of EST.COMBOS) if (!o[rx]) o[rx] = [a, b]; return Object.assign(o, { condense: [M.STEAM], boil: [M.WATER, M.MUD], fume: [M.SULFUR, M.FIRE], lidpop: ["lid", "gas"] }); })();
+const DENS_ORDER = [M.EMBER, M.OIL, M.SULFUR, M.WATER, M.ACID, M.ICE, M.LAVA, M.SEED, M.POWDER, M.SAND];
+function inTok(v) { return typeof v === "string" ? v : (MATKEY[v] !== undefined && !CODEX.mat.has(v)) ? "q" : matTok(v); }
+function tokRow(toks, cx, cy) { const w = toks.reduce((a, t) => a + tokW(t), 0); let x = cx - w / 2; for (const t of toks) x += drawTok(t, x, cy); return w; }
+function drawRxCard(k, x, y, w, h) {
+  const known = CODEX.rx.has(k), r = RX[k], cx = x + w / 2, inp = CARD_IN[k] || [];
+  ctx.save();
+  if (known) { ctx.fillStyle = "rgba(246,238,214,.78)"; ctx.fillRect(x, y, w, h); wob(ctx, x, y, w, h, 200 + RXK.indexOf(k), 1.4); }
+  else { ctx.fillStyle = "rgba(42,28,18,.07)"; ctx.fillRect(x, y, w, h); ctx.setLineDash([3, 3]); ctx.strokeStyle = "rgba(42,28,18,.4)"; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); ctx.setLineDash([]); }
+  if (!known) { drawQ(ctx, cx, y + h * 0.5, 16, 0.8); ctx.restore(); return; }   // only found reactions are listed: a lost one is just a silhouette, no hints
+  const t1 = []; if (inp[0] !== undefined) t1.push(inTok(inp[0])); if (inp[1] !== undefined) t1.push("plus", inTok(inp[1]));
+  tokRow(t1, cx, y + h * 0.12);
+  ctx.save(); ctx.translate(cx, y + h * 0.27); ctx.rotate(Math.PI / 2); drawArrow(ctx, 0, 0, 6); ctx.restore();
+  drawRx(ctx, k, cx, y + h * 0.43, 11);
+  tokRow(["tr:" + r.trait, { t: "rx." + k }], cx, y + h * 0.6);
+  if (r.trig > 0) tokRow([{ t: r.trait === "burst" ? "ui.eachBlast" : "ui.trig" }, { n: String(r.trig), c: RED }], cx, y + h * 0.74);
+  if (r.vol > 0) tokRow([{ t: "ui.per100", args: [100] }, { n: String(r.vol) }], cx, y + h * 0.86);
+  r.el.forEach((e, i) => drawEl(ctx, e, cx + (i - (r.el.length - 1) / 2) * 17, y + h - 11, 6, true, false, 0));
+  ctx.restore();
+}
+function drawCodex(now) {
+  if (!CODEX.open) return;
+  CODEX.rects = [];
+  ctx.drawImage(bgS, 0, 0, bgS.width / (DPR * L.sc), bgS.height / (DPR * L.sc));
+  drawLabel(ctx, "ui.codex", 195, 36, 24);
+  drawNum(ctx, CODEX.rx.size + "/" + RXK.length, 14, 36, 15, { align: "l", color: INK, halo: true, wt: 1 });
+  const cr = { x: LW - 58, y: 6, w: 52, h: 56 };
+  drawCross(ctx, cr.x + 26, 26, 9, INK); drawLabel(ctx, "set.close", cr.x + 26, 50, 11);
+  CODEX.rects.push({ rect: cr, act: () => { openCodex(false); tone(500, 0.05); } });
+  // tabs
+  const tabs = ["tab.rx", "tab.mat", "ui.charms"], tw = (LW - 16 - 2 * 6) / 3;
+  tabs.forEach((k, i) => {
+    const r = { x: 8 + i * (tw + 6), y: 70, w: tw, h: 36 }, on = CODEX.tab === i;
+    if (on) { ctx.fillStyle = "rgba(168,119,74,.38)"; ctx.fillRect(r.x, r.y, r.w, r.h); }
+    wob(ctx, r.x, r.y, r.w, r.h, 140 + i, on ? 2.2 : 1.1);
+    drawLabel(ctx, k, r.x + r.w / 2, r.y + r.h / 2, 14, { halo: false });
+    CODEX.rects.push({ rect: r, act: () => { CODEX.tab = i; tone(440, 0.04); } });
+  });
+  const top = 116, bot = L.Hl - 10;
+  if (CODEX.tab === 0) {
+    const gap = 6, cw = (LW - 16 - 3 * gap) / 4, ch = (bot - top - 3 * gap) / 4;
+    RXK.forEach((k, i) => drawRxCard(k, 8 + (i % 4) * (cw + gap), top + Math.floor(i / 4) * (ch + gap), cw, ch));
+  } else if (CODEX.tab === 1) {
+    const rh = Math.min(66, (bot - top) / DENS_ORDER.length);
+    DENS_ORDER.forEach((m, i) => {
+      const y = top + i * rh + rh / 2, known = CODEX.mat.has(m);
+      ctx.fillStyle = i % 2 ? "rgba(246,238,214,.35)" : "rgba(246,238,214,.6)"; ctx.fillRect(8, y - rh / 2 + 1, LW - 16, rh - 2);
+      if (!known) { drawQ(ctx, 34, y, Math.min(14, rh * 0.3)); return; }
+      const vh = Math.min(rh - 8, 34); drawVial(ctx, m, 22, y - vh / 2, vh * 0.62, vh, {});
+      drawLabel(ctx, MATKEY[m], 54, y, 13, { align: "l" });
+      // density ruler: light (float) at the left, heavy (sink) at the right
+      const rx0 = 128, rx1 = 238, dx = rx0 + (rx1 - rx0) * clamp((window.PDSim.DEN[m] - 0.5) / 6.5, 0, 1);
+      ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(rx0, y); ctx.lineTo(rx1, y); ctx.stroke();
+      for (let t = 0; t <= 6; t++) { const tx = rx0 + (rx1 - rx0) * t / 6; ctx.beginPath(); ctx.moveTo(tx, y - 3); ctx.lineTo(tx, y + 3); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(dx, y - 4); ctx.lineTo(dx - 5, y - 13); ctx.lineTo(dx + 5, y - 13); ctx.closePath(); ctx.fillStyle = RED; ctx.fill(); ctx.stroke();
+      // discovered reactions this material takes part in
+      const mine = EST.COMBOS.filter(c => (c[1] === m || c[2] === m) && CODEX.rx.has(c[0])).map(c => c[0]).filter((v, j, a) => a.indexOf(v) === j).slice(0, 5);
+      mine.forEach((rk, j) => drawRx(ctx, rk, 262 + j * 25, y, 8.5));
+    });
+  } else {
+    const gap = 6, cw = (LW - 16 - 3 * gap) / 4, ch = Math.min(96, (bot - top - 3 * gap) / 4);
+    ARCANA.forEach((a, i) => {
+      const x = 8 + (i % 4) * (cw + gap), y = top + Math.floor(i / 4) * (ch + gap), known = CODEX.arc.has(a.id);
+      ctx.fillStyle = "rgba(246,238,214,.5)"; ctx.fillRect(x, y, cw, ch);
+      if (!known) { ctx.setLineDash([3, 3]); ctx.strokeStyle = "rgba(42,28,18,.4)"; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, cw - 1, ch - 1); ctx.setLineDash([]); drawQ(ctx, x + cw / 2, y + ch / 2, 14); return; }
+      wob(ctx, x, y, cw, ch, 300 + i, 1.2);
+      drawBadge(ctx, a.id, x + cw / 2, y + ch * 0.4, 20, a.rare);
+      drawLabel(ctx, "arc." + a.id, x + cw / 2, y + ch - 13, 11);
+    });
+  }
+}
+function codexDown(x, y) { for (const r of CODEX.rects) if (inRect(x, y, r.rect)) { r.act(); return; } }
+
 // ---------------- round-start card ----------------
 function drawRoundCard(now) {
   const c = G.card; if (!c || mode !== "play") return;
@@ -575,26 +684,7 @@ function drawRoundCard(now) {
 }
 
 // ---------------- previews (ghost) ----------------
-function colContact(col, half) {
-  const S = R.S; let best = H - 1;
-  for (let dx = -half; dx <= half; dx++) {
-    const x = col + dx; if (x < 1 || x >= W - 1) continue;
-    for (let y = 0; y < H - 1; y++) { const m = S.t[y * W + x]; if (m !== M.E && (KIND[m] !== 3 || m === M.FIRE)) { if (y < best) best = y; break; } }
-  }
-  return best;
-}
-function previewVial(m, col) {
-  const S = R.S, half = 4, cy = colContact(col, half);
-  const tally = {};
-  for (let dx = -half; dx <= half; dx++) for (let dy = 0; dy < 4; dy++) {
-    const x = col + dx, y = cy + dy; if (x < 1 || x >= W - 1 || y >= H - 1) continue;
-    const t = S.t[y * W + x]; if (t !== M.E) tally[t] = (tally[t] || 0) + 1;
-  }
-  const items = [], table = PRE[m] || {};
-  for (const k of Object.keys(tally)) { const rxs = table[k]; if (!rxs) continue; for (const r of rxs) if (!items.find(i => i.type === r)) items.push({ type: r, n: tally[k] }); }
-  for (const it of items) it.est = RX[it.type] ? Math.round(rxVals(it.type, R.mods).vol * clamp(it.n * 3, 3, 120) / RULES.VOL_DIV + rxVals(it.type, R.mods).trig) : 0;
-  return { col, cy, half, items: items.slice(0, 3) };
-}
+const colContact = (col, half) => EST.colContact(R.S, col, half);
 function previewMatch(cx, cy) {
   const S = R.S, r = 3, cells = []; let blast = false, water = false;
   for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
@@ -604,11 +694,8 @@ function previewMatch(cx, cy) {
   return { cx, cy, cells, blast, water };
 }
 const gasHist = [];
-function predictFrac() {
-  const S = R.S; let slope = 0;
-  if (gasHist.length > 4) slope = Math.max(0, (gasHist[gasHist.length - 1].g - gasHist[0].g) / Math.max(1, gasHist[gasHist.length - 1].f - gasHist[0].f));
-  return clamp((S.gas + slope * 180) / S.lidMax, 0, 1);
-}
+function lidSlope() { return gasHist.length > 4 ? Math.max(0, (gasHist[gasHist.length - 1].g - gasHist[0].g) / Math.max(1, gasHist[gasHist.length - 1].f - gasHist[0].f)) : 0; }
+function predictFrac() { return clamp((R.S.gas + lidSlope() * 180) / R.S.lidMax, 0, 1); }
 
 // ---------------- rendering ----------------
 function renderBeakerLayers() {
@@ -645,6 +732,7 @@ function drawTopBar(now) {
   drawLabel(ctx, "ui.settings", 34, 31, 11);
   ctx.save(); ctx.translate(nudgeOff("book", now), 0); drawBook(ctx, 86, 14, 10); ctx.restore();
   drawLabel(ctx, "ui.codex", 86, 31, 11);
+  if (codexDot()) { const k = (Math.sin(now / 260) + 1) / 2; ctx.beginPath(); ctx.arc(97, 6, 4.2 + k * 0.8, 0, 7); ctx.fillStyle = "#b8381e"; ctx.fill(); ctx.strokeStyle = PAPER; ctx.lineWidth = 1.2; ctx.stroke(); }
   // act + round
   const rr = G.round % 3, act = Math.floor(G.round / 3) + 1;
   const aw = drawLabel(ctx, "ui.act", 122, 15, 13, { align: "l", args: [act] });
@@ -696,6 +784,19 @@ function drawGoalBar(now) {
   }
   if (frac > 1) { ctx.fillStyle = "rgba(240,210,122,.75)"; ctx.fillRect(gl.x + gl.w, gl.y + 1, gl.ext * Math.min(0.5, frac - 1) / 0.5, gl.h - 2); }
   wob(ctx, gl.x, gl.y, gl.w, gl.h, 71, 1.5);
+  // estimate segment (V04_SPEC §5.3): hatched [now + low, now + high] while a vial or match is held
+  let willClear = false;
+  if (G.est) {
+    const base = Math.max(cur, R.gold), at = v => { const f = v / target; return gl.x + (f <= 1 ? gl.w * f : gl.w + gl.ext * Math.min(0.5, f - 1) / 0.5); };
+    const x0 = at(base + G.est.lo), x1 = Math.max(x0 + 3, at(base + G.est.hi));
+    willClear = base + G.est.lo >= target;
+    ctx.save(); ctx.beginPath(); ctx.rect(x0, gl.y, x1 - x0, gl.h); ctx.clip();
+    ctx.fillStyle = "rgba(200,150,30,.28)"; ctx.fillRect(x0, gl.y, x1 - x0, gl.h);
+    ctx.strokeStyle = "#7a5410"; ctx.lineWidth = 1.1; for (let x = x0 - gl.h; x < x1 + gl.h; x += 4) { ctx.beginPath(); ctx.moveTo(x, gl.y + gl.h); ctx.lineTo(x + gl.h, gl.y); ctx.stroke(); }
+    ctx.restore();
+    ctx.save(); ctx.setLineDash([3, 2]); ctx.strokeStyle = "#7a5410"; ctx.lineWidth = 1.2; ctx.strokeRect(x0, gl.y - 1, x1 - x0, gl.h + 2); ctx.restore();
+  }
+  G.willClear = willClear;
   // target line + label
   const lx = gl.x + gl.w;
   ctx.strokeStyle = reached ? "#a87814" : "#b8381e"; ctx.lineWidth = flash || hintFlash ? 4 : 2.4; ctx.beginPath(); ctx.moveTo(lx, gl.y - 5); ctx.lineTo(lx, gl.y + gl.h + 5); ctx.stroke();
@@ -703,7 +804,8 @@ function drawGoalBar(now) {
   // numbers: current / target
   const tw = numWidth(fmt(target), 11), cw = numWidth(fmt(Math.round(cur)), 11), sl = numWidth("/", 11);
   const nx = gl.numX; L.goalNum = { x: nx - tw - sl - cw - 4, y: gl.midY - 8, w: tw + sl + cw + 4, h: 16, tx: nx - tw / 2, ty: gl.midY };
-  drawNum(ctx, fmt(target), nx, gl.midY, 11, { align: "r", color: reached ? COL.gold : "#b8381e", halo: true, wt: flash ? 1.2 : 0.95 });
+  const lift = willClear ? -Math.abs(Math.sin(now / 130)) * 2.5 : 0;
+  drawNum(ctx, fmt(target), nx, gl.midY + lift, 11, { align: "r", color: reached || willClear ? COL.gold : "#b8381e", halo: true, wt: flash || willClear ? 1.2 : 0.95 });
   drawNum(ctx, "/", nx - tw - 1, gl.midY, 11, { align: "r", color: INK, halo: true });
   drawNum(ctx, fmt(Math.round(cur)), nx - tw - sl - 3, gl.midY, 11, { align: "r", color: COL.gold === "" ? INK : "#8a6410", halo: true, wt: 0.95 });
   // first-gold hint label
@@ -901,8 +1003,65 @@ function drawPours(now) {
   }
 }
 
+// ---- B3 preview card: what touches what, what it becomes, about how many points (V04_SPEC §3.3) ----
+const GOLD_D = "#8a6410";
+const fmtRange = (lo, hi) => lo === hi ? fmt(lo) : fmt(lo) + "–" + fmt(hi);
+function estRows(est) {
+  const rows = []; let unknown = false, known = 0;
+  for (const it of est.items.slice(0, 3)) {
+    const a = it.a >= 0 ? matTok(it.a) : "match";
+    if (it.kind === "rx") {
+      if (CODEX.rx.has(it.rx)) { known++; rows.push({ toks: ["tr:" + it.trait, a, "plus", matTok(it.b), "arrow", "rx:" + it.rx, { t: "rx." + it.rx }, { n: "≈" }, { n: fmtRange(it.lo, it.hi), c: INK }], label: 6 }); }
+      else { unknown = true; rows.push({ toks: [a, "plus", matTok(it.b), "arrow", "q", { n: "?" }] }); }
+    } else rows.push({ toks: [matTok(it.a), it.kind, { t: "ui." + it.kind }] });
+  }
+  if (!est.items.length) rows.push({ toks: ["match", { t: "ui.none" }] });
+  if (known || unknown) {
+    const tot = [{ t: "ui.total" }, { n: "≈" }];
+    if (unknown) tot.push("q"); else tot.push({ n: fmtRange(est.lo, est.hi), c: GOLD_D }, { n: "×" + est.mult, c: RED });
+    rows.push({ toks: tot, total: true });
+  }
+  return rows;
+}
+const rectsHit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+const overlapArea = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+// card goes above the contact point; if that hits the top bar, a finger or the carried vial it slides up / to the side / below: candidates are ranked by overlap first, distance second
+function placeCard(w, h, ax, ay, avoid) {
+  const top = 80, bot = L.Hl - 6, cands = [];
+  for (const g of [16, 34, 58, 90, 130]) cands.push({ x: ax - w / 2, y: ay - g - h, side: "up" });
+  for (const dy of [0, -h - 8, h * 0.5 + 8, -h * 1.5 - 20]) { cands.push({ x: ax - w - 18, y: ay - h / 2 + dy, side: "left" }, { x: ax + 18, y: ay - h / 2 + dy, side: "right" }); }
+  for (const g of [18, 40]) cands.push({ x: ax - w / 2, y: ay + g, side: "down" });
+  let best = null;
+  for (const c of cands) {
+    const r = { x: clamp(c.x, 4, LW - 4 - w), y: clamp(c.y, top, bot - h), w, h };
+    const ov = avoid.reduce((a, v) => a + overlapArea(r, v), 0), moved = Math.abs(r.y - c.y) + Math.abs(r.x - c.x) * (c.side === "up" || c.side === "down" ? 0.2 : 1);
+    const dist = Math.hypot(r.x + w / 2 - ax, r.y + h / 2 - ay);
+    const sc = ov * 1000 + moved * 4 + dist;
+    if (!best || sc < best.sc) best = { r, sc, side: c.side };
+  }
+  return best;
+}
+function drawEstCard(est, ax, ay, avoid) {
+  const rows = estRows(est), rh = 24, maxW = 250;
+  const rw = rows.map(r => r.toks.reduce((a, t) => a + tokW(t), 0));
+  rows.forEach((r, i) => { if (r.label != null && rw[i] > maxW - 14) { r.toks.splice(r.label, 1); rw[i] = r.toks.reduce((a, t) => a + tokW(t), 0); } });
+  const w = Math.min(maxW, Math.max(80, Math.max(...rw) + 16)), h = rows.length * rh + 10;
+  const pl = placeCard(w, h, ax, ay, avoid), x = pl.r.x, y = pl.r.y;
+  G.cardRect = { x, y, w, h };
+  ctx.save(); ctx.globalAlpha = 0.97; ctx.fillStyle = "rgba(244,236,212,.98)"; ctx.fillRect(x, y, w, h); wob(ctx, x, y, w, h, 93, 1.5);
+  ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.beginPath();  // stem toward the contact ring
+  const sx = pl.side === "up" ? clamp(ax, x + 8, x + w - 8) : pl.side === "down" ? clamp(ax, x + 8, x + w - 8) : pl.side === "left" ? x + w : x;
+  const sy = pl.side === "up" ? y + h : pl.side === "down" ? y : clamp(ay, y + 4, y + h - 4);
+  ctx.moveTo(sx, sy); ctx.lineTo(ax + (pl.side === "left" ? -6 : pl.side === "right" ? 6 : 0), ay + (pl.side === "up" ? -6 : pl.side === "down" ? 6 : 0)); ctx.stroke();
+  rows.forEach((r, i) => {
+    let tx = x + (w - rw[i]) / 2; const cy = y + 5 + rh * i + rh / 2;
+    if (r.total) { ctx.fillStyle = "rgba(200,150,30,.14)"; ctx.fillRect(x + 3, y + 5 + rh * i + 1, w - 6, rh - 2); }
+    for (const t of r.toks) tx += drawTok(t, tx, cy);
+  });
+  ctx.restore();
+}
 function drawPreview(now) {
-  G.preview = null;
+  G.preview = null; G.est = null; G.cardRect = null; G.cardAvoid = null;
   let tip = null, kind = null, mat = 0;
   if (D && D.moved && (D.kind === "vial" || D.kind === "match")) { const t = tipOf(); tip = { x: D.x, y: D.y - t.off }; kind = D.kind; mat = D.m; }
   else if (ptr.inside && ptr.type === "mouse" && !ptr.down && !D) {
@@ -911,39 +1070,40 @@ function drawPreview(now) {
   }
   if (!tip || !inBeakerTip(tip.x, tip.y)) return;
   const { cp, bx, by } = L;
+  // things the card must stay clear of: the finger / cursor and the vial or match being carried
+  const fx0 = D ? D.x : ptr.x, fy0 = D ? D.y : ptr.y, touch = ptr.type === "touch" || ptr.type === "pen";
+  const avoid = [touch && D ? { x: fx0 - 40, y: fy0 - 62, w: 80, h: 130 } : { x: fx0 - 10, y: fy0 - 10, w: 28, h: 30 }];
+  if (D && D.moved) avoid.push(kind === "vial" ? { x: D.x - 24, y: D.y - 98, w: 48, h: 80 } : { x: D.x - 20, y: D.y - 84, w: 40, h: 52 });
   if (kind === "vial") {
-    const col = dropCol(tip.x), pv = previewVial(mat, col); G.preview = pv;
-    const x = cellX(col), yEnd = by + pv.cy * L.cpy, hw = 4.5 * cp;
+    const col = dropCol(tip.x), est = EST.estimatePour(R.S, R.mods, mat, col, R.pourAmount, R.frame);
+    G.preview = { items: est.items.filter(i => i.kind === "rx").map(i => ({ type: i.rx })) };
+    if (est.hi > 0 && est.items.every(i => i.kind === "rx" ? CODEX.rx.has(i.rx) : true)) G.est = { lo: est.lo, hi: est.hi };
+    const x = cellX(col), yEnd = by + est.cy * L.cpy, hw = 4.5 * cp;
     ctx.save();
     ctx.fillStyle = "rgba(168,119,74,.16)"; ctx.fillRect(x - hw, by, hw * 2, Math.max(2, yEnd - by));
     ctx.strokeStyle = INK; ctx.globalAlpha = 0.55; ctx.lineWidth = 1.2; ctx.setLineDash([5, 4]); ctx.lineDashOffset = -now / 40;
     ctx.beginPath(); ctx.moveTo(x - hw, by); ctx.lineTo(x - hw, yEnd); ctx.moveTo(x + hw, by); ctx.lineTo(x + hw, yEnd); ctx.stroke(); ctx.setLineDash([]);
-    ctx.beginPath(); ctx.ellipse(x, yEnd, hw, 3.5, 0, 0, 7); ctx.stroke(); ctx.restore();
+    ctx.beginPath(); ctx.ellipse(x, yEnd, hw, 3.5, 0, 0, 7); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(x, yEnd, 5, 0, 7); ctx.stroke(); ctx.restore();   // contact ring
+    avoid.push({ x: x - 8, y: yEnd - 8, w: 16, h: 16 });
     // carried vial (kept clear of the finger)
     if (D && D.moved) { ctx.save(); ctx.translate(D.x, D.y - 66 + 8); ctx.rotate(clamp((D.vx || 0) * 0.03, -0.5, 0.5)); ctx.globalAlpha = 0.92; drawVial(ctx, mat, -22, -38, 44, 76, {}); ctx.restore(); }
-    // result symbols, at least 60px above the finger
-    const fingerY = D ? D.y : ptr.y;
-    const iy = Math.min(yEnd - 22, fingerY - 70), n = pv.items.length;
-    pv.items.forEach((it, i) => {
-      const ix = clamp(x + (i - (n - 1) / 2) * 44, L.bx + 24, L.bx + L.bw - 24), bob = Math.sin(now / 260 + i) * 2;
-      ctx.save(); ctx.globalAlpha = 0.92; ctx.translate(ix, Math.max(by + 12, iy) + bob);
-      ctx.beginPath(); ctx.arc(0, 0, 16, 0, 7); ctx.fillStyle = "rgba(239,228,200,.88)"; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.setLineDash([3, 2]); ctx.stroke(); ctx.setLineDash([]);
-      drawRx(ctx, it.type, 0, 0, 10);
-      if (it.est) drawNum(ctx, "+" + fmt(it.est), 0, 26, 9, { color: "rgba(42,28,18,.55)", halo: true, wt: 0.8 });
-      ctx.restore();
-    });
+    drawEstCard(est, x, yEnd, avoid);
   } else if (kind === "match") {
-    const [cx, cy] = pxToCell(tip.x, tip.y), pm = previewMatch(cx, cy); G.preview = { items: pm.cells.length ? [{ type: "burn" }] : [] };
+    const [cx, cy] = pxToCell(tip.x, tip.y), pm = previewMatch(cx, cy), est = EST.estimateMatch(R.S, R.mods, clamp(cx, 2, W - 3), clamp(cy, 1, H - 3), R.frame);
+    G.preview = { items: pm.cells.length ? [{ type: "burn" }] : [] };
+    if (est.hi > 0 && est.items.every(i => CODEX.rx.has(i.rx))) G.est = { lo: est.lo, hi: est.hi };
     const x = cellX(cx), y = cellY(cy), r = 3.5 * cp;
     ctx.save(); ctx.strokeStyle = "#b8381e"; ctx.lineWidth = 1.6; ctx.setLineDash([3, 3]); ctx.lineDashOffset = -now / 50; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke(); ctx.setLineDash([]);
     const k = (Math.sin(now / 90) + 1) / 2; ctx.fillStyle = `rgba(232,117,47,${0.35 + k * 0.4})`; ctx.strokeStyle = "#e8752f";
     for (const [fx_, fy_] of pm.cells) { ctx.fillRect(L.bx + fx_ * cp - 0.5, L.by + fy_ * L.cpy - 0.5, cp + 1, L.cpy + 1); }
     if (!pm.cells.length) { ctx.strokeStyle = "rgba(42,28,18,.7)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 6, y - 6); ctx.lineTo(x + 6, y + 6); ctx.moveTo(x + 6, y - 6); ctx.lineTo(x - 6, y + 6); ctx.stroke(); }
-    if (pm.blast) { drawRx(ctx, "blast", x, y - r - 14, 11); }
-    else if (pm.water && pm.cells.length < 3) { drawRx(ctx, "steam", x, y - r - 12, 9); }
     ctx.restore();
+    avoid.push({ x: x - r - 4, y: y - r - 4, w: 2 * r + 8, h: 2 * r + 8 });
     if (D && D.moved) { drawMatch(ctx, D.x, D.y - 60, 16, true, 1); }
+    drawEstCard(est, x, y, avoid);
   }
+  G.cardAvoid = avoid;
 }
 
 function drawTallyFx(now) {
@@ -1019,6 +1179,7 @@ function rollShop() {
   const pool = ARCANA.filter(c => !G.arc.includes(c.id) && (!c.rare || G.round >= 2));
   const arc = shuffle(pool.slice()).slice(0, 2).map(c => ({ kind: "arc", c, price: c.price, born: NOW() }));
   G.shopItems = [...vials, ...arc]; G.shopT = NOW();
+  for (const it of G.shopItems) { if (it.kind === "vial") noteMat(it.m); else noteArc(it.c.id); }
 }
 function enterShop(earned) {
   mode = "shop"; G.round++; G.reroll = 1; rollShop(); TIP = null; LP = null;
@@ -1121,7 +1282,7 @@ let slowAcc = 0, slowN = 0;
 function loop(now) {
   const dt = Math.min(100, now - lastT); lastT = now;
   if (WASH_BLUR && mode === "play") { slowAcc += dt; if (++slowN === 120) { if (slowAcc / slowN > 21) WASH_BLUR = false; slowAcc = 0; slowN = 0; } }
-  if (G && R && mode === "play" && !G.ended && !SETUI.open) {
+  if (G && R && mode === "play" && !G.ended && !paused()) {
     acc += dt;
     const waiting = R.pours === 0 && R.matches === 0 && R.active.length === 0;
     const speed = waiting ? 3 : 1;
@@ -1131,7 +1292,7 @@ function loop(now) {
     window.__perf.simMs += performance.now() - t0;
     flushBuckets(now); updateTally(now);
     checkEnd(now);
-  } else if (G && R && mode === "play" && !SETUI.open) { updateTally(now); }
+  } else if (G && R && mode === "play" && !paused()) { updateTally(now); }
   if (G && R) {
     const t1 = performance.now();
     if (G.shownMoney !== G.money && mode === "play") G.shownMoney = G.money;
@@ -1152,7 +1313,7 @@ function loop(now) {
       drawRoundCard(now);
       if (mode === "lose" || mode === "win") drawEndScreen(now);
     }
-    drawTip(now); drawSettings(now);
+    drawTip(now); drawSettings(now); drawCodex(now);
     window.__perf.drawMs += performance.now() - t1; window.__perf.frames++; frameN++;
   }
   requestAnimationFrame(loop);
@@ -1190,6 +1351,8 @@ window.__game = {
   clientOf, cellClient: (cx, cy) => clientOf(cellX(cx), cellY(cy)), slotClient: i => { const s = L.slot(i); return clientOf(s.x + s.w / 2, s.y + s.h / 2); },
   get ui() { return { goalRect: L.goal && { x: L.goal.x, y: L.goal.y, w: L.goal.w, h: L.goal.h }, goalNum: L.goalNum, card: !!(G && G.card), tip: TIP && TIP.id, settingsOpen: SETUI.open, set: SET, top: L.top }; },
   showCard: () => { G.card = { t0: null }; }, openSettings, setLang: v => { SET.lang = v; saveSet(); },
+  get codex() { return { rx: [...CODEX.rx], mat: [...CODEX.mat], arc: [...CODEX.arc], ack: CODEX.ack, open: CODEX.open, tab: CODEX.tab, dot: codexDot() }; },
+  openCodex, setCodexTab: v => { CODEX.tab = v; }, discoverRx, noteMat, noteArc, EST, get preview() { return { card: G.cardRect, avoid: G.cardAvoid, est: G.est, Hl: L.Hl, LW }; }, resetCodex: () => { CODEX.rx.clear(); CODEX.mat.clear(); CODEX.arc.clear(); CODEX.ack = 0; saveCodex(); },
   btnClient: k => { const b = L.btn[k]; return clientOf(b.x + b.w / 2, b.y + b.h / 2); }, shopPos: () => { const S = shopLayout(); return { items: G.shopItems.map((it, i) => { const r = it.kind === 'vial' ? 0 : 1, idx = it.kind === 'vial' ? i : i - 2; return S.item(r, idx); }), reroll: S.reroll, exit: S.exit }; }, setSound: v => { soundOn = v; },
   drawIcons: () => drawIconSheet(),
 };
