@@ -258,7 +258,7 @@ function onRx(Lg, type, p, g) {
   sfx(type);
 }
 // float number for a bucket of n events: burst types show their trigger, others the volume points (V04_SPEC §4.5)
-function floatVal(type, n) { const v = rxVals(type, R.mods); return Math.max(1, Math.round(RX[type].trait === "burst" ? v.trig * n + v.vol * n / 10 : v.vol * n / 10)); }
+function floatVal(type, n) { const v = rxVals(type, R.mods); return Math.max(1, Math.round(RX[type].trait === "burst" ? v.trig * Math.min(n, RULES.BURST_CAP) + v.vol * n / RULES.VOL_DIV : v.vol * n / RULES.VOL_DIV)); }
 function flushBuckets(now) {
   for (const [k, b] of fx.buckets) {
     if (now - b.t0 < 450) continue;
@@ -592,7 +592,7 @@ function previewVial(m, col) {
   }
   const items = [], table = PRE[m] || {};
   for (const k of Object.keys(tally)) { const rxs = table[k]; if (!rxs) continue; for (const r of rxs) if (!items.find(i => i.type === r)) items.push({ type: r, n: tally[k] }); }
-  for (const it of items) it.est = RX[it.type] ? Math.round(rxVals(it.type, R.mods).vol * clamp(it.n * 3, 3, 120) / 10 + rxVals(it.type, R.mods).trig) : 0;
+  for (const it of items) it.est = RX[it.type] ? Math.round(rxVals(it.type, R.mods).vol * clamp(it.n * 3, 3, 120) / RULES.VOL_DIV + rxVals(it.type, R.mods).trig) : 0;
   return { col, cy, half, items: items.slice(0, 3) };
 }
 function previewMatch(cx, cy) {

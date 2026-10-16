@@ -94,6 +94,23 @@ if (require.main === module) {
     }
     process.exit(0);
   }
+  if (mode === '--traits') { // per-trait contribution: gold lost if that reaction's row is removed from its ledger (counts the lamps it lit too)
+    const { RX, scoreLedger } = P, T = {}; let rounds = 0;
+    for (let k = 0; k < TARGETS.length; k++) for (const pol of ['smart', 'random']) for (let s = 1; s <= n; s++) {
+      const rr = mulberry32(s * 31 + k * 977 + 5);
+      const deck = START_DECK.slice(); for (let i = 0; i < k; i++) deck.push(POOL[(rr() * POOL.length) | 0]);
+      const mods = {}; for (let i = 0; i < Math.min(5, k); i++) mods[CHARMS[(rr() * CHARMS.length) | 0]] = true;
+      const R = playRound(s + k * 1000, pol, { tutorial: k === 0, deck, mods }).R; rounds++;
+      for (const L of R.closedLog) { const full = L.result.gold;
+        for (const x in L.counts) { const c = Object.assign({}, L.counts); delete c[x];
+          const tr = RX[x].trait, o = T[tr] || (T[tr] = { gold: 0, occ: 0, cells: 0, trig: 0 });
+          o.gold += full - scoreLedger(Object.assign({}, L, { counts: c }), mods).gold; o.occ++; o.cells += L.counts[x];
+          o.trig += (L.result.rows.find(r => r.type === x) || {}).trig || 0; } }
+    }
+    const tot = Object.values(T).reduce((a, o) => a + o.gold, 0);
+    for (const tr in T) { const o = T[tr]; console.log(tr.padEnd(9), '占總分', (o.gold / tot * 100).toFixed(0).padStart(3) + '%', '| 每回合', (o.gold / rounds).toFixed(0).padStart(4), '| 每次出現', (o.gold / o.occ).toFixed(0).padStart(4), '| 每100格', (o.gold / o.cells * 100).toFixed(1).padStart(6), '| 出現率/回合', (o.occ / rounds).toFixed(2)); }
+    process.exit(0);
+  }
   const t0 = Date.now();
   for (const tut of [true, false]) for (const pol of ['random', 'naive', 'smart']) {
     const res = [], idles = []; let fr = 0;

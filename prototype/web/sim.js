@@ -13,25 +13,25 @@
 
   // Elements: 0 fire 1 water 2 earth 3 air
   const EL = ["fire", "water", "earth", "air"];
-  // reaction table (V04_SPEC §3.2, single source). trig = trigger pts (once per ledger when n >= 3; burst: per event), vol = pts per 10 cells, el = elements lit
+  // reaction table (V04_SPEC §3.2, single source). trig = trigger pts (once per ledger when n >= 3; burst: per event, max RULES.BURST_CAP), vol = pts per 100 cells (RULES.VOL_DIV), el = elements lit
   // trait: burst 爆發 / sustain 持續 / chain 連鎖 / break 破壞 / residue 殘渣 / catalyst 觸媒
   const RX = {
-    burn:      { label: '燃燒', trait: 'sustain',  trig: 0,   vol: 4, el: [0] },
-    blueflame: { label: '藍焰', trait: 'sustain',  trig: 0,   vol: 6, el: [0] },
-    blast:     { label: '爆炸', trait: 'burst',    trig: 40,  vol: 0, el: [0, 3] },
-    quench:    { label: '淬熄', trait: 'chain',    trig: 5,   vol: 2, el: [1, 3] },
-    condense:  { label: '凝結', trait: 'catalyst', trig: 0,   vol: 1, el: [1] },
-    melt:      { label: '融冰', trait: 'catalyst', trig: 0,   vol: 2, el: [1] },
-    freeze:    { label: '結凍', trait: 'residue',  trig: 5,   vol: 2, el: [1] },
-    acidrain:  { label: '酸雨', trait: 'chain',    trig: 10,  vol: 3, el: [1] },
-    solidify:  { label: '凝岩', trait: 'residue',  trig: 20,  vol: 4, el: [2] },
-    vitrify:   { label: '熔玻', trait: 'residue',  trig: 15,  vol: 5, el: [2] },
-    dissolve:  { label: '溶蝕', trait: 'break',    trig: 5,   vol: 2, el: [2] },
-    bake:      { label: '燒陶', trait: 'residue',  trig: 10,  vol: 3, el: [2] },
-    bloom:     { label: '萌芽', trait: 'catalyst', trig: 5,   vol: 2, el: [2] },
-    boil:      { label: '沸騰', trait: 'sustain',  trig: 0,   vol: 2, el: [3] },
-    fume:      { label: '硫煙', trait: 'catalyst', trig: 0,   vol: 1, el: [3] },
-    lidpop:    { label: '爆蓋', trait: 'burst',    trig: 150, vol: 1, el: [3] },
+    burn:      { label: '燃燒', trait: 'sustain',  trig: 0,  vol: 2, el: [0] },
+    blueflame: { label: '藍焰', trait: 'sustain',  trig: 0,  vol: 3, el: [0] },
+    blast:     { label: '爆炸', trait: 'burst',    trig: 12, vol: 0, el: [0, 3] },
+    quench:    { label: '淬熄', trait: 'chain',    trig: 10, vol: 2, el: [1, 3] },
+    condense:  { label: '凝結', trait: 'catalyst', trig: 0,  vol: 1, el: [1] },
+    melt:      { label: '融冰', trait: 'catalyst', trig: 0,  vol: 2, el: [1] },
+    freeze:    { label: '結凍', trait: 'residue',  trig: 15, vol: 2, el: [1] },
+    acidrain:  { label: '酸雨', trait: 'chain',    trig: 12, vol: 2, el: [1] },
+    solidify:  { label: '凝岩', trait: 'residue',  trig: 20, vol: 3, el: [2] },
+    vitrify:   { label: '熔玻', trait: 'residue',  trig: 18, vol: 3, el: [2] },
+    dissolve:  { label: '溶蝕', trait: 'break',    trig: 10, vol: 2, el: [2] },
+    bake:      { label: '燒陶', trait: 'residue',  trig: 18, vol: 3, el: [2] },
+    bloom:     { label: '萌芽', trait: 'catalyst', trig: 8,  vol: 2, el: [2] },
+    boil:      { label: '沸騰', trait: 'sustain',  trig: 0,  vol: 2, el: [3] },
+    fume:      { label: '硫煙', trait: 'catalyst', trig: 0,  vol: 1, el: [3] },
+    lidpop:    { label: '爆蓋', trait: 'burst',    trig: 50, vol: 1, el: [3] },
   };
   const RXK = Object.keys(RX);            // index+1 is stored per cell as "produced by"
   const RXI = {}; RXK.forEach((k, i) => RXI[k] = i + 1);
@@ -283,7 +283,7 @@
       let best = 0, bn = -1; for (const [s, n] of tally) if (n > bn || (n === bn && s > best)) { best = s; bn = n; }
       S.lid = false;
       const gasN = S.gas;
-      // one burst event (trigger 150), volume = gas cells at the moment of the pop
+      // one burst event (trigger 50), volume = gas cells at the moment of the pop
       cS = best; cG = 2; cK = RXI.lidpop;
       S.lastEventFrame = S.frame;
       if (S.onEvent) S.onEvent('lidpop', 3 * W + (W >> 1), best, 2, 0, Math.max(1, gasN));
@@ -334,17 +334,19 @@
     POUR_AMOUNT: 1600, POUR_RATE: 26, STEPS: 3,
     LEDGER_QUIET: 60, LEDGER_MAX: 300, LEDGER_MAX_SUSTAIN: 600, MAX_OPEN: 3,
     DIMINISH_AT: 240, TRIG_MIN: 3,
+    VOL_DIV: 100,   // volume points are "per 100 effective cells" (V04_SPEC §4.2, 2026-10-17 ruling)
+    BURST_CAP: 5,   // burst trigger counts at most this many events per ledger
   };
 
   // per-reaction trigger / volume values after charms (V04_SPEC §4.4)
   function rxVals(type, mods) {
     mods = mods || {};
     let trig = RX[type].trig, vol = RX[type].vol;
-    if ((type === 'burn' || type === 'blueflame') && mods.pyro) vol += 3;
-    if (type === 'blast' && mods.demolition) trig += 40;
+    if ((type === 'burn' || type === 'blueflame') && mods.pyro) vol += 2;
+    if (type === 'blast' && mods.demolition) trig += 12;
     if (type === 'bloom' && mods.greenhouse) vol += 2;
     if (type === 'solidify' && mods.magma) trig += 20;
-    if (type === 'freeze' && mods.freezer) vol += 3;
+    if (type === 'freeze' && mods.freezer) vol += 2;
     if ((type === 'quench' || type === 'condense' || type === 'boil') && mods.tower) vol *= 3;
     if (type === 'lidpop' && mods.thickglass) { trig *= 2; vol *= 2; }
     return { trig, vol };
@@ -352,7 +354,7 @@
   const effCells = n => n <= RULES.DIMINISH_AT ? n : RULES.DIMINISH_AT + (n - RULES.DIMINISH_AT) / 2;
 
   // One ledger's gold (V04_SPEC §4.2). L = { counts: cells per type, evs: events per type, resN: destroyed residue cells per type, maxGen }.
-  // base = sum_k [ trigger_k + vol_k * eff(n_k) / 10 + vol_k * 2 * resN_k / 10 ]   (trigger: burst = per event; others once when n_k >= 3)
+  // base = sum_k [ trigger_k + vol_k * (eff(n_k) + 2 * resN_k) / VOL_DIV ]   (trigger: burst = per event up to BURST_CAP; others once when n_k >= 3)
   // mult = 1 + lit elements + (all four ? 2 : 0) + chain bonus (min(3, maxGen-1) if any chain-trait reaction) + glass charm
   function scoreLedger(L, mods) {
     mods = mods || {};
@@ -365,8 +367,8 @@
       if (!n) continue;
       const v = rxVals(k, mods), trait = RX[k].trait;
       const evs = (L.evs && L.evs[k]) || n, resN = (L.resN && L.resN[k]) || 0;
-      const trig = trait === 'burst' ? v.trig * evs : (n >= RULES.TRIG_MIN ? v.trig : 0);
-      const volRaw = v.vol * (effCells(n) + 2 * resN) / 10;
+      const trig = trait === 'burst' ? v.trig * Math.min(evs, RULES.BURST_CAP) : (n >= RULES.TRIG_MIN ? v.trig : 0);
+      const volRaw = v.vol * (effCells(n) + 2 * resN) / RULES.VOL_DIV;
       const vol = Math.round(volRaw);
       rows.push({ type: k, trait, n, evs, resN, trig, volRaw, vol, sub: trig + vol, halved: n > RULES.DIMINISH_AT });
       matter += trig + vol; trigSum += trig; volSum += vol;
@@ -483,8 +485,8 @@
     return R;
   }
 
-  // round targets (V04_SPEC §4.3): calibrated by `node bot.js 200 --rounds`; T1 = 0.6 x smart tutorial median, x1.4 per round, x1.6 into boss rounds
-  const TARGETS = [2400, 3400, 5400, 7600, 10600, 17000, 24000, 33000, 53000];
+  // round targets (V04_SPEC §4.3, 2026-10-17 ruling): calibrated with `node bot.js 60 --rounds`; T1 gives random-hand smart ~75% / random ~45%
+  const TARGETS = [250, 300, 400, 460, 540, 720, 820, 940, 1250];
   const api = { TARGETS, W, H, M, KIND, DEN, RX, RXK, EL, RULES, createSim, createRound, scoreLedger, rxVals, effCells, mulberry32, MUD_ROWS };
   if (typeof module !== 'undefined') module.exports = api; else root.PDSim = api;
 })(this);
