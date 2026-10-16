@@ -1,0 +1,20 @@
+{
+    "name": "ClaudeGame.UI",
+    "rootNamespace": "ClaudeGame.UI",
+    "references": [
+        "ClaudeGame.Core",
+        "ClaudeGame.Game",
+        "UnityEngine.UI",
+        "Unity.TextMeshPro",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
