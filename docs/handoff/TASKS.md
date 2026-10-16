@@ -18,7 +18,12 @@
 - [x] 構築深度與局外設計 → docs/design/DEPTH_v1.md
 - [x] 無文字 UI 規範 → docs/design/UI_NO_TEXT.md
 - [x] v0.3a 直屏無文字原型（UI_NO_TEXT §8，8 項）
-- [ ] v0.3b 構築版（DEPTH_v1 §6：地層、符文、瓶性、一局 16 回合）
+- [x] v0.4 設計規格 → docs/design/V04_SPEC.md（取代 v0.3b 範圍，5 批 B1–B5）
+- [ ] v0.4 B1 標籤與畫面骨架
+- [ ] v0.4 B2 計分改造
+- [ ] v0.4 B3 預測 UI 與圖鑑
+- [ ] v0.4 B4 一局結構
+- [ ] v0.4 B5 局外養成與符文
 - [ ] 範圍與排程（里程碑、上架時間表、Next Fest 目標）
 
 ## 階段 1：Unity 基礎建設
