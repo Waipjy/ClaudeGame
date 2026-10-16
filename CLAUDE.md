@@ -45,4 +45,4 @@
 ## 環境
 - 雲端工作區：`/home/claude/claudegame`（git clone），推送到 GitHub `Waipjy/ClaudeGame`。
 - 使用者電腦（Windows）：`C:\Users\waipj\Documents\ClaudeGame` 是本 repo 的 git clone；Unity 專案在 `C:\Users\waipj\Documents\ClaudeGame\ClaudeGame`（注意：專案資料夾名稱是 ClaudeGame，不是 Game）。
-- 雲端 session 透過桌面橋接讀寫一般檔案（不能寫 `.claude`、不能執行指令），透過 Unity MCP（`unity mcp`）操作編輯器。
+- 雲端 session 透過 Unity MCP 操作編輯器（約 150 個工具）；需要在電腦執行指令（git 等）時用 Unity MCP 的 `eval`，**務必照 `docs/tech/PC_BRIDGE.md` 的規則**，否則 Unity 會卡死。桌面橋接的檔案工具可讀寫一般檔案，但不能寫 `.claude`。

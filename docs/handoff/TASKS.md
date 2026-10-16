@@ -15,8 +15,8 @@
 - [ ] 範圍與排程（里程碑、上架時間表、Next Fest 目標）
 
 ## 階段 1：Unity 基礎建設
-- [!] 取得在使用者電腦執行指令的能力（目前桌面橋接只能讀寫檔案，無命令列）
-- [ ] 安裝 Unity 6 LTS、建立專案、加 Pipeline 套件
+- [x] 取得在使用者電腦執行指令的能力 → Unity MCP eval，見 docs/tech/PC_BRIDGE.md
+- [x] 安裝 Unity 6、建立專案 ClaudeGame/、加 Pipeline 套件、推上 GitHub
 - [ ] 落沙模擬核心（Burst/Jobs 或 Compute Shader）
 
 ## 階段 2 之後
