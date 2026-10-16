@@ -17,6 +17,11 @@
 ## 階段 1：Unity 基礎建設
 - [x] 取得在使用者電腦執行指令的能力 → Unity MCP eval，見 docs/tech/PC_BRIDGE.md
 - [x] 安裝 Unity 6、建立專案 ClaudeGame/、加 Pipeline 套件、推上 GitHub
+- [x] Player Settings（PC Steam：IL2CPP、.NET Std 2.1、Linear、Fullscreen Window、x64、新 Input System、splash 關）→ docs/tech/PROJECT_SETUP.md
+- [x] Quality 縮成 Low/Medium/High（VSync 開）、確認 URP 2D Renderer、GraphicsSettings 補上預設 RP
+- [x] Assets/_Project 目錄結構＋asmdef（Core 純 C#／Game／UI／Editor／Tests.EditMode），範例測試 6/6 通過
+- [x] Boot.unity（build index 0，刪 SampleScene）：CameraFit（16:9 參考區，Expand/Letterbox）、Overlay Canvas 1920×1080 match 0.5、InputSystemUIInputModule、GameBootstrap；由 BootSceneBuilder 產生，16:9/16:10/21:9 截圖確認
+- [ ] Pixel Perfect 與否、CJK 字型、Steamworks.NET、Steam Deck 實測、IL2CPP build 實測（見 PROJECT_SETUP.md §6）
 - [ ] 落沙模擬核心（Burst/Jobs 或 Compute Shader）
 
 ## 階段 2 之後
