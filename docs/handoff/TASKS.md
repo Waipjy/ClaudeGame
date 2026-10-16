@@ -11,7 +11,10 @@
 - [~] 等 HSU 試玩回饋
 - [x] 各職能知識包 skill（.claude/skills/）
 - [ ] 平衡模擬原型（sim/，Python 離線跑材料×催化劑組合）
-- [ ] 根據試玩回饋寫 GDD v1 → docs/design/GDD.md
+- [x] 根據試玩回饋寫 GDD v1 → docs/design/GDD_v1.md
+- [x] v0.2 瀏覽器原型（GDD §8 八項，含刻線渲染）→ prototype/web/，自主試玩紀錄 docs/design/playtest_log_v02.md
+- [ ] v0.2 發布 artifact 給 HSU 試玩（4 題見 docs/design/playtests/2026-10-16_v02.md）
+- [ ] 整局 bot（含商店）調第 2 回合後金線與硫磺強度
 - [ ] 範圍與排程（里程碑、上架時間表、Next Fest 目標）
 
 ## 階段 1：Unity 基礎建設

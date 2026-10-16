@@ -1,186 +1,239 @@
-<title>Pour Decisions 原型</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>爆鍋煉金 原型</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Noto+Serif+TC:wght@400;600;900&display=swap">
 <style>
-/* Layout: night chemistry bench — beaker (stage) left, lab readout right, hand of vials below the beaker. Single dark look by choice. */
+/* Direction: 17th-c. alchemical engraving, hand-coloured. Paper, bistre ink, a few pigment washes.
+   Pigments: vermilion (fire), azurite (water), terre-verte (earth), smalt (air), gold leaf (score). */
 :root {
-  color-scheme: dark;
-  --bg: #1b1520;
-  --bench: #2e222f;
-  --panel: #3e3546;
-  --line: #625565;
-  --fg: #e6ecdf;
-  --dim: #9babb2;
-  --chips: #4d9be6;
-  --mult: #e83b3b;
-  --gold: #f9c22b;
-  --good: #1ebc73;
-  --f-display: "Silkscreen", ui-monospace, "Courier New", monospace;
-  --f-body: "Noto Sans TC", system-ui, "Microsoft JhengHei", "PingFang TC", sans-serif;
+  color-scheme: light;
+  --paper: #e8dcc0;
+  --paper-2: #dccdab;
+  --paper-3: #cbb88f;
+  --ink: #2a1c12;
+  --ink-2: #5a4532;
+  --ink-3: #8a7458;
+  --fire: #b8381e;
+  --water: #2e5e8c;
+  --earth: #5e6a2a;
+  --air: #6a5f8e;
+  --gold: #a87814;
+  --gold-hi: #e8c35a;
+  --f-latin: "IM Fell English", "Noto Serif TC", Georgia, serif;
+  --f-sc: "IM Fell English SC", "IM Fell English", Georgia, serif;
+  --f-body: "Noto Serif TC", "IM Fell English", "PMingLiU", "Songti TC", serif;
+  --f-num: "Noto Serif TC", Georgia, serif;
 }
+.num, .goalbox .big, .card .r .n, .card .r .s, .card .sum span:nth-child(even), .card .gold .v, .money, .item .pr, .tool .tc, .hist div span:last-child { font-family: var(--f-num) !important; font-variant-numeric: lining-nums tabular-nums; }
 [hidden] { display: none !important; }
-html, body { height: 100%; }
-body { background: var(--bg); color: var(--fg); font-family: var(--f-body); }
-#app {
-  max-width: 1120px; margin: 0 auto;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 16px 24px;
-  display: grid; gap: 16px;
-  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 4; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 55%, rgba(90,60,30,.22) 100%); }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background-color: #ddcfae; background-attachment: fixed; background-position: 0 0;
+  color: var(--ink); font-family: var(--f-body); overflow: hidden;
 }
-@media (max-width: 820px) { #app { grid-template-columns: minmax(0, 1fr); } }
-header.top { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
-h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(20px, 3vw, 28px); letter-spacing: .04em; margin: 0; color: var(--gold); }
-h1 small { font-family: var(--f-body); font-weight: 400; font-size: 13px; color: var(--dim); letter-spacing: 0; margin-left: 8px; }
-.top-actions { display: flex; gap: 8px; }
-button { font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer; }
-button:hover:not(:disabled) { border-color: var(--dim); }
-button:focus-visible, .card:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-button:disabled { opacity: .45; cursor: not-allowed; }
-button.primary { background: var(--gold); color: #2e222f; border-color: var(--gold); font-weight: 700; }
+#app {
+  height: 100vh; display: grid; gap: 8px 16px;
+  grid-template-columns: var(--cw, 900px) minmax(300px, 500px);
+  grid-template-rows: auto auto 1fr;
+  padding: 8px 16px 10px; width: fit-content; max-width: 100vw; margin: 0 auto;
+}
+header.top { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--ink-3); padding-bottom: 6px; }
+.brand { display: flex; align-items: baseline; gap: 12px; }
+h1 { margin: 0; font-family: var(--f-body); font-weight: 900; font-size: 24px; letter-spacing: .12em; }
+h1 .lat { font-family: var(--f-sc); font-weight: 400; font-size: 17px; letter-spacing: .06em; color: var(--ink-2); margin-left: 6px; }
+.stagebar { font-family: var(--f-body); font-size: 14px; color: var(--ink-2); display: flex; align-items: baseline; gap: 10px; }
+.stagebar b { font-weight: 900; color: var(--ink); font-size: 16px; }
+.stagebar .lat { font-family: var(--f-latin); font-style: italic; }
+.top-actions { display: flex; gap: 6px; }
+button { font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--ink-2); border-radius: 2px; padding: 5px 12px; cursor: pointer; }
+button:hover:not(:disabled) { background: rgba(90, 69, 50, .1); }
+button:focus-visible { outline: 2px solid var(--fire); outline-offset: 2px; }
+button:disabled { opacity: .4; cursor: not-allowed; }
+button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 600; }
+button.primary:hover:not(:disabled) { background: #48331f; }
+kbd { font-family: var(--f-num); font-size: .85em; border: 1px solid var(--ink-3); border-bottom-width: 2px; padding: 0 4px; border-radius: 2px; color: var(--ink-2); background: rgba(255,255,255,.25); }
 
-.stage { display: grid; gap: 12px; min-width: 0; }
-.beaker-wrap { position: relative; background: var(--bench); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
-canvas#view { display: block; width: 100%; aspect-ratio: 5 / 4; image-rendering: pixelated; border-radius: 4px; touch-action: none; cursor: crosshair; background: #2e222f; }
-.beaker-hint { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); font-size: 13px; color: var(--dim); pointer-events: none; text-align: center; background: rgba(27,21,32,.7); padding: 4px 10px; border-radius: 4px; }
-.popup { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.6); opacity: 0; font-family: var(--f-display); font-size: clamp(22px, 4vw, 40px); font-weight: 700; color: var(--gold); text-shadow: 0 2px 0 #2e222f, 0 0 18px rgba(249,194,43,.5); pointer-events: none; transition: transform .35s cubic-bezier(.2,1.6,.4,1), opacity .2s; white-space: nowrap; }
-.popup.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+.stage { grid-column: 1; grid-row: 2; position: relative; justify-self: start; }
+canvas#view { display: block; touch-action: none; cursor: crosshair; }
+.under { grid-column: 1; grid-row: 3; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; min-height: 0; }
+.hand { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.vial { position: relative; display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 2px 8px; text-align: left; padding: 6px 8px; height: 100px; overflow: hidden; align-content: start;
+  background: rgba(244, 236, 214, .55); border: 1px solid var(--ink-3); transition: transform .12s, box-shadow .12s, border-color .12s; }
+.vial canvas { grid-row: 1 / span 3; width: 34px; height: 60px; }
+.vial .nm { font-weight: 900; font-size: 17px; line-height: 1.2; }
+.vial .nm .k { float: right; font-weight: 400; }
+.vial .ds { font-size: 12.5px; line-height: 1.45; color: var(--ink-2); }
+.vial:hover:not(:disabled) { transform: translateY(-2px); }
+.vial.sel { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink), 4px 4px 0 rgba(42,28,18,.25); transform: translateY(-4px); background: rgba(250, 244, 226, .85); }
+.vial.new { animation: drawin .35s ease-out; }
+@keyframes drawin { from { transform: translateY(18px); opacity: 0; } }
+.vial.empty { border-style: dashed; opacity: .5; height: 100px; display: grid; place-items: center; font-size: 13px; color: var(--ink-3); }
+.decknote { grid-column: 1 / -1; font-size: 12px; line-height: 16px; height: 16px; overflow: hidden; color: var(--ink-3); margin-top: 2px; }
+.tools { display: grid; gap: 6px; min-width: 150px; align-content: start; }
+.tool { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 10px; height: 34px; text-align: left; background: rgba(244, 236, 214, .55); }
+.tool .tn { font-weight: 900; }
+.tool .tc { font-family: var(--f-latin); font-size: 18px; }
+.tool.on { background: var(--ink); color: var(--paper); }
+.tool.on kbd { color: var(--paper); border-color: var(--paper-3); background: transparent; }
+.tool.pulse { animation: pulse 1.1s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 4px rgba(184, 56, 30, .35); border-color: var(--fire); } }
 
-.hand { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-.card { background: var(--panel); border: 2px solid var(--line); border-radius: 8px; padding: 10px; text-align: left; display: grid; gap: 6px; align-content: start; min-height: 128px; transition: transform .12s, border-color .12s; }
-.card:hover:not(:disabled) { transform: translateY(-3px); }
-.card.sel { border-color: var(--gold); transform: translateY(-6px); box-shadow: 0 6px 0 rgba(0,0,0,.3); }
-.card .sw { height: 28px; border-radius: 4px; }
-.card .nm { font-weight: 700; font-size: 16px; }
-.card .ds { font-size: 12px; color: var(--dim); line-height: 1.45; }
-@media (max-width: 520px) { .hand { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+aside.ledger { grid-column: 2; grid-row: 2 / span 2; min-width: 0; display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 8px; min-height: 0; }
+.goalbox { border: 1px solid var(--ink-3); background: rgba(244, 236, 214, .5); padding: 8px 12px; display: grid; gap: 4px; }
+.goalbox .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.goalbox .big { font-size: 28px; font-weight: 600; line-height: 1; color: var(--gold); }
+.goalbox .big small { font-size: 16px; color: var(--ink-2); }
+.goalbox .meta { font-size: 13px; color: var(--ink-2); }
+.formula { font-size: 12.5px; color: var(--ink-2); }
+.formula b { color: var(--ink); }
+h2 { margin: 0; font-size: 13px; letter-spacing: .3em; color: var(--ink-2); font-weight: 600; display: flex; justify-content: space-between; }
+.cards { display: flex; flex-direction: column; gap: 8px; overflow: hidden; min-height: 0; }
+.card { position: relative; border: 1px solid var(--ink-2); background: rgba(247, 240, 222, .82); padding: 7px 10px 8px 14px; display: grid; gap: 3px; font-size: 13px; transition: opacity .4s, transform .4s; }
+.card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--c); opacity: .85; }
+.card .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.card .ttl { font-weight: 900; font-size: 15px; }
+.card .st { font-size: 12px; color: var(--ink-3); }
+.card .rws { display: grid; gap: 1px; }
+.card .r { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto auto; gap: 6px; align-items: center; font-variant-numeric: tabular-nums; }
+.card .r .n { color: var(--ink-3); font-family: var(--f-latin); }
+.card .r .s { font-family: var(--f-latin); min-width: 56px; text-align: right; }
+.card .r.half .n::after { content: " ½"; color: var(--fire); }
+.card .r.hl { background: rgba(232, 195, 90, .35); }
+.card .sum { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 1px 8px; border-top: 1px solid var(--ink-3); padding-top: 4px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.card .sum span:nth-child(even) { font-family: var(--f-latin); text-align: right; }
+.card .sum .hl { background: rgba(232, 195, 90, .35); }
+.card .els { display: inline-flex; gap: 2px; vertical-align: middle; margin-left: 4px; }
+.card .gold { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px double var(--ink-2); padding-top: 3px; margin-top: 2px; }
+.card .gold .v { font-family: var(--f-latin); font-size: 24px; color: var(--gold); }
+.card .gold .v.pop { animation: goldpop .5s ease-out; }
+@keyframes goldpop { 0% { transform: scale(1.5); } 100% { transform: scale(1); } }
+.card.closed { opacity: .92; }
+.card.mini { padding: 5px 10px 5px 14px; }
+.card.mini .rws, .card.mini .sum, .card.mini .gold { display: none; }
+.hist { max-height: 9.5em; overflow: hidden; }
+.card .empty { color: var(--ink-3); font-style: italic; }
+.hist { font-size: 12.5px; color: var(--ink-2); display: grid; gap: 2px; border-top: 1px solid var(--ink-3); padding-top: 4px; }
+.hist div { display: flex; justify-content: space-between; gap: 8px; }
+.hist div span:last-child { color: var(--gold); }
+.elsym { width: 14px; height: 14px; display: inline-block; vertical-align: -2px; }
 
-aside.readout { display: grid; gap: 12px; align-content: start; min-width: 0; }
-.box { background: var(--bench); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; }
-.box h2 { margin: 0; font-size: 12px; letter-spacing: .12em; color: var(--dim); font-weight: 700; }
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.stat { display: grid; gap: 2px; }
-.stat .k { font-size: 12px; color: var(--dim); }
-.stat .v { font-family: var(--f-display); font-size: 22px; font-variant-numeric: tabular-nums; }
-.progress { height: 10px; background: #2a2030; border-radius: 5px; overflow: hidden; border: 1px solid var(--line); }
-.progress > i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .4s; }
-.calc { display: flex; align-items: stretch; gap: 8px; font-family: var(--f-display); font-variant-numeric: tabular-nums; }
-.calc .chips, .calc .mult { flex: 1; text-align: center; border-radius: 6px; padding: 8px 4px; font-size: 26px; font-weight: 700; color: #fff; }
-.calc .chips { background: var(--chips); }
-.calc .mult { background: var(--mult); }
-.calc .x { align-self: center; font-size: 22px; color: var(--dim); }
-.bump { animation: bump .25s; }
-@keyframes bump { 50% { transform: scale(1.12); } }
-.rx { display: grid; gap: 4px; font-size: 13px; max-height: 210px; overflow: auto; }
-.rx .row { display: grid; grid-template-columns: 12px 1fr auto auto; gap: 8px; align-items: center; }
-.rx .dot { width: 10px; height: 10px; border-radius: 2px; }
-.rx .n { font-variant-numeric: tabular-nums; color: var(--dim); }
-.rx .p { font-variant-numeric: tabular-nums; color: var(--chips); min-width: 48px; text-align: right; }
-.rx .empty { color: var(--dim); }
-.cats { display: grid; gap: 6px; }
-.cat { font-size: 13px; padding: 8px 10px; background: var(--panel); border-radius: 6px; border-left: 3px solid var(--gold); }
-.cat b { display: block; font-size: 14px; }
-.cat span { color: var(--dim); }
-.deck { font-size: 13px; color: var(--dim); display: flex; flex-wrap: wrap; gap: 6px; }
-.deck i { font-style: normal; display: inline-flex; align-items: center; gap: 4px; background: var(--panel); padding: 2px 8px; border-radius: 10px; }
-.deck i::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--c); }
+svg#links { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 5; }
+.note { position: fixed; z-index: 15; max-width: 300px; background: #f6eed6; border: 1px solid var(--ink); padding: 8px 12px 9px; font-size: 14px; line-height: 1.55; box-shadow: 3px 3px 0 rgba(42, 28, 18, .2); pointer-events: none; transition: opacity .25s; }
+.note::before { content: "師父批注"; display: block; font-size: 11px; letter-spacing: .25em; color: var(--fire); margin-bottom: 2px; }
+.note b { color: var(--fire); }
+.note .arr { position: absolute; width: 12px; height: 12px; background: #f6eed6; border: 1px solid var(--ink); transform: rotate(45deg); }
+.toast { position: fixed; z-index: 16; left: 50%; transform: translateX(-50%); top: 64px; background: var(--ink); color: var(--paper); padding: 6px 14px; font-size: 14px; pointer-events: none; opacity: 0; transition: opacity .2s; }
+.toast.show { opacity: 1; }
 
-.overlay { position: fixed; inset: 0; background: rgba(15,11,18,.82); display: grid; place-items: center; padding: 16px; z-index: 20; }
-.sheet { background: var(--bench); border: 1px solid var(--line); border-radius: 12px; padding: 22px; width: min(720px, 100%); max-height: calc(100% - 32px); overflow: auto; display: grid; gap: 16px; }
-.sheet h3 { margin: 0; font-family: var(--f-display); font-size: 24px; color: var(--gold); }
-.sheet p { margin: 0; line-height: 1.7; color: var(--fg); max-width: 62ch; }
-.sheet .muted { color: var(--dim); font-size: 13px; }
+.overlay { position: fixed; inset: 0; background: rgba(60, 44, 28, .45); display: grid; place-items: center; padding: 16px; z-index: 30; }
+.sheet { background: var(--paper); background-image: radial-gradient(ellipse at 50% 30%, #f1e7cf 0%, #e3d4b2 75%, #d2bf96 100%); border: 1px solid var(--ink); outline: 1px solid var(--ink-3); outline-offset: -7px; padding: 26px 30px; width: min(760px, 100%); max-height: calc(100% - 32px); overflow: auto; display: grid; gap: 14px; box-shadow: 6px 8px 0 rgba(42, 28, 18, .25); }
+.sheet h3 { margin: 0; font-weight: 900; font-size: 26px; letter-spacing: .1em; }
+.sheet h3 .lat { font-family: var(--f-sc); font-weight: 400; font-size: 18px; color: var(--ink-2); margin-left: 8px; letter-spacing: .04em; }
+.sheet p { margin: 0; line-height: 1.75; max-width: 62ch; }
+.sheet .muted { color: var(--ink-2); font-size: 14px; }
+.sheet .hook { font-size: 20px; font-weight: 600; }
+.howto { display: grid; gap: 6px; margin: 0; padding-left: 22px; line-height: 1.7; }
 .shop { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-@media (max-width: 520px) { .shop { grid-template-columns: minmax(0,1fr); } }
-.item { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 6px; text-align: left; }
-.item .tag { font-size: 11px; letter-spacing: .1em; color: var(--dim); }
-.item .nm { font-weight: 700; }
-.item .ds { font-size: 13px; color: var(--dim); line-height: 1.5; }
-.item .pr { font-family: var(--f-display); color: var(--gold); }
+.item { border: 1px solid var(--ink-2); background: rgba(250, 244, 228, .6); padding: 10px 12px; display: grid; gap: 4px; text-align: left; }
+.item .tag { font-size: 11px; letter-spacing: .2em; color: var(--ink-3); }
+.item .nm { font-weight: 900; font-size: 17px; }
+.item .ds { font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+.item .pr { font-family: var(--f-latin); font-size: 18px; color: var(--gold); }
 .item.bought { opacity: .35; }
+.item.rare { border-color: var(--fire); }
 .row-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
-.money { font-family: var(--f-display); font-size: 22px; color: var(--gold); }
-.howto { display: grid; gap: 8px; margin: 0; padding-left: 20px; line-height: 1.7; }
-@media (prefers-reduced-motion: reduce) { .card, .popup, .progress > i { transition: none; } .bump { animation: none; } }
+.money { font-family: var(--f-latin); font-size: 26px; color: var(--gold); }
+.arc { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; }
+.arc i { font-style: normal; border: 1px solid var(--ink-3); padding: 1px 8px; background: rgba(250,244,228,.5); }
+@media (prefers-reduced-motion: reduce) { .vial, .card { transition: none; } .tool.pulse, .vial.new, .card .gold .v.pop { animation: none; } }
 </style>
-
+</head>
+<body>
 <div id="app">
   <header class="top">
-    <h1>POUR DECISIONS<small>落沙煉金 原型 v0.1</small></h1>
+    <div class="brand"><h1>爆鍋煉金<span class="lat">Pour Decisions</span></h1></div>
+    <div class="stagebar" id="stagebar"></div>
     <div class="top-actions">
-      <button id="btnSound" type="button" aria-pressed="false">音效：關</button>
+      <button id="btnSound" type="button" aria-pressed="false">音效 關</button>
       <button id="btnHelp" type="button">玩法</button>
       <button id="btnRestart" type="button">重新開始</button>
     </div>
   </header>
 
-  <section class="stage">
-    <div class="beaker-wrap">
-      <canvas id="view" width="640" height="512" aria-label="燒杯：在這裡按住倒料"></canvas>
-      <div class="beaker-hint" id="hint">先選一瓶材料，再在燒杯上按住倒料</div>
-      <div class="popup" id="popup"></div>
-    </div>
-    <div class="hand" id="hand"></div>
+  <section class="stage" id="stage">
+    <canvas id="view" aria-label="燒杯：選一瓶材料後在這裡按住倒出；右鍵點火柴"></canvas>
   </section>
 
-  <aside class="readout">
-    <div class="box">
-      <h2>第 <span id="roundNo">1</span> / 8 回合</h2>
-      <div class="stats">
-        <div class="stat"><span class="k">目標</span><span class="v" id="target">0</span></div>
-        <div class="stat"><span class="k">本回合得分</span><span class="v" id="score">0</span></div>
-        <div class="stat"><span class="k">剩餘倒料</span><span class="v" id="pours">4</span></div>
-      </div>
-      <div class="progress"><i id="prog"></i></div>
+  <section class="under">
+    <div>
+      <div class="hand" id="hand"></div>
+      <div class="decknote" id="decknote"></div>
     </div>
-    <div class="box">
-      <h2>這一倒</h2>
-      <div class="calc"><div class="chips" id="chips">0</div><div class="x">×</div><div class="mult" id="mult">1</div></div>
-      <div class="rx" id="rx"><div class="empty">還沒有反應。每種不同的反應會讓倍率 +1。</div></div>
+    <div class="tools">
+      <button class="tool" id="tMatch" type="button" title="點火：之後在燒杯上點一下（或直接右鍵）"><span><span class="tn">火柴</span> <kbd>F</kbd>/<kbd>右鍵</kbd></span><span class="tc" id="matchN">2</span></button>
+      <button class="tool" id="tLid" type="button" title="蓋上蓋子：氣體累積壓力，滿了就爆蓋"><span><span class="tn">蓋子</span> <kbd>空白鍵</kbd></span><span class="tc" id="lidState">開</span></button>
+      <button class="tool" id="tSeal" type="button" title="立刻結算所有帳本，結束這一回合"><span><span class="tn">封瓶</span> <kbd>Enter</kbd></span><span class="tc">⊗</span></button>
     </div>
-    <div class="box">
-      <h2>催化劑 <span id="catCount">0</span>/5</h2>
-      <div class="cats" id="cats"><div class="muted">還沒有。過關後可以在商店購買。</div></div>
+  </section>
+
+  <aside class="ledger">
+    <div class="goalbox">
+      <div class="row"><span class="big" id="goldNow">0<small> / 0 金</small></span><span class="meta" id="poursLeft"></span></div>
+      <div class="formula">每一倒開一本帳：<b>物質</b>（反應×點數）× <b>元素</b>（1＋點亮的火水土氣＋連鎖）× <b>秘方</b>。</div>
     </div>
-    <div class="box">
-      <h2>牌組（<span id="deckSize">0</span> 瓶）</h2>
-      <div class="deck" id="deck"></div>
-    </div>
+    <h2><span>帳本</span><span id="arcN"></span></h2>
+    <div class="cards" id="cards"></div>
   </aside>
 </div>
-
+<svg id="links" aria-hidden="true"></svg>
+<div class="note" id="note" hidden><span id="noteText"></span><i class="arr" id="noteArr"></i></div>
+<div class="toast" id="toast"></div>
 <div class="overlay" id="overlay" hidden></div>
 
 <script>
-// Pour Decisions — falling-sand simulation core (prototype). Pure, deterministic given seed.
-// Used by the browser prototype (inlined) and by node for headless balance tests.
+// Pour Decisions《爆鍋煉金》— falling-sand simulation core + round rules (prototype v0.2).
+// Pure and deterministic given seed + inputs. Used by the browser prototype (inlined) and by node (tests / bots).
 (function (root) {
-  const W = 80, H = 64;
-  const M = { E:0, SAND:1, WATER:2, OIL:3, FIRE:4, LAVA:5, STONE:6, STEAM:7, ACID:8, POWDER:9, ICE:10, GLASS:11, SEED:12, PLANT:13, SMOKE:14, WALL:15, EMBER:16 };
-  const KIND = [];   // 0 empty 1 powder 2 liquid 3 gas 4 solid
-  const DEN = [];
+  const W = 160, H = 128;
+  const M = { E:0, SAND:1, WATER:2, OIL:3, FIRE:4, LAVA:5, STONE:6, STEAM:7, ACID:8, POWDER:9, ICE:10, GLASS:11,
+              SEED:12, PLANT:13, SMOKE:14, WALL:15, EMBER:16, MUD:17, SULFUR:18, FUME:19 };
+  const KIND = [], DEN = [];  // kind: 0 empty 1 powder 2 liquid 3 gas 4 solid
   function def(id, kind, den) { KIND[id] = kind; DEN[id] = den; }
   def(M.E,0,0); def(M.SAND,1,6); def(M.WATER,2,3); def(M.OIL,2,2); def(M.FIRE,3,0.2);
   def(M.LAVA,2,5); def(M.STONE,4,9); def(M.STEAM,3,0.1); def(M.ACID,2,3.5); def(M.POWDER,1,5.5);
-  def(M.ICE,1,4); def(M.GLASS,4,9); def(M.SEED,1,5); def(M.PLANT,4,9); def(M.SMOKE,3,0.05); def(M.WALL,4,99); def(M.EMBER,1,1);
+  def(M.ICE,1,4); def(M.GLASS,4,9); def(M.SEED,1,5); def(M.PLANT,4,9); def(M.SMOKE,3,0.05); def(M.WALL,4,99);
+  def(M.EMBER,1,1); def(M.MUD,1,7); def(M.SULFUR,1,2.5); def(M.FUME,3,0.08);
 
-  // reaction types: id -> base points
+  // Elements: 0 fire 1 water 2 earth 3 air
+  const EL = ["fire", "water", "earth", "air"];
+  // reaction types — pts = base 物質 per event, el = elements lit (GDD §4)
   const RX = {
-    burn:     { pts: 2 },  // 燃燒
-    quench:   { pts: 3 },  // 淬熄
-    solidify: { pts: 8 },  // 凝岩
-    dissolve: { pts: 3 },  // 溶蝕
-    blast:    { pts: 12 }, // 爆炸
-    vitrify:  { pts: 6 },  // 熔玻
-    melt:     { pts: 3 },  // 融冰
-    freeze:   { pts: 2 },  // 結凍
-    bloom:    { pts: 3 },  // 萌芽
-    condense: { pts: 1 },  // 凝結
-    boil:     { pts: 2 },  // 沸騰
+    burn:      { pts: 2,  el: [0] },     // 燃燒
+    blueflame: { pts: 3,  el: [0] },     // 藍焰（硫磺）
+    blast:     { pts: 12, el: [0, 3] },  // 爆炸
+    quench:    { pts: 3,  el: [1, 3] },  // 淬熄
+    condense:  { pts: 1,  el: [1] },     // 凝結
+    melt:      { pts: 3,  el: [1] },     // 融冰
+    freeze:    { pts: 2,  el: [1] },     // 結凍
+    acidrain:  { pts: 2,  el: [1] },     // 酸雨（硫煙＋水/蒸氣）
+    solidify:  { pts: 8,  el: [2] },     // 凝岩
+    vitrify:   { pts: 6,  el: [2] },     // 熔玻
+    dissolve:  { pts: 3,  el: [2] },     // 溶蝕
+    bake:      { pts: 4,  el: [2] },     // 燒陶（泥＋熔岩）
+    bloom:     { pts: 3,  el: [2] },     // 萌芽
+    boil:      { pts: 2,  el: [3] },     // 沸騰
+    fume:      { pts: 1,  el: [3] },     // 硫煙
+    lidpop:    { pts: 30, el: [3] },     // 爆蓋
   };
+  const RXK = Object.keys(RX);            // index+1 is stored per cell as "produced by"
+  const RXI = {}; RXK.forEach((k, i) => RXI[k] = i + 1);
 
   function mulberry32(a) {
     return function () {
@@ -191,113 +244,160 @@ aside.readout { display: grid; gap: 12px; align-content: start; min-width: 0; }
     };
   }
 
+  const MUD_ROWS = 8;
+
   function createSim(seed, mods) {
     const N = W * H;
     const t = new Uint8Array(N), life = new Uint8Array(N), shade = new Uint8Array(N),
-          stamp = new Uint16Array(N), flash = new Uint8Array(N);
+          stamp = new Uint16Array(N), flash = new Uint8Array(N),
+          src = new Uint8Array(N), gen = new Uint8Array(N), rk = new Uint8Array(N);
     const rnd = mulberry32(seed >>> 0);
-    const S = { W, H, t, life, shade, flash, frame: 0, activity: 0, counts: {}, mods: mods || {}, onEvent: null };
+    const S = { W, H, t, life, shade, flash, src, gen, rk, frame: 0, gas: 0, lid: false, lidMax: 1100,
+                mods: mods || {}, onEvent: null, onLidPop: null, lastEventFrame: 0 };
 
     function reset() {
-      t.fill(0); life.fill(0); flash.fill(0);
+      t.fill(0); life.fill(0); flash.fill(0); src.fill(0); gen.fill(0); rk.fill(0);
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const p = y * W + x;
         if (x === 0 || x === W - 1 || y === H - 1) t[p] = M.WALL;
+        else if (y >= H - 1 - MUD_ROWS) t[p] = M.MUD;
         shade[p] = (rnd() * 255) | 0;
       }
-      S.counts = {};
     }
     S.reset = reset;
-    S.resetCounts = () => { S.counts = {}; };
 
-    function emit(type, p) {
+    // ---- attribution context (GDD §3.2) ----
+    let cS = 0, cG = 0, cK = 0;
+    function ev(type, p, q) {
+      const sp = src[p], sq = q >= 0 ? src[q] : sp;
+      const s = sp > sq ? sp : sq;
+      const other = sp > sq ? sq : sp;
+      const k = RXI[type];
+      let g = rk[p] ? gen[p] + (rk[p] !== k ? 1 : 0) : 0;
+      if (q >= 0) { const g2 = rk[q] ? gen[q] + (rk[q] !== k ? 1 : 0) : 0; if (g2 > g) g = g2; }
+      if (g < 1) g = 1; if (g > 7) g = 7;
+      cS = s; cG = g; cK = k;
+      const stale = q >= 0 && other > 0 && s - other >= 2 ? 1 : 0;
       S.lastEventFrame = S.frame;
-      S.counts[type] = (S.counts[type] || 0) + 1;
       flash[p] = 255;
-      if (S.onEvent) S.onEvent(type, p);
+      if (S.onEvent) S.onEvent(type, q >= 0 ? q : p, s, g, stale);
     }
-    function set(p, m, l) { t[p] = m; life[p] = l || 0; stamp[p] = S.frame & 0xffff; S.activity++; }
+    function setP(p, m, l) { t[p] = m; life[p] = l || 0; src[p] = cS; gen[p] = cG; rk[p] = cK; stamp[p] = S.frame & 0xffff; }
     function swap(p, q) {
-      const a = t[p]; t[p] = t[q]; t[q] = a;
-      const b = life[p]; life[p] = life[q]; life[q] = b;
-      const c = shade[p]; shade[p] = shade[q]; shade[q] = c;
+      let a = t[p]; t[p] = t[q]; t[q] = a;
+      a = life[p]; life[p] = life[q]; life[q] = a;
+      a = shade[p]; shade[p] = shade[q]; shade[q] = a;
+      a = src[p]; src[p] = src[q]; src[q] = a;
+      a = gen[p]; gen[p] = gen[q]; gen[q] = a;
+      a = rk[p]; rk[p] = rk[q]; rk[q] = a;
       stamp[q] = S.frame & 0xffff; stamp[p] = S.frame & 0xffff;
-      S.activity++;
     }
+    function clearCell(p) { t[p] = M.E; life[p] = 0; src[p] = 0; gen[p] = 0; rk[p] = 0; }
     function gasLife(m) {
       if (m === M.FIRE) return 12 + ((rnd() * 18) | 0);
-      if (m === M.STEAM) return 60 + ((rnd() * 80) | 0);
-      if (m === M.SMOKE) return 40 + ((rnd() * 40) | 0);
+      if (m === M.STEAM) return 90 + ((rnd() * 90) | 0);
+      if (m === M.SMOKE) return 50 + ((rnd() * 50) | 0);
+      if (m === M.FUME) return 110 + ((rnd() * 80) | 0);
       return 0;
     }
 
-    function explode(cx, cy) {
-      const r = 4 + (S.mods.demolition ? 2 : 0);
+    function explode(cx, cy, r0) {
+      const r = (r0 || 7) + (S.mods.demolition ? 3 : 0);
       for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-        if (dx * dx + dy * dy > r * r) continue;
+        const d2 = dx * dx + dy * dy;
+        if (d2 > r * r) continue;
         const x = cx + dx, y = cy + dy;
         if (x < 1 || x >= W - 1 || y < 0 || y >= H - 1) continue;
         const q = y * W + x, m = t[q];
         if (m === M.WALL) continue;
-        if (m === M.WATER) { set(q, M.STEAM, gasLife(M.STEAM)); continue; }
-        if (dx * dx + dy * dy <= 4 || m === M.POWDER || m === M.OIL || m === M.PLANT || m === M.SEED || m === M.E)
-          set(q, M.FIRE, gasLife(M.FIRE));
-        else if ((m === M.STONE || m === M.GLASS || m === M.ICE) && rnd() < 0.5) set(q, M.E);
+        if (m === M.WATER) { setP(q, M.STEAM, gasLife(M.STEAM)); continue; }
+        if (d2 <= 9 || m === M.POWDER || m === M.OIL || m === M.PLANT || m === M.SEED || m === M.SULFUR || m === M.E || KIND[m] === 3)
+          setP(q, M.FIRE, gasLife(M.FIRE));
+        else if ((m === M.STONE || m === M.GLASS || m === M.ICE || m === M.MUD) && rnd() < 0.45) clearCell(q);
       }
-      emit('blast', cy * W + cx);
     }
+    function blastAt(q, p) { ev('blast', p, q); explode(q % W, (q / W) | 0); }
+
+    function igniteSulfur(q, p) { ev('blueflame', p, q); life[q] = 90 + ((rnd() * 60) | 0); src[q] = cS; gen[q] = cG; rk[q] = cK; }
 
     // returns true if cell p was consumed/changed (skip movement)
     function react(x, y, p, c) {
-      const nb = [p - W, p + W, p - 1, p + 1];
+      const nb0 = p - W, nb1 = p + W, nb2 = p - 1, nb3 = p + 1;
       if (c === M.EMBER) {
         if (life[p] > 0) life[p]--;
-        if (life[p] === 0) { set(p, M.FIRE, gasLife(M.FIRE)); return true; }
+        if (life[p] === 0) { t[p] = M.FIRE; life[p] = gasLife(M.FIRE); return true; }
       }
       if (c === M.FIRE || c === M.EMBER) {
         for (let i = 0; i < 4; i++) {
-          const q = nb[i], m = t[q];
-          if (m === M.OIL) { set(q, M.FIRE, 30 + ((rnd() * 30) | 0)); emit('burn', q); }
-          else if (m === M.PLANT || (m === M.SEED && rnd() < 0.5)) { set(q, M.FIRE, 25 + ((rnd() * 20) | 0)); emit('burn', q); }
-          else if (m === M.POWDER) { explode(q % W, (q / W) | 0); return true; }
-          else if (m === M.ICE && rnd() < 0.15) { set(q, M.WATER); emit('melt', q); }
-          else if (m === M.WATER) { set(q, M.STEAM, gasLife(M.STEAM)); set(p, M.STEAM, gasLife(M.STEAM)); emit('quench', q); return true; }
+          const q = i === 0 ? nb0 : i === 1 ? nb1 : i === 2 ? nb2 : nb3, m = t[q];
+          if (m === M.OIL) { ev('burn', p, q); setP(q, M.FIRE, 30 + ((rnd() * 30) | 0)); }
+          else if (m === M.PLANT || (m === M.SEED && rnd() < 0.5)) { ev('burn', p, q); setP(q, M.FIRE, 25 + ((rnd() * 20) | 0)); }
+          else if (m === M.SULFUR && life[q] === 0 && rnd() < 0.5) igniteSulfur(q, p);
+          else if (m === M.POWDER) { blastAt(q, p); return true; }
+          else if (m === M.ICE && rnd() < 0.15) { ev('melt', p, q); setP(q, M.WATER); }
+          else if (m === M.WATER) { ev('quench', p, q); setP(q, M.STEAM, gasLife(M.STEAM)); setP(p, M.STEAM, gasLife(M.STEAM)); return true; }
         }
-        return c === M.FIRE ? false : false;
+        return false;
+      }
+      if (c === M.SULFUR && life[p] > 0) { // burning sulfur: slow blue flame, gives off fume
+        life[p]--;
+        for (let i = 0; i < 4; i++) {
+          const q = i === 0 ? nb0 : i === 1 ? nb1 : i === 2 ? nb2 : nb3, m = t[q];
+          if (m === M.SULFUR && life[q] === 0 && rnd() < 0.06) igniteSulfur(q, p);
+          else if (m === M.OIL && rnd() < 0.3) { ev('burn', p, q); setP(q, M.FIRE, 30 + ((rnd() * 30) | 0)); }
+          else if (m === M.PLANT && rnd() < 0.2) { ev('burn', p, q); setP(q, M.FIRE, 25 + ((rnd() * 20) | 0)); }
+          else if (m === M.POWDER) { blastAt(q, p); return true; }
+          else if (m === M.WATER && rnd() < 0.02) { ev('acidrain', p, q); setP(q, M.ACID); }
+        }
+        if (t[nb0] === M.E && rnd() < 0.05) { ev('fume', p, -1); setP(nb0, M.FUME, gasLife(M.FUME)); }
+        if (life[p] === 0) { clearCell(p); if (rnd() < 0.5) { t[p] = M.SMOKE; life[p] = gasLife(M.SMOKE); } return true; }
+        return false;
+      }
+      if (c === M.FUME) {
+        for (let i = 0; i < 4; i++) {
+          const q = i === 0 ? nb0 : i === 1 ? nb1 : i === 2 ? nb2 : nb3, m = t[q];
+          if ((m === M.WATER && rnd() < 0.15) || (m === M.STEAM && rnd() < 0.15)) {
+            ev('acidrain', p, q); setP(q, M.ACID); clearCell(p); return true;
+          }
+        }
+        return false;
       }
       if (c === M.LAVA) {
         for (let i = 0; i < 4; i++) {
-          const q = nb[i], m = t[q];
-          if (m === M.WATER) { set(p, M.STONE); set(q, M.STEAM, gasLife(M.STEAM)); emit('solidify', p); return true; }
-          if (m === M.ICE && rnd() < 0.3) { set(q, M.WATER); emit('melt', q); if (rnd() < 0.15) { set(p, M.STONE); emit('solidify', p); return true; } }
-          else if (m === M.SAND && rnd() < 0.04) { set(q, M.GLASS); emit('vitrify', q); }
-          else if (m === M.OIL || m === M.PLANT || m === M.SEED) { set(q, M.FIRE, gasLife(M.FIRE) + 20); emit('burn', q); }
-          else if (m === M.POWDER) { explode(q % W, (q / W) | 0); }
-          else if (m === M.E && i === 0 && rnd() < 0.004) { set(q, M.FIRE, gasLife(M.FIRE)); }
+          const q = i === 0 ? nb0 : i === 1 ? nb1 : i === 2 ? nb2 : nb3, m = t[q];
+          if (m === M.WATER) { ev('solidify', p, q); setP(p, M.STONE); setP(q, M.STEAM, gasLife(M.STEAM)); return true; }
+          if (m === M.ICE && rnd() < 0.3) { ev('melt', p, q); setP(q, M.WATER); if (rnd() < 0.15) { ev('solidify', p, q); setP(p, M.STONE); return true; } }
+          else if (m === M.SAND && rnd() < 0.04) { ev('vitrify', p, q); setP(q, M.GLASS); }
+          else if (m === M.MUD && rnd() < 0.03) { ev('bake', p, q); setP(q, M.STONE); }
+          else if (m === M.OIL || m === M.PLANT || m === M.SEED) { ev('burn', p, q); setP(q, M.FIRE, gasLife(M.FIRE) + 20); }
+          else if (m === M.SULFUR && life[q] === 0) igniteSulfur(q, p);
+          else if (m === M.POWDER) { blastAt(q, p); }
+          else if (m === M.E && i === 0 && rnd() < 0.003) { t[q] = M.FIRE; life[q] = gasLife(M.FIRE); src[q] = src[p]; gen[q] = gen[p]; rk[q] = rk[p]; }
         }
         return false;
       }
       if (c === M.ACID) {
         for (let i = 0; i < 4; i++) {
-          const q = nb[i], m = t[q];
-          if ((m === M.SAND || m === M.STONE || m === M.GLASS || m === M.ICE || m === M.PLANT || m === M.SEED || m === M.POWDER) && rnd() < 0.2) {
-            set(q, rnd() < 0.3 ? M.SMOKE : M.E, gasLife(M.SMOKE)); emit('dissolve', q);
-            if (!(S.mods.alkahest && rnd() < 0.7) && rnd() < 0.5) { set(p, M.E); return true; }
+          const q = i === 0 ? nb0 : i === 1 ? nb1 : i === 2 ? nb2 : nb3, m = t[q];
+          if ((m === M.SAND || m === M.STONE || m === M.GLASS || m === M.ICE || m === M.PLANT || m === M.SEED || m === M.POWDER || m === M.MUD) && rnd() < 0.2) {
+            ev('dissolve', p, q);
+            if (rnd() < 0.3) setP(q, M.SMOKE, gasLife(M.SMOKE)); else clearCell(q);
+            if (!(S.mods.alkahest && rnd() < 0.7) && rnd() < 0.5) { clearCell(p); return true; }
           }
         }
         return false;
       }
       if (c === M.WATER) {
-        if (S.mods.hotplate && y === H - 2 && rnd() < 0.03) { set(p, M.STEAM, gasLife(M.STEAM)); emit('boil', p); return true; }
+        if (S.mods.hotplate && t[p + W] === M.MUD && rnd() < 0.01) { ev('boil', p, -1); setP(p, M.STEAM, gasLife(M.STEAM)); return true; }
         for (let i = 0; i < 4; i++) {
-          const q = nb[i], m = t[q];
-          if (m === M.ICE && rnd() < (S.mods.freezer ? 0.03 : 0.003)) { set(p, M.ICE); emit('freeze', p); return true; }
-          if (m === M.SEED) { set(q, M.PLANT); emit('bloom', q); if (rnd() < 0.5) { set(p, M.E); return true; } }
-          if (m === M.PLANT && rnd() < (S.mods.greenhouse ? 0.06 : 0.02)) { set(p, M.PLANT); emit('bloom', p); return true; }
+          const q = i === 0 ? nb0 : i === 1 ? nb1 : i === 2 ? nb2 : nb3, m = t[q];
+          if (m === M.ICE && rnd() < (S.mods.freezer ? 0.03 : 0.003)) { ev('freeze', q, p); setP(p, M.ICE); return true; }
+          if (m === M.SEED) { ev('bloom', p, q); setP(q, M.PLANT); if (rnd() < 0.5) { clearCell(p); return true; } }
+          if (m === M.PLANT && rnd() < (S.mods.greenhouse ? 0.06 : 0.02)) { ev('bloom', q, p); setP(p, M.PLANT); return true; }
         }
         return false;
       }
-      if (c === M.ICE && S.mods.hotplate && y === H - 2 && rnd() < 0.02) { set(p, M.WATER); emit('melt', p); return true; }
+      if (c === M.ICE && S.mods.hotplate && t[p + W] === M.MUD && rnd() < 0.02) { ev('melt', p, -1); setP(p, M.WATER); return true; }
       return false;
     }
 
@@ -317,6 +417,10 @@ aside.readout { display: grid; gap: 12px; align-content: start; min-width: 0; }
         const d = rnd() < 0.5 ? -1 : 1;
         if (canDisplace(c, t[b + d])) { swap(p, b + d); return; }
         if (canDisplace(c, t[b - d])) { swap(p, b - d); return; }
+        // sulfur floats as a raft: on a liquid surface it creeps sideways instead of piling up
+        if (c === M.SULFUR && KIND[t[b]] === 2 && rnd() < 0.6) {
+          const s1 = p + d; if (t[s1] === M.E && t[s1 + W] !== M.E) { swap(p, s1); return; }
+        }
       } else if (k === 2) { // liquid
         if (c === M.LAVA && rnd() < 0.5) return;
         const b = p + W;
@@ -325,70 +429,257 @@ aside.readout { display: grid; gap: 12px; align-content: start; min-width: 0; }
         if (canDisplace(c, t[b + d])) { swap(p, b + d); return; }
         if (canDisplace(c, t[b - d])) { swap(p, b - d); return; }
         if (c === M.LAVA && rnd() < 0.6) return;
-        const disp = c === M.LAVA ? 1 : 3;
-        for (const dd of [d, -d]) {
+        const disp = c === M.LAVA ? 1 : 4;
+        for (let side = 0; side < 2; side++) {
+          const dd = side ? -d : d;
           let q = p;
-          for (let s = 1; s <= disp; s++) {
-            const n = p + dd * s;
-            if (canDisplace(c, t[n])) q = n; else break;
-          }
+          for (let s = 1; s <= disp; s++) { const n = p + dd * s; if (canDisplace(c, t[n])) q = n; else break; }
           if (q !== p) { swap(p, q); return; }
         }
       } else if (k === 3) { // gas
+        S.gas++;
         if (life[p] > 0) life[p]--;
         if (life[p] === 0) {
-          if (c === M.STEAM && rnd() < 0.35) { set(p, M.WATER); emit('condense', p); }
-          else if (c === M.FIRE && rnd() < 0.3) set(p, M.SMOKE, gasLife(M.SMOKE));
-          else set(p, M.E);
+          if (c === M.STEAM && rnd() < 0.35) { ev('condense', p, -1); setP(p, M.WATER); }
+          else if (c === M.FIRE && rnd() < 0.3) { t[p] = M.SMOKE; life[p] = gasLife(M.SMOKE); }
+          else clearCell(p);
           return;
         }
         if (c === M.FIRE && rnd() < 0.45) return;
-        if (y <= 1) { if (rnd() < 0.5) set(p, M.E); return; }
+        const top = S.lid ? 2 : 0;
+        if (y <= top + 1) { if (!S.lid && rnd() < 0.5) clearCell(p); else if (S.lid) { const d = rnd() < 0.5 ? -1 : 1; if (t[p + d] === M.E) swap(p, p + d); } return; }
         const u = p - W;
-        const gasOk = (m) => m === M.E || (KIND[m] === 3 && DEN[m] > DEN[c]);
-        if (gasOk(t[u]) && rnd() < 0.85) { swap(p, u); return; }
+        const tu = t[u];
+        if ((tu === M.E || (KIND[tu] === 3 && DEN[tu] > DEN[c])) && rnd() < 0.85) { swap(p, u); return; }
         const d = rnd() < 0.5 ? -1 : 1;
-        if (gasOk(t[u + d])) { swap(p, u + d); return; }
-        if (gasOk(t[p + d])) { swap(p, p + d); return; }
+        const a = t[u + d]; if (a === M.E || (KIND[a] === 3 && DEN[a] > DEN[c])) { swap(p, u + d); return; }
+        const b = t[p + d]; if (b === M.E || (KIND[b] === 3 && DEN[b] > DEN[c])) { swap(p, p + d); return; }
       }
     }
 
     S.step = function () {
       S.frame++;
       const fs = S.frame & 0xffff;
-      S.activity = 0;
-      for (let p = 0; p < N; p++) if (flash[p]) flash[p] = flash[p] > 40 ? flash[p] - 40 : 0;
+      S.gas = 0;
+      for (let p = 0; p < N; p++) if (flash[p]) flash[p] = flash[p] > 30 ? flash[p] - 30 : 0;
       for (let y = H - 2; y >= 0; y--) {
         const ltr = (S.frame + y) & 1;
         for (let i = 1; i < W - 1; i++) {
           const x = ltr ? i : W - 1 - i;
           const p = y * W + x, c = t[p];
-          if (c === M.E || c === M.WALL || c === M.STONE || c === M.GLASS || c === M.PLANT) {
-            continue;
-          }
+          if (c === M.E || c === M.WALL || c === M.STONE || c === M.GLASS || c === M.PLANT) continue;
+          if (c === M.MUD && t[p + W] !== M.E) continue; // resting mud: cheap skip
           if (stamp[p] === fs) continue;
           update(x, y, p, c);
         }
       }
+      if (S.lid && S.gas > S.lidMax) S.popLid();
     };
 
-    // pour `n` cells of material m around column x (called once per frame while pouring)
-    S.pour = function (m, x, n) {
+    // Lid pops: every gas cell near the top is blown, top band explodes. Credited to the src owning most gas.
+    S.popLid = function () {
+      const tally = new Map();
+      for (let p = W; p < N - W; p++) if (KIND[t[p]] === 3 && src[p]) tally.set(src[p], (tally.get(src[p]) || 0) + 1);
+      let best = 0, bn = -1; for (const [s, n] of tally) if (n > bn || (n === bn && s > best)) { best = s; bn = n; }
+      S.lid = false;
+      const gasN = S.gas;
+      const pops = Math.max(1, Math.round(gasN / 40));
+      // give the pop a dedicated context
+      cS = best; cG = 2; cK = RXI.lidpop;
+      for (let i = 0; i < pops; i++) {
+        S.lastEventFrame = S.frame;
+        const x = 4 + ((i * 37) % (W - 8));
+        if (S.onEvent) S.onEvent('lidpop', 3 * W + x, best, 2, 0);
+      }
+      for (let i = 0; i < 6; i++) explode(10 + ((i * (W - 20) / 5) | 0), 4, 6);
+      for (let p = W; p < 20 * W; p++) if (KIND[t[p]] === 3 && t[p] !== M.FIRE) clearCell(p);
+      if (S.onLidPop) S.onLidPop(gasN, best);
+    };
+
+    // pour `n` cells of material m around column x (once per frame while pouring), tagged with src
+    S.pour = function (m, x, n, s) {
+      if (S.lid) return 0;
       let placed = 0;
       for (let i = 0; i < n * 3 && placed < n; i++) {
-        const px = Math.max(1, Math.min(W - 2, x + Math.round((rnd() - 0.5) * 5)));
-        const py = (rnd() * 3) | 0;
+        const px = Math.max(1, Math.min(W - 2, x + Math.round((rnd() - 0.5) * 9)));
+        const py = (rnd() * 4) | 0;
         const p = py * W + px;
-        if (t[p] === M.E || KIND[t[p]] === 3) { set(p, m, m === M.EMBER ? 70 + ((rnd() * 60) | 0) : 0); placed++; }
+        if (t[p] === M.E || KIND[t[p]] === 3) {
+          t[p] = m; life[p] = m === M.EMBER ? 70 + ((rnd() * 60) | 0) : 0;
+          src[p] = s || 0; gen[p] = 0; rk[p] = 0; stamp[p] = S.frame & 0xffff;
+          placed++;
+        }
       }
       return placed;
     };
+    // match: fire in a small disc; flammables inside catch directly
+    S.ignite = function (x, y, s) {
+      const r = 3;
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (dx * dx + dy * dy > r * r) continue;
+        const xx = x + dx, yy = y + dy;
+        if (xx < 1 || xx >= W - 1 || yy < 0 || yy >= H - 1) continue;
+        const p = yy * W + xx, m = t[p];
+        if (m === M.E || KIND[m] === 3 || m === M.OIL || m === M.PLANT || m === M.SEED || m === M.SULFUR) {
+          if (m === M.SULFUR) { t[p] = M.SULFUR; life[p] = 100; }
+          else { t[p] = M.FIRE; life[p] = 20 + ((rnd() * 15) | 0); }
+          src[p] = s; gen[p] = 0; rk[p] = 0; flash[p] = 255;
+        }
+      }
+    };
+    S.count = function (m) { let n = 0; for (let p = 0; p < N; p++) if (t[p] === m) n++; return n; };
     S.rnd = rnd;
     reset();
     return S;
   }
 
-  const api = { W, H, M, KIND, RX, createSim, mulberry32 };
+  // =================== round rules: pours, matches, lid, ledgers (GDD §3) ===================
+  const RULES = {
+    POUR_AMOUNT: 1600, POUR_RATE: 26, STEPS: 3,
+    LEDGER_QUIET: 60, LEDGER_MAX: 300, MAX_OPEN: 3,
+    DIMINISH_AT: 240, STALE_PTS: 1,
+  };
+
+  function ptsOf(type, mods) {
+    let p = RX[type].pts;
+    mods = mods || {};
+    if ((type === 'burn' || type === 'blueflame') && mods.pyro) p += 3;
+    if (type === 'blast' && mods.demolition) p += 12;
+    if (type === 'bloom' && mods.greenhouse) p += 2;
+    if (type === 'solidify' && mods.magma) p += 8;
+    if (type === 'freeze' && mods.freezer) p += 3;
+    if ((type === 'quench' || type === 'condense' || type === 'boil') && mods.tower) p *= 3;
+    if (type === 'lidpop' && mods.thickglass) p *= 2;
+    return p;
+  }
+
+  // 一本帳的金 = 物質 × 元素 × 秘方 (GDD §4). Returns a breakdown in display order.
+  function scoreLedger(L, mods) {
+    mods = mods || {};
+    const rows = [];
+    let matter = 0;
+    const lit = [0, 0, 0, 0];
+    const keys = Object.keys(L.counts).sort((a, b) => RXI[a] - RXI[b]);
+    for (const k of keys) {
+      const n = L.counts[k];
+      if (!n) continue;
+      const pts = ptsOf(k, mods);
+      const eff = n <= RULES.DIMINISH_AT ? n : RULES.DIMINISH_AT + (n - RULES.DIMINISH_AT) / 2;
+      const sub = Math.round(eff * pts);
+      rows.push({ type: k, n, pts, sub, halved: n > RULES.DIMINISH_AT });
+      matter += sub;
+      for (const e of RX[k].el) lit[e] = 1;
+    }
+    const stale = L.stale * RULES.STALE_PTS;
+    matter += stale;
+    let nLit = lit[0] + lit[1] + lit[2] + lit[3];
+    if (mods.ashes && lit[0] && !lit[2] && L.counts.burn) { lit[2] = 1; nLit++; }
+    const chain = Math.floor(L.maxGen / 2);
+    const four = nLit === 4 ? 2 : 0;
+    let elemMods = 0;
+    if (mods.glass && L.counts.vitrify) elemMods += Math.floor(L.counts.vitrify / 40);
+    const elem = matter > 0 ? 1 + nLit + chain + four + elemMods : 1;
+    const arcana = [];
+    if (mods.scorched && (L.counts.burn || 0) + (L.counts.blueflame || 0) >= 800) arcana.push({ id: 'scorched', x: 2 });
+    if (mods.popritual && L.counts.lidpop) arcana.push({ id: 'popritual', x: 3 });
+    let arc = 1; for (const a of arcana) arc *= a.x;
+    const gold = Math.round(matter * elem * arc);
+    return { rows, stale, matter, lit, nLit, chain, four, elemMods, elem, arcana, arc, gold };
+  }
+
+  function createRound(opt) {
+    const mods = opt.mods || {};
+    const S = createSim(opt.seed >>> 0, mods);
+    if (opt.lidMax) S.lidMax = opt.lidMax;
+    const R = {
+      S, mods, frame: 0, pours: opt.pours, matches: opt.matches, target: opt.target,
+      nextId: 1, active: [], ledgers: new Map(), order: [], gold: 0, closedLog: [],
+      onOpen: null, onClose: null, onRx: null, lidPops: 0, firstActionFrame: -1,
+      pourAmount: Math.round(RULES.POUR_AMOUNT * (mods.nozzle ? 1.5 : 1)),
+    };
+    let after = null;
+    function openLedger(kind, m, x, y) {
+      // enforce max open (excluding aftermath)
+      const open = R.order.filter(L => !L.closed && L.kind !== 'after');
+      if (kind !== 'after' && open.length >= RULES.MAX_OPEN) close(open[0], 'forced');
+      const L = { id: kind === 'after' ? 0 : R.nextId++, kind, m, x, y, openF: R.frame, lastF: R.frame, counts: {},
+                  stale: 0, maxGen: 0, n: 0, closed: false, result: null, uid: R.order.length + 1 };
+      if (kind !== 'after') R.ledgers.set(L.id, L);
+      R.order.push(L);
+      if (R.onOpen) R.onOpen(L);
+      return L;
+    }
+    function close(L, why) {
+      if (L.closed) return;
+      L.closed = true; L.closeF = R.frame; L.why = why;
+      L.result = scoreLedger(L, mods);
+      R.gold += L.result.gold;
+      R.closedLog.push(L);
+      if (L === after) after = null;
+      if (R.onClose) R.onClose(L);
+    }
+    S.onEvent = function (type, p, s, g, stale) {
+      let L = R.ledgers.get(s);
+      if (!L || L.closed) {
+        if (!after) after = openLedger('after', -1, p % W, (p / W) | 0);
+        L = after;
+      }
+      L.counts[type] = (L.counts[type] || 0) + 1;
+      L.n++; L.lastF = R.frame; if (stale) L.stale++;
+      if (g > L.maxGen) L.maxGen = g;
+      if (R.onRx) R.onRx(L, type, p, g);
+    };
+    R.canPour = () => R.pours > 0 && !S.lid;
+    R.startPour = function (m, x) {
+      if (!R.canPour()) return null;
+      if (R.firstActionFrame < 0) R.firstActionFrame = R.frame;
+      R.pours--;
+      const L = openLedger('pour', m, x, 0);
+      const P = { id: L.id, m, x, left: R.pourAmount, L };
+      R.active.push(P);
+      return P;
+    };
+    R.aim = function (P, x) { if (P) { P.x = x; P.L.x = x; } };
+    R.strike = function (x, y) {
+      if (R.matches <= 0) return null;
+      if (R.firstActionFrame < 0) R.firstActionFrame = R.frame;
+      R.matches--;
+      const L = openLedger('match', -1, x, y);
+      S.ignite(x, y, L.id);
+      return L;
+    };
+    R.toggleLid = function () { S.lid = !S.lid; return S.lid; };
+    R.openLedgers = () => R.order.filter(L => !L.closed);
+    R.tick = function (speed) {
+      const n = speed || 1;
+      for (let k = 0; k < n; k++) {
+        R.frame++;
+        for (const P of R.active) if (P.left > 0) P.left -= S.pour(P.m, P.x, Math.min(RULES.POUR_RATE, P.left), P.id);
+        R.active = R.active.filter(P => P.left > 0 && !(S.lid));
+        for (let i = 0; i < RULES.STEPS; i++) S.step();
+        for (const L of R.order) {
+          if (L.closed) continue;
+          const pouring = R.active.some(P => P.L === L);
+          if (pouring) continue;
+          if (R.frame - L.lastF >= RULES.LEDGER_QUIET || R.frame - L.openF >= RULES.LEDGER_MAX) close(L, 'quiet');
+        }
+      }
+    };
+    R.closeAll = function () { for (const L of R.order) if (!L.closed) close(L, 'sealed'); R.active = []; R.sealed = true; };
+    R.allClosed = () => R.order.every(L => L.closed) && R.active.length === 0;
+    // round state: 'play' | 'win' | 'lose' | 'wait' (pours spent, matches left, below target)
+    R.status = function () {
+      if (!R.allClosed()) return 'play';
+      if (R.gold >= R.target) return 'win';
+      if (R.sealed) return 'lose';
+      if (R.pours > 0) return 'play';
+      if (R.matches > 0) return 'wait';
+      return 'lose';
+    };
+    return R;
+  }
+
+  const api = { W, H, M, KIND, DEN, RX, RXK, EL, RULES, createSim, createRound, scoreLedger, ptsOf, mulberry32, MUD_ROWS };
   if (typeof module !== 'undefined') module.exports = api; else root.PDSim = api;
 })(this);
 
@@ -396,381 +687,1074 @@ aside.readout { display: grid; gap: 12px; align-content: start; min-width: 0; }
 <script>
 (function () {
 "use strict";
-const { W, H, M, RX, createSim, mulberry32 } = window.PDSim;
+const { W, H, M, KIND, RX, EL, RULES, createRound, scoreLedger, ptsOf, mulberry32 } = window.PDSim;
 
-// ---------- content ----------
+// ---------------- content ----------------
 const VIALS = {
-  [M.SAND]:   { nm: "沙",   ds: "會堆積成斜坡。熔岩會把它燒成玻璃。", c: "#e6904e" },
-  [M.WATER]:  { nm: "水",   ds: "澆熄火、讓熔岩凝成岩石、讓種子發芽。", c: "#4d9be6" },
-  [M.OIL]:    { nm: "油",   ds: "浮在水面上，遇到火會大面積燃燒。", c: "#905ea9" },
-  [M.EMBER]:  { nm: "火星", ds: "落下的火種，點燃所有可燃物。", c: "#fb6b1d" },
-  [M.LAVA]:   { nm: "熔岩", ds: "遇水凝岩、遇沙熔玻、遇冰融化。", c: "#ea4f36" },
-  [M.ACID]:   { nm: "酸液", ds: "溶蝕沙、岩石、玻璃、冰和植物。", c: "#91db69" },
-  [M.POWDER]: { nm: "火藥", ds: "遇火爆炸，而且會連鎖引爆。", c: "#7f708a" },
-  [M.ICE]:    { nm: "冰屑", ds: "遇熱融成水，也會讓旁邊的水結凍。", c: "#8ff8e2" },
-  [M.SEED]:   { nm: "種子", ds: "遇水發芽並往水裡蔓延，植物可以燃燒。", c: "#a2a947" },
+  [M.SAND]:   { nm: "沙",   ds: "堆成斜坡。遇熔岩 → 玻璃。", c: "#c99a4c" },
+  [M.WATER]:  { nm: "水",   ds: "遇火 → 淬熄成蒸汽；遇熔岩 → 凝岩；讓種子發芽。", c: "#2e5e8c" },
+  [M.OIL]:    { nm: "油",   ds: "浮在水上。遇火 → 整片燃燒。", c: "#6e4a5e" },
+  [M.EMBER]:  { nm: "火星", ds: "落地後才起火——自帶延遲的引信。", c: "#c4501f" },
+  [M.LAVA]:   { nm: "熔岩", ds: "遇水 → 凝岩；遇沙 → 玻璃；遇泥 → 燒陶；點燃可燃物。", c: "#b8381e" },
+  [M.ACID]:   { nm: "酸液", ds: "溶蝕沙、岩、泥、玻璃與植物。", c: "#7f9a3a" },
+  [M.POWDER]: { nm: "火藥", ds: "遇火 → 爆炸，會連環引爆。", c: "#3c3430" },
+  [M.ICE]:    { nm: "冰屑", ds: "遇熱 → 融成水；讓旁邊的水結凍。", c: "#8fb3b9" },
+  [M.SEED]:   { nm: "種子", ds: "遇水 → 萌芽蔓延；植物可燃。", c: "#7d7a2e" },
+  [M.SULFUR]: { nm: "硫磺", ds: "浮在水面。遇火 → 慢燒藍焰、冒硫煙；硫煙碰水 → 酸雨。", c: "#c9b02a" },
 };
 const RXINFO = {
-  burn:     { nm: "燃燒", c: "#fb6b1d" },
-  quench:   { nm: "淬熄", c: "#c7dcd0" },
-  solidify: { nm: "凝岩", c: "#92a984" },
-  dissolve: { nm: "溶蝕", c: "#d5e04b" },
-  blast:    { nm: "爆炸", c: "#f9c22b" },
-  vitrify:  { nm: "熔玻", c: "#8fd3ff" },
-  melt:     { nm: "融冰", c: "#8ff8e2" },
-  freeze:   { nm: "結凍", c: "#ffffff" },
-  bloom:    { nm: "萌芽", c: "#1ebc73" },
-  condense: { nm: "凝結", c: "#4d65b4" },
-  boil:     { nm: "沸騰", c: "#ea4f36" },
+  burn: "燃燒", blueflame: "藍焰", blast: "爆炸", quench: "淬熄", condense: "凝結", melt: "融冰", freeze: "結凍",
+  acidrain: "酸雨", solidify: "凝岩", vitrify: "熔玻", dissolve: "溶蝕", bake: "燒陶", bloom: "萌芽", boil: "沸騰", fume: "硫煙", lidpop: "爆蓋",
 };
-const CATS = [
-  { id: "pyro",       nm: "縱火狂",     ds: "燃燒 +3 分。", price: 5 },
-  { id: "tower",      nm: "冷凝塔",     ds: "淬熄、凝結、沸騰的分數 ×3。", price: 6 },
-  { id: "glass",      nm: "吹玻璃工坊", ds: "這一倒每熔出 10 格玻璃，倍率 +1。", price: 6 },
-  { id: "demolition", nm: "爆破專家",   ds: "爆炸範圍變大，爆炸 +12 分。", price: 6 },
-  { id: "greenhouse", nm: "溫室",       ds: "植物蔓延速度 3 倍，萌芽 +2 分。", price: 5 },
-  { id: "alkahest",   nm: "萬能溶劑",   ds: "酸液有 70% 機率不被消耗。", price: 5 },
+const ELC = ["#b8381e", "#2e5e8c", "#5e6a2a", "#6a5f8e"];
+const ELN = ["火", "水", "土", "氣"];
+const ARCANA = [
+  { id: "pyro",       nm: "縱火狂",     ds: "燃燒、藍焰每次 +3 物質。", price: 5 },
+  { id: "tower",      nm: "冷凝塔",     ds: "淬熄、凝結、沸騰的點數 ×3。", price: 6 },
+  { id: "glass",      nm: "吹玻璃工坊", ds: "一本帳每熔出 40 格玻璃，元素 +1。", price: 6 },
+  { id: "demolition", nm: "爆破專家",   ds: "爆炸範圍變大，爆炸 +12 物質。", price: 6 },
+  { id: "greenhouse", nm: "溫室",       ds: "植物蔓延 3 倍，萌芽 +2 物質。", price: 5 },
+  { id: "alkahest",   nm: "萬能溶劑",   ds: "酸液 70% 機率不被消耗。", price: 5 },
   { id: "nozzle",     nm: "大口徑噴嘴", ds: "每瓶倒出的量 +50%。", price: 7 },
-  { id: "hotplate",   nm: "加熱板",     ds: "杯底會把水煮沸、把冰融化。", price: 5 },
-  { id: "diverse",    nm: "多元反應",   ds: "每種不同的反應提供倍率 +1.5（原本 +1）。", price: 7 },
-  { id: "chain",      nm: "連鎖反應",   ds: "任一種反應在這一倒達到 50 次，倍率 +2。", price: 6 },
+  { id: "hotplate",   nm: "酒精燈",     ds: "杯底的泥會把水煮沸、把冰融化。", price: 5 },
   { id: "spare",      nm: "備用量杯",   ds: "每回合多 1 次倒料。", price: 7 },
-  { id: "magma",      nm: "地心熔爐",   ds: "凝岩 +8 分。", price: 5 },
-  { id: "freezer",    nm: "冷凍庫",     ds: "水遇冰的結凍機率 ×10，結凍 +3 分。", price: 5 },
+  { id: "magma",      nm: "地心熔爐",   ds: "凝岩 +8 物質。", price: 5 },
+  { id: "freezer",    nm: "冰窖",       ds: "水遇冰結凍機率 ×10，結凍 +3 物質。", price: 5 },
+  { id: "matchbox",   nm: "火柴盒",     ds: "每回合多 1 根火柴。", price: 5 },
+  { id: "thickglass", nm: "厚玻璃",     ds: "壓力上限 +40%，爆蓋點數 ×2。", price: 6 },
+  { id: "ashes",      nm: "灰燼回收",   ds: "有燃燒卻沒有土元素的帳，也點亮土。", price: 6 },
+  { id: "scorched",   nm: "焦土",       ds: "稀有：一本帳燃燒＋藍焰 ≥800 次時，金 ×2。", price: 9, rare: true },
+  { id: "popritual",  nm: "爆蓋儀式",   ds: "稀有：含爆蓋的帳，金 ×3。", price: 9, rare: true },
 ];
-const TARGETS = [800, 2000, 4500, 9000, 15000, 25000, 40000, 60000];
-const START_DECK = [M.SAND, M.SAND, M.WATER, M.WATER, M.OIL, M.EMBER, M.EMBER, M.LAVA];
-const SHOP_VIALS = [M.ACID, M.POWDER, M.ICE, M.SEED, M.LAVA, M.OIL, M.WATER, M.EMBER, M.SAND];
-const POUR_AMOUNT = 420, HAND = 4, BASE_POURS = 4, MAX_CATS = 5;
+const STAGES = [
+  { nm: "黑化", lat: "Nigredo", tint: [0.96, 0.95, 0.93] },
+  { nm: "白化", lat: "Albedo", tint: [1.0, 1.0, 1.0] },
+  { nm: "黃化", lat: "Citrinitas", tint: [1.0, 0.97, 0.88] },
+  { nm: "紅化", lat: "Rubedo", tint: [1.0, 0.93, 0.90] },
+];
+const TARGETS = [20000, 30000, 45000, 65000, 90000, 120000, 160000, 210000, 270000, 350000, 450000, 600000];
+const START_DECK = [M.SAND, M.SAND, M.WATER, M.WATER, M.OIL, M.EMBER, M.SULFUR, M.LAVA];
+const FIRST_HAND = [M.WATER, M.SULFUR, M.OIL, M.LAVA];
+const FIRST_DRAW = [M.SAND, M.EMBER, M.SAND, M.WATER];
+const SHOP_VIALS = [M.ACID, M.POWDER, M.ICE, M.SEED, M.LAVA, M.OIL, M.WATER, M.SULFUR, M.SAND, M.EMBER];
+const HAND = 4, BASE_POURS = 4, BASE_MATCHES = 2, MAX_ARC = 5;
 
-// ---------- palette (Resurrect 64 subset, see art-direction skill) ----------
-function hex(h) { return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
-const RAMP = {};
-function ramp(m, list) { RAMP[m] = list.map(hex); }
-ramp(M.E, ["#2e222f"]);
-ramp(M.SAND, ["#cd683d", "#e6904e", "#e6904e", "#fbb954"]);
-ramp(M.WATER, ["#4d65b4", "#4d9be6", "#4d9be6", "#4d9be6"]);
-ramp(M.OIL, ["#45293f", "#6b3e75", "#6b3e75", "#905ea9"]);
-ramp(M.FIRE, ["#e83b3b", "#fb6b1d", "#f9c22b", "#fff6c2"]);
-ramp(M.EMBER, ["#fb6b1d", "#f9c22b", "#fb6b1d", "#ffffff"]);
-ramp(M.LAVA, ["#ae2334", "#ea4f36", "#ea4f36", "#f79617"]);
-ramp(M.STONE, ["#625565", "#7f708a", "#7f708a", "#9babb2"]);
-ramp(M.STEAM, ["#9babb2", "#c7dcd0", "#c7dcd0", "#ffffff"]);
-ramp(M.ACID, ["#239063", "#91db69", "#91db69", "#d5e04b"]);
-ramp(M.POWDER, ["#3e3546", "#45293f", "#3e3546", "#6e2727"]);
-ramp(M.ICE, ["#9babb2", "#c7dcd0", "#8ff8e2", "#ffffff"]);
-ramp(M.GLASS, ["#4d9be6", "#8fd3ff", "#8fd3ff", "#ffffff"]);
-ramp(M.SEED, ["#4c3e24", "#676633", "#676633", "#a2a947"]);
-ramp(M.PLANT, ["#165a4c", "#239063", "#1ebc73", "#91db69"]);
-ramp(M.SMOKE, ["#3e3546", "#4a3f52", "#4a3f52", "#625565"]);
-ramp(M.WALL, ["#c7dcd0"]);
-const EMISSIVE = new Set([M.FIRE, M.EMBER, M.LAVA]);
-
-// ---------- state ----------
-let G, S;
+// ---------------- state ----------------
+let G = null, R = null;
+let speedHeld = false;
 const canvas = document.getElementById("view");
 const ctx = canvas.getContext("2d");
-const off = document.createElement("canvas"); off.width = W; off.height = H;
-const octx = off.getContext("2d");
-const glow = document.createElement("canvas"); glow.width = W; glow.height = H;
-const gctx = glow.getContext("2d");
-const img = octx.createImageData(W, H), gimg = gctx.createImageData(W, H);
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+let L = null; // layout
+const tintC = document.createElement("canvas"); tintC.width = W; tintC.height = H;
+const tctx = tintC.getContext("2d");
+const softC = document.createElement("canvas"); softC.width = W / 2; softC.height = H / 2; const sctx = softC.getContext("2d");
+const tintImg = tctx.createImageData(W, H);
+const inkC = document.createElement("canvas"); const ictx = inkC.getContext("2d");
+let inkImg = null, ink32 = null;
+let bgC = null;
+const QS = new URLSearchParams(location.search);
+const DBG = { nolinks: QS.has("nolinks"), noink: QS.has("noink"), nooverlay: QS.has("nooverlay"), nosim: QS.has("nosim") };
+let WASH_BLUR = !QS.has("noblur");
+const fx = { floats: [], buckets: new Map(), chains: [], gold: [], lidFly: null, shake: 0 };
+const meta = new Map(); // ledger uid -> UI meta
 
+function hex(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+
+// ---------------- game flow ----------------
 function newGame(seed) {
-  G = {
-    seed: seed || ((Math.random() * 1e9) | 0),
-    round: 0, money: 4, deck: START_DECK.slice(), cats: [],
-    draw: [], hand: [], disc: [], pours: BASE_POURS, roundScore: 0,
-    sel: -1, phase: "idle", pourLeft: 0, pourX: 50, holding: false, turnFrames: 0,
-    reroll: 1, shopItems: [],
-  };
+  G = { seed: seed || ((Math.random() * 1e9) | 0), round: 0, money: 4, deck: START_DECK.slice(), arc: [],
+        draw: [], hand: [], disc: [], sel: -1, matchMode: false, aimX: 80, hoverY: -1, hover: false, pourP: null,
+        holding: false, shopItems: [], reroll: 1, displayGold: 0, ended: false, tut: { step: 0, done: {} }, lidUsed: false, frame0: 0 };
   G.rng = mulberry32(G.seed);
   startRound();
 }
-function mods() { const o = {}; for (const c of G.cats) o[c] = true; return o; }
+function mods() { const o = {}; for (const c of G.arc) o[c] = true; return o; }
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = (G.rng() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function startRound() {
-  S = createSim(G.seed + G.round * 101, mods());
-  S.onEvent = onEvent;
-  G.draw = shuffle(G.deck.slice()); G.hand = []; G.disc = [];
-  while (G.hand.length < HAND && G.draw.length) G.hand.push(G.draw.pop());
-  G.pours = BASE_POURS + (G.cats.includes("spare") ? 1 : 0);
-  G.roundScore = 0; G.sel = -1; G.phase = "idle";
-  S.resetCounts();
-  render(); renderHand(); renderRx(); renderSide();
+  const md = mods();
+  R = createRound({ seed: G.seed + G.round * 101, mods: md, pours: BASE_POURS + (md.spare ? 1 : 0), matches: BASE_MATCHES + (md.matchbox ? 1 : 0),
+                    target: TARGETS[G.round], lidMax: md.thickglass ? 1540 : 1100 });
+  R.onOpen = onOpen; R.onClose = onClose; R.onRx = onRx;
+  R.S.onLidPop = onLidPop;
+  if (G.round === 0) { G.hand = FIRST_HAND.slice(); G.draw = FIRST_DRAW.slice().reverse(); G.disc = []; }
+  else { G.draw = shuffle(G.deck.slice()); G.hand = []; G.disc = []; while (G.hand.length < HAND && G.draw.length) G.hand.push(G.draw.pop()); }
+  G.sel = -1; G.matchMode = false; G.pourP = null; G.displayGold = 0; G.ended = false; G.newIdx = -1;
+  fx.floats = []; fx.buckets.clear(); fx.chains = []; fx.gold = []; fx.lidFly = null;
+  meta.clear();
+  document.getElementById("cards").innerHTML = `<div class="card mini placeholder" style="--c:#a8957a"><div class="hd"><span class="st">每倒一瓶、每點一根火柴，這裡就開一本帳，記下它引起的每個反應。</span></div></div>`;
+  buildBg();
+  renderHand(); renderSide();
 }
 
-// ---------- scoring ----------
-function ptsOf(type) {
-  let p = RX[type].pts;
-  if (type === "burn" && G.cats.includes("pyro")) p += 3;
-  if (type === "blast" && G.cats.includes("demolition")) p += 12;
-  if (type === "bloom" && G.cats.includes("greenhouse")) p += 2;
-  if (type === "solidify" && G.cats.includes("magma")) p += 8;
-  if (type === "freeze" && G.cats.includes("freezer")) p += 3;
-  if ((type === "quench" || type === "condense" || type === "boil") && G.cats.includes("tower")) p *= 3;
-  return p;
+// ---------------- ledger callbacks ----------------
+function ledgerColor(Lg) { return Lg.kind === "pour" ? VIALS[Lg.m].c : Lg.kind === "match" ? "#b8381e" : "#8a7458"; }
+function ledgerTitle(Lg) {
+  if (Lg.kind === "pour") return `第 ${G.pourCount[Lg.id]} 倒・${VIALS[Lg.m].nm}`;
+  if (Lg.kind === "match") return "火柴";
+  return "餘波";
 }
-function calc(counts) {
-  let chips = 0, mult = 0;
-  const per = G.cats.includes("diverse") ? 1.5 : 1;
-  for (const k in counts) { chips += counts[k] * ptsOf(k); mult += per; }
-  if (G.cats.includes("glass") && counts.vitrify) mult += Math.floor(counts.vitrify / 10);
-  if (G.cats.includes("chain")) for (const k in counts) if (counts[k] >= 50) mult += 2;
-  mult = Math.max(1, Math.round(mult * 10) / 10);
-  return { chips, mult, total: Math.round(chips * mult) };
+function onOpen(Lg) {
+  if (!G.pourCount) G.pourCount = {};
+  if (Lg.kind === "pour") { G.pourIdx = (G.pourIdx || 0) + 1; G.pourCount[Lg.id] = BASE_POURS + (mods().spare ? 1 : 0) - R.pours; }
+  const m = { el: null, sx: 0, sy: 0, sn: 0, genPos: [], lastRender: 0, closing: 0, gone: false };
+  meta.set(Lg.uid, m);
+  const el = document.createElement("div");
+  el.className = "card"; el.style.setProperty("--c", ledgerColor(Lg));
+  el.innerHTML = `<div class="hd"><span class="ttl">${ledgerTitle(Lg)}</span><span class="st">${Lg.kind === "pour" ? "倒料中…" : "反應中…"}</span></div><div class="rws"><div class="empty">還沒有反應</div></div><div class="sum"></div><div class="gold"><span>金</span><span class="v">—</span></div>`;
+  m.el = el;
+  const cards = document.getElementById("cards");
+  const ph = cards.querySelector(".placeholder"); if (ph) ph.remove();
+  cards.insertBefore(el, cards.firstChild);
+  trimCards();
+}
+function trimCards(minisToHist) {
+  const cards = document.getElementById("cards");
+  if (minisToHist) for (const c of [...cards.querySelectorAll(".card.mini")]) { if (!c.querySelector(".st").textContent.startsWith("已佈置") && !c.querySelector(".st").textContent.startsWith("什麼")) continue; moveToHist(cards, c); }
+  // keep at most 3 full cards; older ones collapse into the history list
+  const full = [...cards.querySelectorAll(".card")];
+  let hist = cards.querySelector(".hist");
+  for (let i = 3; i < full.length; i++) {
+    const c = full[i];
+    moveToHist(cards, c);
+  }
+}
+function moveToHist(cards, c) {
+  let hist = cards.querySelector(".hist");
+  if (!hist) { hist = document.createElement("div"); hist.className = "hist"; cards.appendChild(hist); }
+  const t = c.querySelector(".ttl").textContent, v = c.querySelector(".gold .v").textContent;
+  const d = document.createElement("div"); d.innerHTML = `<span>${t}${c.classList.contains("mini") ? (t === "火柴" ? "（落空）" : "（佈置）") : ""}</span><span>${v === "—" ? "…" : v}</span>`;
+  hist.insertBefore(d, hist.firstChild);
+  c.remove();
+}
+function onRx(Lg, type, p, g) {
+  const m = meta.get(Lg.uid);
+  const x = p % W, y = (p / W) | 0;
+  m.sx += x; m.sy += y; m.sn++;
+  // chain positions per generation
+  const gp = m.genPos[g] || (m.genPos[g] = { x: 0, y: 0, n: 0, t: performance.now() });
+  gp.x += x; gp.y += y; gp.n++;
+  if (gp.n === 1 && g >= 2 && m.genPos[g - 1] && Math.hypot(m.genPos[g - 1].x / m.genPos[g - 1].n - x, m.genPos[g - 1].y / m.genPos[g - 1].n - y) < 55) {
+    const pp = m.genPos[g - 1];
+    fx.chains.push({ uid: Lg.uid, g, from: [pp.x / pp.n, pp.y / pp.n], toRef: gp, born: performance.now() });
+    if (fx.chains.length > 8) fx.chains.shift();
+  }
+  // aggregated floating text: ledger × type × 16×16 block, 0.5 s
+  let b = null;
+  for (const bb of fx.buckets.values()) {
+    if (bb.uid !== Lg.uid || bb.type !== type) continue;
+    const dx = bb.x / bb.n - x, dy = bb.y / bb.n - y;
+    if (dx * dx + dy * dy < 26 * 26 || fx.buckets.size + fx.floats.length >= 12) { b = bb; break; }
+  }
+  if (!b) { b = { uid: Lg.uid, type, n: 0, x: 0, y: 0, t0: performance.now() }; fx.buckets.set(fx.bucketId = (fx.bucketId || 0) + 1, b); }
+  b.n++; b.x += x; b.y += y;
+  if (type === "blast" || type === "lidpop") fx.shake = Math.min(10, fx.shake + (type === "lidpop" ? 1.5 : 0.6));
+  sfx(type);
+}
+function flushBuckets(now) {
+  for (const [k, b] of fx.buckets) {
+    if (now - b.t0 < 500) continue;
+    fx.buckets.delete(k);
+    if (b.n < 4 && fx.floats.length >= 4 && b.type !== "lidpop") continue;
+    const pts = ptsOf(b.type, R.mods);
+    const text = `${RXINFO[b.type]} ×${b.n}  +${fmt(b.n * pts)}`;
+    // de-overlap against live floats (in cell units; a float is ~text.length*1.6 cells wide, 5 tall)
+    const fw = text.length * 2.3, fh = 6;
+    let fx0 = b.x / b.n, fy0 = b.y / b.n;
+    let placed = false;
+    for (let tries = 0; tries < 8; tries++) {
+      let hit = false;
+      for (const o of fx.floats) {
+        const oy = o.y - (now - o.born) / 1000 * 34 / L.cp;
+        if (Math.abs(o.x - fx0) < (fw + o.w) / 2 && Math.abs(oy - fy0) < fh) { hit = true; break; }
+      }
+      if (!hit) { placed = true; break; }
+      fy0 -= fh;
+    }
+    if (!placed && b.type !== "lidpop" && b.type !== "blast") continue; // the ledger card still has it
+    fx.floats.push({ text, w: fw, el: RX[b.type].el[0], x: Math.max(fw / 2, Math.min(W - fw / 2, fx0)), y: Math.max(16, fy0), born: now, big: b.type === "lidpop" || b.type === "blast" });
+  }
+  while (fx.floats.length > 12) fx.floats.shift();
+}
+function onClose(Lg) {
+  const m = meta.get(Lg.uid);
+  m.closing = performance.now();
+  renderCard(Lg, true);
+  tally(Lg, m);
+}
+function onLidPop(gasN) {
+  fx.lidFly = { born: performance.now(), vx: (R.S.rnd() - 0.5) * 6 };
+  fx.shake = 12;
+  toast(`爆蓋！${gasN} 格氣體一次炸開`);
+  G.tut.done.pop = true;
+  sfx("lidpop", true);
 }
 
-// ---------- audio (optional, tiny) ----------
-let AC = null, soundOn = false; const lastBeep = {};
-const NOTE = { burn: 196, quench: 392, solidify: 131, dissolve: 523, blast: 82, vitrify: 659, melt: 440, freeze: 784, bloom: 330, condense: 587, boil: 247 };
-function beep(f, dur, vol, type) {
-  if (!soundOn || !AC) return;
-  const o = AC.createOscillator(), g = AC.createGain();
-  o.type = type || "triangle"; o.frequency.value = f;
-  g.gain.setValueAtTime(vol, AC.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
-  o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime + dur);
+// Balatro-ish settlement: rows light up in calculation order, then gold flows to the receiver.
+function tally(Lg, m) {
+  const el = m.el, res = Lg.result;
+  el.querySelector(".st").textContent = Lg.why === "forced" ? "第 4 本帳：提前結算" : "結算";
+  if (res.gold === 0) {
+    el.classList.add("mini", "closed");
+    el.querySelector(".gold .v").textContent = "0";
+    el.querySelector(".st").textContent = Lg.kind === "pour" ? "已佈置：之後被點燃，記在點火那本帳" : Lg.kind === "match" ? "什麼也沒點著" : "";
+    setTimeout(() => { if (el.isConnected) { const cards = document.getElementById("cards"); const full = [...cards.querySelectorAll(".card")]; if (full.indexOf(el) >= 0 && full.length > 1) { cards.appendChild(el); trimCards(true); } } }, 2500);
+    return;
+  }
+  const rows = [...el.querySelectorAll(".r"), ...el.querySelectorAll(".sum > span:nth-child(odd)")];
+  let i = 0;
+  const step = () => {
+    rows.forEach(r => r.classList.remove("hl"));
+    if (i < rows.length) {
+      rows[i].classList.add("hl"); const sib = rows[i].nextElementSibling; if (sib && rows[i].parentElement.classList.contains("sum")) sib.classList.add("hl");
+      i++; setTimeout(() => { if (sib) sib.classList.remove("hl"); step(); }, 90);
+    } else {
+      const v = el.querySelector(".gold .v");
+      v.textContent = res.gold > 0 ? "+" + fmt(res.gold) : "0";
+      v.classList.remove("pop"); void v.offsetWidth; v.classList.add("pop");
+      el.querySelector(".st").textContent = res.gold > 0 ? "金砂流入受器 ⟶" : "沒有反應";
+      el.classList.add("closed");
+      spawnGold(Lg, m, res.gold);
+      if (res.gold > 0) sfx("gold", true);
+    }
+  };
+  step();
 }
-function onEvent(type) {
+function spawnGold(Lg, m, gold) {
+  if (gold <= 0) return;
+  const k = Math.max(6, Math.min(48, Math.round(gold / (R.target / 30))));
+  const cx = m.sn ? m.sx / m.sn : (Lg.x || 80), cy = m.sn ? m.sy / m.sn : 60;
   const now = performance.now();
-  if (now - (lastBeep[type] || 0) < (type === "blast" ? 60 : 90)) return;
-  lastBeep[type] = now;
-  beep(NOTE[type] * (0.95 + Math.random() * 0.1), type === "blast" ? 0.25 : 0.08, type === "blast" ? 0.18 : 0.04, type === "blast" ? "sawtooth" : "triangle");
+  for (let i = 0; i < k; i++) fx.gold.push({ x0: cx + (Math.random() - 0.5) * 10, y0: cy + (Math.random() - 0.5) * 8, born: now + i * 28, v: gold / k, done: false, dur: 900 + Math.random() * 250 });
 }
 
-// ---------- rendering ----------
-function render() {
-  const d = img.data, gd = gimg.data, t = S.t, sh = S.shade, life = S.life, fl = S.flash;
-  for (let p = 0, i = 0; p < W * H; p++, i += 4) {
-    const m = t[p];
-    let c;
-    const r = RAMP[m] || RAMP[M.E];
-    if (m === M.FIRE) c = r[Math.min(3, (life[p] / 8) | 0)];
-    else if (m === M.E) {
-      const y = (p / W) | 0;
-      c = (y % 8 === 0 && (p % W) % 2 === 0) ? [62, 53, 70] : r[0];
-    } else c = r[(sh[p] & 3) % r.length];
-    let R = c[0], Gc = c[1], B = c[2];
-    if (m === M.LAVA && ((sh[p] + S.frame) & 31) < 3) { R = 247; Gc = 150; B = 23; }
-    if (fl[p]) { const f = fl[p] / 255 * 0.6; R += (255 - R) * f; Gc += (255 - Gc) * f; B += (255 - B) * f; }
-    d[i] = R; d[i + 1] = Gc; d[i + 2] = B; d[i + 3] = 255;
-    const em = EMISSIVE.has(m) || fl[p] > 120;
-    gd[i] = em ? R : 0; gd[i + 1] = em ? Gc : 0; gd[i + 2] = em ? B : 0; gd[i + 3] = em ? 255 : 0;
-  }
-  octx.putImageData(img, 0, 0); gctx.putImageData(gimg, 0, 0);
-  ctx.imageSmoothingEnabled = false;
-  ctx.globalCompositeOperation = "source-over"; ctx.filter = "none";
-  ctx.drawImage(off, 0, 0, canvas.width, canvas.height);
-  try {
-    ctx.globalCompositeOperation = "lighter"; ctx.filter = "blur(10px)"; ctx.globalAlpha = 0.55; ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(glow, 0, 0, canvas.width, canvas.height);
-  } catch (e) {}
-  ctx.globalAlpha = 1; ctx.filter = "none"; ctx.globalCompositeOperation = "source-over"; ctx.imageSmoothingEnabled = false;
-  // nozzle
-  if (G.sel >= 0 || G.phase === "pouring") {
-    const m = G.phase === "pouring" ? G.pourMat : G.hand[G.sel];
-    const sx = canvas.width / W;
-    const x = (G.pourX + 0.5) * sx;
-    ctx.fillStyle = VIALS[m].c; ctx.globalAlpha = G.phase === "pouring" ? 1 : 0.6;
-    ctx.beginPath(); ctx.moveTo(x - 14, 0); ctx.lineTo(x + 14, 0); ctx.lineTo(x + 4, 14); ctx.lineTo(x - 4, 14); ctx.closePath(); ctx.fill();
-    ctx.globalAlpha = 1;
-  }
-}
-
-const elHand = document.getElementById("hand");
-function renderHand() {
-  elHand.innerHTML = "";
-  G.hand.forEach((m, i) => {
-    const v = VIALS[m];
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "card" + (G.sel === i ? " sel" : "");
-    b.disabled = G.phase !== "idle" || G.pours <= 0;
-    b.innerHTML = `<div class="sw" style="background:${v.c}"></div><div class="nm">${v.nm}</div><div class="ds">${v.ds}</div>`;
-    b.addEventListener("click", () => { G.sel = G.sel === i ? -1 : i; renderHand(); updateHint(); render(); });
-    elHand.appendChild(b);
-  });
-  for (let i = G.hand.length; i < HAND; i++) { const d = document.createElement("div"); elHand.appendChild(d); }
-  updateHint();
-}
-function updateHint() {
-  const h = document.getElementById("hint");
-  if (G.phase === "pouring" || G.phase === "settling") h.textContent = "反應中…";
-  else if (G.sel >= 0) h.textContent = `按住燒杯倒出「${VIALS[G.hand[G.sel]].nm}」，拖曳可移動位置`;
-  else h.textContent = "先選一瓶材料，再在燒杯上按住倒料";
-  h.hidden = G.phase === "settling";
-}
-function fmt(n) { return n >= 100000 ? (n / 1000).toFixed(0) + "k" : n.toLocaleString("en-US"); }
-let lastCalc = { chips: 0, mult: 1 };
-function renderRx() {
-  const el = document.getElementById("rx");
-  const keys = Object.keys(S.counts).sort((a, b) => S.counts[b] * ptsOf(b) - S.counts[a] * ptsOf(a));
-  if (!keys.length) el.innerHTML = `<div class="empty">還沒有反應。每種不同的反應會讓倍率 +1。</div>`;
-  else el.innerHTML = keys.map(k => `<div class="row"><span class="dot" style="background:${RXINFO[k].c}"></span><span>${RXINFO[k].nm}</span><span class="n">×${S.counts[k]}</span><span class="p">${fmt(S.counts[k] * ptsOf(k))}</span></div>`).join("");
-  const c = calc(S.counts);
-  const ec = document.getElementById("chips"), em = document.getElementById("mult");
-  ec.textContent = fmt(c.chips); em.textContent = c.mult;
-  if (c.mult !== lastCalc.mult) { em.classList.remove("bump"); void em.offsetWidth; em.classList.add("bump"); }
-  lastCalc = c;
-}
-function renderSide() {
-  document.getElementById("roundNo").textContent = G.round + 1;
-  document.getElementById("target").textContent = fmt(TARGETS[G.round]);
-  document.getElementById("score").textContent = fmt(G.roundScore);
-  document.getElementById("pours").textContent = G.pours;
-  document.getElementById("prog").style.width = Math.min(100, G.roundScore / TARGETS[G.round] * 100) + "%";
-  const cats = document.getElementById("cats");
-  document.getElementById("catCount").textContent = G.cats.length;
-  cats.innerHTML = G.cats.length ? G.cats.map(id => { const c = CATS.find(x => x.id === id); return `<div class="cat"><b>${c.nm}</b><span>${c.ds}</span></div>`; }).join("") : `<div class="muted">還沒有。過關後可以在商店購買。</div>`;
-  const cnt = {}; for (const m of G.deck) cnt[m] = (cnt[m] || 0) + 1;
-  document.getElementById("deckSize").textContent = G.deck.length;
-  document.getElementById("deck").innerHTML = Object.keys(cnt).map(m => `<i style="--c:${VIALS[m].c}">${VIALS[m].nm} ×${cnt[m]}</i>`).join("");
-}
-function popup(text) {
-  const p = document.getElementById("popup");
-  p.textContent = text; p.classList.remove("show"); void p.offsetWidth; p.classList.add("show");
-  setTimeout(() => p.classList.remove("show"), 1300);
-}
-
-// ---------- input ----------
-function xFromEvent(e) {
+// ---------------- input ----------------
+function cellFromEvent(e) {
   const r = canvas.getBoundingClientRect();
-  return Math.max(2, Math.min(W - 3, Math.floor((e.clientX - r.left) / r.width * W)));
+  const px = (e.clientX - r.left), py = (e.clientY - r.top);
+  const x = Math.floor((px - L.bx) / L.cp), y = Math.floor((py - L.by) / L.cp);
+  return { x, y, inside: x >= 1 && x < W - 1 && y >= -12 && y < H - 1 };
 }
-canvas.addEventListener("pointermove", e => { if (G.phase === "idle" || (G.phase === "pouring" && G.holding)) { G.pourX = xFromEvent(e); if (G.phase === "idle") render(); } });
+canvas.addEventListener("contextmenu", e => e.preventDefault());
+canvas.addEventListener("pointermove", e => {
+  const c = cellFromEvent(e);
+  G.hover = c.inside; G.aimX = Math.max(5, Math.min(W - 6, c.x)); G.hoverY = c.y;
+  if (G.pourP && G.holding) R.aim(G.pourP, G.aimX);
+});
+canvas.addEventListener("pointerleave", () => { G.hover = false; });
 canvas.addEventListener("pointerdown", e => {
-  if (G.phase !== "idle" || G.sel < 0 || G.pours <= 0) return;
+  if (G.ended) return;
   ensureAudio();
+  const c = cellFromEvent(e);
+  if (!c.inside) return;
+  if (e.button === 2 || G.matchMode) { strikeAt(c.x, Math.max(0, c.y)); return; }
+  if (G.sel < 0) { toast(G.hand.length ? "先在下方選一瓶材料（或按 1–4）" : "手上沒有材料了"); return; }
+  if (R.S.lid) { toast("蓋子蓋著不能倒料：按空白鍵打開"); pulse("tLid"); return; }
+  if (R.pours <= 0) { toast("這回合的倒料用完了"); return; }
   canvas.setPointerCapture(e.pointerId);
-  G.pourX = xFromEvent(e); G.holding = true;
-  G.pourMat = G.hand[G.sel];
-  G.disc.push(G.hand.splice(G.sel, 1)[0]); G.sel = -1;
-  G.pourLeft = Math.round(POUR_AMOUNT * (G.cats.includes("nozzle") ? 1.5 : 1));
-  G.pours--; G.phase = "pouring"; G.turnFrames = 0;
-  S.resetCounts(); S.lastEventFrame = S.frame;
-  renderHand(); renderSide(); renderRx();
+  G.aimX = Math.max(5, Math.min(W - 6, c.x));
+  const mat = G.hand[G.sel];
+  const P = R.startPour(mat, G.aimX);
+  if (!P) return;
+  G.pourP = P; G.holding = true;
+  G.disc.push(G.hand.splice(G.sel, 1)[0]);
+  if (G.draw.length === 0 && G.disc.length && G.round > 0) G.draw = shuffle(G.disc.splice(0));
+  if (G.draw.length) { G.hand.splice(G.sel, 0, G.draw.pop()); G.newIdx = G.sel; } else G.newIdx = -1;
+  G.sel = -1;
+  G.tut.done.pour = (G.tut.done.pour || 0) + 1;
+  if (mat === M.SULFUR) G.tut.done.sulfur = true;
+  renderHand(); renderSide();
 });
 const release = () => { G.holding = false; };
 canvas.addEventListener("pointerup", release); canvas.addEventListener("pointercancel", release);
 
-// ---------- loop ----------
-let rxTick = 0;
-function loop() {
-  if (G.phase === "pouring" || G.phase === "settling") {
-    if (G.phase === "pouring") {
-      G.pourLeft -= S.pour(G.pourMat, G.pourX, 8);
-      if (G.pourLeft <= 0) G.phase = "settling";
-    }
-    S.step(); S.step(); G.turnFrames++;
-    if (++rxTick % 4 === 0) renderRx();
-    if (G.phase === "settling" && ((G.turnFrames > 40 && S.frame - (S.lastEventFrame || 0) > 150) || G.turnFrames > 480)) endTurn();
-  } else if (G.phase === "idle" && (S.frame % 2 === 0)) {
-    S.step(); // keep ambient motion (steam drifting etc.) without scoring pressure
-  }
-  render();
-  requestAnimationFrame(loop);
+function strikeAt(x, y) {
+  if (R.matches <= 0) { toast("火柴用完了"); G.matchMode = false; renderSide(); return; }
+  R.strike(Math.max(2, Math.min(W - 3, x)), Math.max(1, Math.min(H - 3, y)));
+  G.matchMode = false; G.tut.done.match = true;
+  sfx("match", true);
+  renderSide();
 }
-function endTurn() {
-  G.phase = "idle";
-  const c = calc(S.counts);
-  renderRx();
-  G.roundScore += c.total;
-  popup(c.total > 0 ? `+${fmt(c.total)}` : "沒有反應");
-  if (c.total > 0) { beep(523, .12, .08); setTimeout(() => beep(784, .18, .08), 90); }
-  if (G.draw.length === 0 && G.disc.length) { G.draw = shuffle(G.disc.splice(0)); }
-  while (G.hand.length < HAND && G.draw.length) G.hand.push(G.draw.pop());
-  S.resetCounts();
-  renderSide(); renderHand();
-  if (G.roundScore >= TARGETS[G.round]) setTimeout(roundClear, 900);
-  else if (G.pours <= 0) setTimeout(gameOver, 900);
+function toggleLid() {
+  if (G.ended) return;
+  R.toggleLid(); G.lidUsed = true; G.tut.done.lid = true;
+  if (R.S.lid) sfx("lid", true);
+  renderSide();
+}
+function seal() {
+  if (G.ended) return;
+  R.closeAll(); renderSide();
+}
+function selectVial(i) {
+  if (i >= G.hand.length) return;
+  G.sel = G.sel === i ? -1 : i; G.matchMode = false; renderHand(); renderSide();
+}
+document.getElementById("tMatch").addEventListener("click", () => { if (R.matches > 0) { G.matchMode = !G.matchMode; G.sel = -1; renderHand(); renderSide(); } else toast("火柴用完了"); });
+document.getElementById("tLid").addEventListener("click", toggleLid);
+document.getElementById("tSeal").addEventListener("click", seal);
+window.addEventListener("keydown", e => {
+  if (!document.getElementById("overlay").hidden) { if (e.key === "Enter") { const b = document.querySelector("#overlay .primary"); if (b) { e.preventDefault(); b.click(); } } return; }
+  if (e.key >= "1" && e.key <= "4") selectVial(+e.key - 1);
+  else if (e.key === "f" || e.key === "F") document.getElementById("tMatch").click();
+  else if (e.key === " ") { e.preventDefault(); toggleLid(); }
+  else if (e.key === "Enter") { e.preventDefault(); seal(); }
+  else if (e.key === "Escape") { G.sel = -1; G.matchMode = false; renderHand(); renderSide(); }
+  else if (e.key === "Shift") speedHeld = true;
+});
+window.addEventListener("keyup", e => { if (e.key === "Shift") speedHeld = false; });
+
+// ---------------- side UI ----------------
+const elHand = document.getElementById("hand");
+function vialIcon(m) {
+  const c = document.createElement("canvas"); c.width = 34; c.height = 60;
+  const g = c.getContext("2d");
+  const col = VIALS[m].c;
+  g.strokeStyle = "#2a1c12"; g.lineWidth = 1.2; g.fillStyle = col;
+  // flask silhouette
+  g.beginPath(); g.moveTo(13, 4); g.lineTo(21, 4); g.lineTo(21, 22); g.quadraticCurveTo(32, 32, 31, 46); g.quadraticCurveTo(30, 57, 17, 57);
+  g.quadraticCurveTo(4, 57, 3, 46); g.quadraticCurveTo(2, 32, 13, 22); g.closePath();
+  g.save(); g.clip();
+  g.globalAlpha = 0.75; g.fillRect(0, 30, 34, 30); g.globalAlpha = 1;
+  g.strokeStyle = "rgba(42,28,18,.7)"; g.lineWidth = 0.8;
+  for (let y = 32; y < 60; y += 3) { g.beginPath(); g.moveTo(0, y); g.lineTo(34, y); g.stroke(); }
+  g.restore();
+  g.strokeStyle = "#2a1c12"; g.lineWidth = 1.2;
+  g.beginPath(); g.moveTo(13, 4); g.lineTo(21, 4); g.lineTo(21, 22); g.quadraticCurveTo(32, 32, 31, 46); g.quadraticCurveTo(30, 57, 17, 57);
+  g.quadraticCurveTo(4, 57, 3, 46); g.quadraticCurveTo(2, 32, 13, 22); g.closePath(); g.stroke();
+  g.fillStyle = "#6b4a2a"; g.fillRect(12, 1, 10, 5); g.strokeRect(12, 1, 10, 5);
+  return c;
+}
+function renderHand() {
+  elHand.innerHTML = "";
+  for (let i = 0; i < HAND; i++) {
+    const m = G.hand[i];
+    if (m === undefined) { const d = document.createElement("div"); d.className = "vial empty"; d.textContent = "空"; elHand.appendChild(d); continue; }
+    const v = VIALS[m];
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "vial" + (G.sel === i ? " sel" : "") + (G.newIdx === i ? " new" : "");
+    b.disabled = R.pours <= 0 || G.ended;
+    b.appendChild(vialIcon(m));
+    const nm = document.createElement("div"); nm.className = "nm"; nm.innerHTML = `${v.nm}<kbd class="k">${i + 1}</kbd>`;
+    const ds = document.createElement("div"); ds.className = "ds"; ds.textContent = v.ds;
+    b.appendChild(nm); b.appendChild(ds);
+    b.addEventListener("click", () => selectVial(i));
+    elHand.appendChild(b);
+  }
+  G.newIdx = -1;
+  document.getElementById("decknote").textContent = `牌組 ${G.deck.length} 瓶 · 抽牌堆 ${G.draw.length} · 倒過的瓶子回合結束後洗回`;
+}
+function renderSide() {
+  const st = STAGES[Math.floor(G.round / 3)];
+  document.getElementById("stagebar").innerHTML = `<b>${st.nm}</b><span class="lat">${st.lat}</span><span>第 ${G.round % 3 + 1} / 3 回合 · 大業 ${G.round + 1} / 12</span>`;
+  document.getElementById("goldNow").innerHTML = `${fmt(G.displayGold)}<small> / ${fmt(R.target)} 金</small>`;
+  document.getElementById("poursLeft").innerHTML = `倒料 <b>${R.pours}</b> · 火柴 <b>${R.matches}</b> · $${G.money}`;
+  document.getElementById("matchN").textContent = "|".repeat(R.matches) || "0";
+  const tm = document.getElementById("tMatch"); tm.classList.toggle("on", G.matchMode); tm.disabled = R.matches <= 0 || G.ended;
+  const tl = document.getElementById("tLid"); tl.classList.toggle("on", R.S.lid); document.getElementById("lidState").textContent = R.S.lid ? "蓋" : "開";
+  document.getElementById("arcN").textContent = G.arc.length ? "秘方 " + G.arc.map(id => ARCANA.find(a => a.id === id).nm).join("・") : "";
+  [...elHand.children].forEach((b, i) => { if (b.tagName === "BUTTON") b.disabled = R.pours <= 0 || G.ended; });
+}
+function elSvg(e, on) {
+  const c = on ? ELC[e] : "#a8957a";
+  const up = e === 0 || e === 3, bar = e >= 2;
+  const tri = up ? "M7 1.5 L13 12.5 L1 12.5 Z" : "M1 1.5 L13 1.5 L7 12.5 Z";
+  const ln = bar ? (up ? `<line x1="3" y1="8.5" x2="11" y2="8.5" stroke="${on ? "#2a1c12" : c}" stroke-width="1.2"/>` : `<line x1="3" y1="5.5" x2="11" y2="5.5" stroke="${on ? "#2a1c12" : c}" stroke-width="1.2"/>`) : "";
+  return `<svg class="elsym" viewBox="0 0 14 14"><path d="${tri}" fill="${on ? c : "none"}" fill-opacity=".8" stroke="${on ? "#2a1c12" : c}" stroke-width="1.2"/>${ln}</svg>`;
+}
+function renderCard(Lg, final) {
+  const m = meta.get(Lg.uid); if (!m || !m.el) return;
+  const res = scoreLedger(Lg, R.mods);
+  const rws = m.el.querySelector(".rws");
+  if (!res.rows.length) rws.innerHTML = `<div class="empty">${Lg.kind === "pour" ? "還沒有反應——它會等你點燃或倒入對頭" : "還沒有反應"}</div>`;
+  else rws.innerHTML = res.rows.map(r => `<div class="r${r.halved ? " half" : ""}">${elSvg(RX[r.type].el[0], true)}<span>${RXINFO[r.type]}</span><span class="n">×${r.n}×${r.pts}</span><span class="s">${fmt(r.sub)}</span></div>`).join("");
+  const els = [0, 1, 2, 3].map(e => elSvg(e, res.lit[e])).join("");
+  let sum = "";
+  if (res.rows.length) {
+    if (res.stale) sum += `<span>佈置（碰到 2 倒以前的陳料）</span><span>+${fmt(res.stale)}</span>`;
+    sum += `<span>物質</span><span>${fmt(res.matter)}</span>`;
+    sum += `<span>元素 1＋${res.nLit}<span class="els">${els}</span>${res.chain ? `＋連鎖 ${res.chain}` : ""}${res.four ? "＋四象 2" : ""}${res.elemMods ? `＋秘方 ${res.elemMods}` : ""}</span><span>×${res.elem}</span>`;
+    for (const a of res.arcana) sum += `<span>秘方・${ARCANA.find(x => x.id === a.id).nm}</span><span>×${a.x}</span>`;
+  }
+  m.el.querySelector(".sum").innerHTML = sum;
+  if (!final) {
+    const v = m.el.querySelector(".gold .v"); v.textContent = res.gold > 0 ? "≈" + fmt(res.gold) : "—";
+    const pouring = R.active.some(P => P.L === Lg);
+    m.el.querySelector(".st").textContent = pouring ? "倒料中…" : res.rows.length ? "反應中…" : "等待中…";
+  }
+}
+let toastT = 0;
+function toast(t) { const el = document.getElementById("toast"); el.textContent = t; el.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove("show"), 1800); }
+function pulse(id) { const b = document.getElementById(id); b.classList.remove("pulse"); void b.offsetWidth; b.classList.add("pulse"); setTimeout(() => b.classList.remove("pulse"), 2400); }
+function fmt(n) { n = Math.round(n); return n >= 1e7 ? (n / 1e6).toFixed(1) + "M" : n.toLocaleString("en-US"); }
+
+// ---------------- tutorial notes (round 1, then only when relevant) ----------------
+function setNote(text, anchorEl, side) {
+  const n = document.getElementById("note");
+  if (!text) { n.hidden = true; G.noteKey = null; return; }
+  if (G.noteKey !== text) { document.getElementById("noteText").innerHTML = text; G.noteKey = text; }
+  n.hidden = false;
+  const r = anchorEl.getBoundingClientRect(), nr = n.getBoundingClientRect(), a = document.getElementById("noteArr");
+  let x, y;
+  if (side === "above") { x = r.left + r.width / 2 - nr.width / 2; y = r.top - nr.height - 14; a.style.cssText = `left:${nr.width / 2 - 6}px;bottom:-7px;border-left:none;border-top:none;`; }
+  else if (side === "left") { x = r.left - nr.width - 14; y = r.top + r.height / 2 - nr.height / 2; a.style.cssText = `right:-7px;top:${nr.height / 2 - 6}px;border-left:none;border-bottom:none;`; }
+  else { x = r.left + r.width / 2 - nr.width / 2; y = r.bottom + 12; a.style.cssText = `left:${nr.width / 2 - 6}px;top:-7px;border-right:none;border-bottom:none;`; }
+  x = Math.max(8, Math.min(innerWidth - nr.width - 8, x)); y = Math.max(8, Math.min(innerHeight - nr.height - 8, y));
+  n.style.left = x + "px"; n.style.top = y + "px";
+}
+function canvasAnchor(cx, cy) { // a virtual element at beaker cell coords
+  const r = canvas.getBoundingClientRect();
+  const x = r.left + L.bx + cx * L.cp, y = r.top + L.by + cy * L.cp;
+  return { getBoundingClientRect: () => ({ left: x - 2, top: y - 2, right: x + 2, bottom: y + 2, width: 4, height: 4 }) };
+}
+function updateTutorial() {
+  if (!G || G.ended || !document.getElementById("overlay").hidden) { setNote(null); return; }
+  const d = G.tut.done, S = R.S;
+  const first = G.round === 0;
+  const hasFuel = G.sulfurCells > 30 || G.oilCells > 30;
+  if (first && !d.pour) {
+    if (G.sel < 0) return setNote("選一瓶<b>水</b>（點它，或按 <kbd>1</kbd>）。", elHand.children[0], "above");
+    return setNote("在燒杯上方<b>按住</b>倒出，按住時左右拖曳可以移動落點。", canvasAnchor(80, 30), "below");
+  }
+  if (first && !d.sulfur && d.pour < 3) {
+    const i = G.hand.indexOf(M.SULFUR), wi = G.hand.indexOf(M.WATER);
+    if (G.waterCells < 200 && wi >= 0) return setNote(`不用等它停——隨時可以倒下一瓶。先倒<b>水</b>，再把<b>硫磺</b>倒在水面上（它會浮著）。`, elHand.children[wi], "above");
+    if (i >= 0) return setNote(`不用等它停——隨時可以倒下一瓶。把<b>硫磺</b>倒在水面上（它會浮著）。`, elHand.children[i], "above");
+  }
+  if (R.matches > 0 && !d.match && hasFuel && (first || G.round < 3)) {
+    if (G.matchMode) return setNote("點在<b>硫磺</b>或<b>油</b>上。點在空氣裡會浪費火柴。", canvasAnchor(G.fuelX, G.fuelY), "below");
+    return setNote(`可燃物已經鋪好了。按<b>火柴</b>（<kbd>F</kbd>），或直接在燒杯上<b>右鍵</b>點火。`, document.getElementById("tMatch"), "left");
+  }
+  if (first && d.match && !d.ledger) return setNote("右邊每一倒都有一本<b>帳</b>：燒得越久越廣，物質越多；點亮的<b>火水土氣</b>越多，倍率越高。", document.getElementById("cards"), "left");
+  if (first && d.ledger && !d.gold) return setNote("結算後金砂流進右邊的<b>受器</b>。金砂滿過<b>金線</b>就過關。", canvasAnchor(W + 20, 60), "left");
+  if (!d.lid && !G.lidUsed && S.gas > 120 && (first || G.round < 3) && !S.lid)
+    return setNote("杯裡有很多氣體了。按 <kbd>空白鍵</kbd> <b>蓋上蓋子</b>：壓力錶滿了會<b>爆蓋</b>，一次大賺。蓋著時不能倒料。", document.getElementById("tLid"), "left");
+  if (S.lid && !d.pop && (first || G.round < 3)) return setNote("左邊的<b>壓力錶</b>到頂就爆蓋。想倒料，再按一次空白鍵打開。", canvasAnchor(-6, 40), "below");
+  const st = R.status();
+  if (st === "wait") return setNote(`倒料用完了，還有 ${R.matches} 根火柴：點燃還沒燒的東西，或按 <b>封瓶</b>（<kbd>Enter</kbd>）結束。`, document.getElementById("tSeal"), "left");
+  setNote(null);
 }
 
-// ---------- overlays ----------
+// ---------------- rendering ----------------
+function computeLayout() {
+  const hh = document.querySelector("header.top").offsetHeight, uh = 118; // hand row is fixed-height by CSS
+  const availH = innerHeight - hh - uh - 26; // header + hand row + padding + gaps
+  const availW = innerWidth - 32 - 16 - 340;           // padding + gap + ledger min
+  let cp = 3;
+  for (let c = 6; c >= 3; c--) {
+    const w = c * (W + 14 + 8 + 40 + 3), h = c * (H + 14 + 3);
+    if (w <= availW && h <= availH) { cp = c; break; }
+  }
+  const bx = 14 * cp, by = 14 * cp, bw = W * cp, bh = H * cp;
+  const cw = cp * (W + 14 + 8 + 40 + 3), ch = cp * (H + 14 + 3);
+  L = { cp, bx, by, bw, bh, cw, ch, rx: bx + bw + 8 * cp, rw: 40 * cp };
+  canvas.width = cw * DPR; canvas.height = ch * DPR;
+  canvas.style.width = cw + "px"; canvas.style.height = ch + "px";
+  document.getElementById("app").style.setProperty("--cw", cw + "px");
+  if (!paperTile) { paperTile = makePaperTile(); document.body.style.backgroundImage = `url(${paperTile.toDataURL()})`; }
+  inkC.width = bw; inkC.height = bh;
+  inkImg = ictx.createImageData(bw, bh); ink32 = new Uint32Array(inkImg.data.buffer);
+  buildPatterns();
+  if (G) buildBg();
+}
+
+// value-noise for paper (periodic with period P so the tile repeats seamlessly)
+let paperTile = null;
+function makeNoise(seed, P) {
+  P = P || 64;
+  const r = mulberry32(seed), g = new Float32Array(P * P);
+  for (let i = 0; i < g.length; i++) g[i] = r();
+  const w = v => ((v % P) + P) % P;
+  return (x, y) => {
+    const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+    const a = g[w(yi) * P + w(xi)], b = g[w(yi) * P + w(xi + 1)], c = g[w(yi + 1) * P + w(xi)], d = g[w(yi + 1) * P + w(xi + 1)];
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  };
+}
+function makePaperTile() {
+  const S = 512, c = document.createElement("canvas"); c.width = S; c.height = S;
+  const g = c.getContext("2d"), im = g.createImageData(S, S), d = im.data;
+  const n1 = makeNoise(7, 8), n3 = makeNoise(5, 32), n2 = makeNoise(11, 128), n4 = makeNoise(13, 256);
+  const r0 = mulberry32(99);
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const f = n1(x / 64, y / 64) * 0.5 + n3(x / 16, y / 16) * 0.3 + n2(x / 4, y / 4) * 0.2;
+    const fiber = n4(x / 2, y / 24) > 0.9 ? -5 : 0; // faint laid lines
+    const v = 224 + f * 18 + fiber + (r0() - 0.5) * 5;
+    const i = (y * S + x) * 4;
+    d[i] = v; d[i + 1] = v - 12; d[i + 2] = v - 40; d[i + 3] = 255;
+  }
+  g.putImageData(im, 0, 0);
+  return c;
+}
+function buildBg() {
+  const cw = L.cw, ch = L.ch;
+  bgC = document.createElement("canvas"); bgC.width = cw; bgC.height = ch;
+  const g = bgC.getContext("2d");
+  // same paper as the page, aligned to the viewport so the canvas has no visible edge
+  const r = canvas.getBoundingClientRect();
+  const pat = g.createPattern(paperTile, "repeat");
+  g.save(); g.translate(-r.left, -r.top); g.fillStyle = pat; g.fillRect(r.left, r.top, cw, ch); g.restore();
+  const tint = STAGES[Math.floor(G.round / 3)].tint;
+  if (tint[0] !== 1 || tint[1] !== 1 || tint[2] !== 1) { g.globalCompositeOperation = "multiply"; g.fillStyle = `rgb(${tint[0] * 255},${tint[1] * 255},${tint[2] * 255})`; g.fillRect(L.bx - L.cp * 2, L.by - L.cp * 3, L.bw + L.cp * 4, L.bh + L.cp * 4); g.globalCompositeOperation = "source-over"; }
+  // foxing spots inside the glass
+  const r0 = mulberry32(99 + G.round);
+  for (let i = 0; i < 10; i++) { g.fillStyle = `rgba(140,96,48,${0.03 + r0() * 0.05})`; g.beginPath(); g.arc(L.bx + r0() * L.bw, L.by + r0() * L.bh, 2 + r0() * 8, 0, 7); g.fill(); }
+  drawFurniture(g);
+}
+function inkLine(g, pts, w, wob) {
+  g.beginPath();
+  for (let i = 0; i < pts.length; i++) { const [x, y] = pts[i]; const j = wob ? Math.sin(i * 1.7 + x * 0.05) * wob : 0; if (i === 0) g.moveTo(x + j, y); else g.lineTo(x + j, y + j * 0.5); }
+  g.lineWidth = w; g.stroke();
+}
+function drawFurniture(g) {
+  const { cp, bx, by, bw, bh, rx, rw } = L;
+  g.strokeStyle = "#2a1c12"; g.fillStyle = "#2a1c12"; g.lineCap = "round"; g.lineJoin = "round";
+  // beaker glass: double line + hatched shading on the walls
+  g.lineWidth = 2; g.strokeRect(bx - cp * 0.6, by - cp * 2, bw + cp * 1.2, bh + cp * 1.6);
+  g.lineWidth = 0.8; g.strokeRect(bx - cp * 1.4, by - cp * 2, bw + cp * 2.8, bh + cp * 2.4);
+  g.save(); g.globalAlpha = 0.5; g.lineWidth = 0.7;
+  for (let y = by; y < by + bh; y += 4) { g.beginPath(); g.moveTo(bx - cp * 1.4, y); g.lineTo(bx - cp * 0.6, y + 2); g.stroke(); g.beginPath(); g.moveTo(bx + bw + cp * 0.6, y); g.lineTo(bx + bw + cp * 1.4, y + 2); g.stroke(); }
+  g.restore();
+  // rim lip
+  g.lineWidth = 1.5; g.beginPath(); g.ellipse(bx + bw / 2, by - cp * 2, bw / 2 + cp * 1.6, cp * 0.9, 0, 0, Math.PI * 2); g.stroke();
+  // graduations
+  g.font = `${Math.max(10, cp * 2.4)}px "IM Fell English", serif`; g.textAlign = "left"; g.textBaseline = "middle";
+  const rom = ["I", "II", "III", "IV", "V", "VI", "VII"];
+  for (let i = 1; i <= 7; i++) {
+    const y = by + bh - i * (bh / 8);
+    g.lineWidth = 1; g.beginPath(); g.moveTo(bx + bw - cp * 3, y); g.lineTo(bx + bw, y); g.stroke();
+    g.globalAlpha = 0.7; g.fillText(rom[i - 1], bx + bw - cp * 7.5, y); g.globalAlpha = 1;
+  }
+  // pressure gauge (left)
+  const gx = cp * 4, gy = by + cp * 6, gh = bh * 0.6, gw = cp * 3.2;
+  L.gauge = { gx, gy, gw, gh };
+  g.lineWidth = 1.2; g.strokeRect(gx, gy, gw, gh);
+  g.beginPath(); g.arc(gx + gw / 2, gy + gh + gw * 0.7, gw * 0.9, 0, Math.PI * 2); g.stroke();
+  for (let i = 0; i <= 10; i++) { const y = gy + gh - i * gh / 10; g.beginPath(); g.moveTo(gx + gw, y); g.lineTo(gx + gw + (i % 5 ? cp : cp * 2), y); g.stroke(); }
+  g.save(); g.translate(gx - cp * 1.2, gy + gh / 2); g.rotate(-Math.PI / 2); g.textAlign = "center";
+  g.font = `${Math.max(12, cp * 2.8)}px "Noto Serif TC", serif`; g.fillText("壓 力", 0, 0); g.restore();
+  // receiver: alembic tube from beaker rim to the flask
+  const fx0 = rx + rw / 2, fr = rw * 0.42, fcy = by + bh - fr - cp * 2;
+  const neckTop = by + bh * 0.28, neckW = rw * 0.16;
+  L.flask = { cx: fx0, cy: fcy, r: fr, neckTop, neckW, bottom: fcy + fr, top: neckTop };
+  g.lineWidth = 1.4;
+  const tube = [[bx + bw + cp * 1.4, by + cp * 2], [bx + bw + cp * 4, by - cp * 4], [fx0 - cp * 2, by - cp * 6], [fx0, neckTop - cp * 3]];
+  L.tube = tube;
+  g.beginPath(); g.moveTo(tube[0][0], tube[0][1]); g.bezierCurveTo(tube[1][0], tube[1][1], tube[2][0], tube[2][1], tube[3][0], tube[3][1]); g.stroke();
+  g.beginPath(); g.moveTo(tube[0][0] + cp * 1.4, tube[0][1] + cp); g.bezierCurveTo(tube[1][0] + cp * 1.4, tube[1][1] + cp * 1.2, tube[2][0] + cp * 1.2, tube[2][1] + cp * 1.4, tube[3][0] + cp * 1.4, tube[3][1] + cp * 0.5); g.stroke();
+  // flask outline
+  flaskPath(g); g.lineWidth = 2; g.stroke();
+  g.save(); flaskPath(g); g.clip(); g.globalAlpha = 0.35; g.lineWidth = 0.7;
+  for (let y = L.flask.top; y < L.flask.bottom; y += 5) { g.beginPath(); g.moveTo(fx0 + fr * 0.55, y); g.lineTo(fx0 + fr, y + 3); g.stroke(); }
+  g.restore();
+  g.textAlign = "center"; g.font = `italic ${Math.max(12, cp * 2.6)}px "IM Fell English", serif`;
+  g.fillText("Receptaculum", fx0, fcy + fr + cp * 2.4);
+  // element plate above beaker
+  g.font = `${Math.max(11, cp * 2.4)}px "Noto Serif TC", serif`; g.textAlign = "left"; g.globalAlpha = 0.85;
+  g.restore && 0;
+}
+function flaskPath(g) {
+  const f = L.flask;
+  g.beginPath();
+  g.moveTo(f.cx - f.neckW, f.neckTop);
+  g.lineTo(f.cx - f.neckW, f.cy - f.r * 0.88);
+  g.arc(f.cx, f.cy, f.r, -Math.PI / 2 - 0.42, Math.PI * 1.5 + 0.42, true);
+  g.lineTo(f.cx + f.neckW, f.neckTop);
+}
+// level (0..1) -> y inside the flask; capacity 1.5× target, gold line at 2/3
+function flaskY(frac) { const f = L.flask; return f.bottom - Math.min(1, frac) * (f.bottom - f.neckTop - L.cp * 2); }
+
+// ---- engraving patterns ----
+let PAT = null; // per material: Uint8Array 12x12 ink mask (0/1)
+const TINT = {}, TINTA = {};
+function tint(m, hx, a) { TINT[m] = hex(hx); TINTA[m] = a; }
+tint(M.MUD, "#8a6a45", 0.6); tint(M.SAND, "#d9b46a", 0.75); tint(M.WATER, "#6f9bb0", 0.55); tint(M.OIL, "#6e4a5e", 0.65);
+tint(M.FIRE, "#d2452b", 0.9); tint(M.EMBER, "#d9582a", 1); tint(M.LAVA, "#c43c24", 0.92); tint(M.STONE, "#8c8478", 0.7);
+tint(M.STEAM, "#e9e4d8", 0.0); tint(M.ACID, "#8db04a", 0.65); tint(M.POWDER, "#3c3430", 0.75); tint(M.ICE, "#cfe3e6", 0.55);
+tint(M.GLASS, "#bcd6d9", 0.45); tint(M.SEED, "#8a8a3a", 0.75); tint(M.PLANT, "#5f8a3c", 0.75); tint(M.SMOKE, "#9a9088", 0.25);
+tint(M.SULFUR, "#e3cf47", 0.85); tint(M.FUME, "#d9cc5a", 0.3);
+const FIRE_RAMP = ["#b8301c", "#d2452b", "#e8752f", "#f0b443"].map(hex);
+const BLUE = hex("#3553b8"), BLUE2 = hex("#4a69c8");
+function buildPatterns() {
+  PAT = [];
+  const T = 12;
+  const mk = f => { const a = new Uint8Array(T * T); for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) a[y * T + x] = f(x, y) ? 1 : 0; return a; };
+  const h = (x, y) => { let v = (x * 374761393 + y * 668265263) | 0; v = (v ^ (v >>> 13)) * 1274126177; return ((v ^ (v >>> 16)) >>> 0) / 4294967296; };
+  PAT[M.WATER] = mk((x, y) => y % 3 === 0 && h(x >> 2, y) > 0.18);
+  PAT[M.OIL] = mk((x, y) => ((y + Math.round(Math.sin(x * Math.PI / 3) * 1.2)) % 4 + 4) % 4 === 0);
+  PAT[M.STONE] = mk((x, y) => (x + y) % 4 === 0 || (x - y + 12) % 4 === 0);
+  PAT[M.ACID] = mk((x, y) => (x - y + 12) % 3 === 0);
+  PAT[M.ICE] = mk((x, y) => (x + 2 * y) % 6 === 0);
+  PAT[M.GLASS] = mk((x, y) => (x - y + 12) % 6 === 0 && x % 12 < 7);
+  PAT[M.PLANT] = mk((x, y) => x % 3 === 0 && h(x, y >> 1) > 0.25);
+  PAT[M.SULFUR] = mk((x, y) => x % 3 === 0 && y % 3 === 0);
+  PAT[M.LAVA] = mk((x, y) => (x + 2 * y) % 7 === 0 && h(x, y) > 0.4);
+  PAT[M.MUD] = mk((x, y) => (h(x, y) > 0.84) || (y % 4 === 0 && h(x >> 1, y) > 0.62));
+  PAT[M.POWDER] = mk((x, y) => h(x + 3, y + 5) > 0.42);
+  PAT[M.SMOKE] = mk((x, y) => h(x + 9, y + 1) > 0.88);
+  PAT[M.FUME] = mk((x, y) => h(x + 1, y + 9) > 0.86);
+  PAT[M.STEAM] = mk((x, y) => (x + y * 5) % 11 === 0);
+  PAT[M.SAND] = null; PAT[M.SEED] = null; // per-cell stipple
+}
+
+function renderBeaker() {
+  const S = R.S, t = S.t, life = S.life, sh = S.shade, fl = S.flash;
+  const td = tintImg.data;
+  let sulfur = 0, oil = 0, water = 0, fxs = 0, fys = 0;
+  for (let p = 0, i = 0; p < W * H; p++, i += 4) {
+    const m = t[p];
+    let a = 0, c = null;
+    if (m === M.E || m === M.WALL) { td[i + 3] = 0; continue; }
+    if (m === M.FIRE) { c = FIRE_RAMP[Math.min(3, (life[p] / 9) | 0)]; a = 0.92; }
+    else if (m === M.SULFUR && life[p] > 0) { c = ((sh[p] + S.frame) & 7) < 3 ? BLUE2 : BLUE; a = 0.95; }
+    else if (m === M.LAVA && ((sh[p] + (S.frame >> 1)) & 31) < 4) { c = FIRE_RAMP[3]; a = 0.95; }
+    else { c = TINT[m]; a = TINTA[m]; }
+    if (m === M.SULFUR) { sulfur++; if (sulfur < 200 && life[p] === 0) { fxs += p % W; fys += (p / W) | 0; } }
+    if (m === M.WATER) water++;
+    if (m === M.OIL) { oil++; if (sulfur < 1 && oil < 200) { fxs += p % W; fys += (p / W) | 0; } }
+    let r = c[0], g = c[1], b = c[2];
+    const v = ((sh[p] & 15) - 7) * 1.6; r += v; g += v; b += v;
+    if (fl[p]) { const f = fl[p] / 255 * 0.55; r += (240 - r) * f; g += (196 - g) * f; b += (90 - b) * f; a = Math.max(a, f + 0.3); }
+    td[i] = r; td[i + 1] = g; td[i + 2] = b; td[i + 3] = a * 255;
+  }
+  G.sulfurCells = sulfur; G.oilCells = oil; G.waterCells = water;
+  const nf = Math.min(200, sulfur > 30 ? sulfur : oil);
+  if (nf > 0) { G.fuelX = Math.round(fxs / nf); G.fuelY = Math.round(fys / nf); }
+  tctx.putImageData(tintImg, 0, 0);
+
+  // ink layer
+  const cp = L.cp, bw = L.bw, bh = L.bh, T = 12;
+  const INK = 0xff121c2a; // ABGR little-endian: rgb(42,28,18)
+  const INK_SOFT = 0x99121c2a, INK_GREY = 0x88505a66, INK_OCHRE = 0xaa2a6a7a;
+  const buf = ink32;
+  for (let cy = 0; cy < H - 1; cy++) {
+    const rowBase = cy * W;
+    for (let cx = 1; cx < W - 1; cx++) {
+      const p = rowBase + cx, m = t[p];
+      const px0 = cx * cp, py0 = cy * cp;
+      if (m === M.E || m === M.FIRE || (m === M.SULFUR && life[p] > 0) || m === M.EMBER) {
+        // clear cell
+        for (let ly = 0; ly < cp; ly++) { const o = (py0 + ly) * bw + px0; for (let lx = 0; lx < cp; lx++) buf[o + lx] = 0; }
+        if (m === M.EMBER) buf[(py0 + (cp >> 1)) * bw + px0 + (cp >> 1)] = INK;
+        continue;
+      }
+      const gasCell = KIND[m] === 3;
+      // contours: edge where neighbour differs in class (non-gas)
+      const cls = gasCell ? 0 : m;
+      const up = t[p - W], dn = t[p + W], lf = t[p - 1], rt = t[p + 1];
+      const cu = cy > 0 && !gasCell && (KIND[up] === 3 ? 0 : up === M.WALL ? m : up) !== cls;
+      const cd = !gasCell && dn !== M.WALL && (KIND[dn] === 3 ? 0 : dn) !== cls && KIND[m] !== 2;
+      const cl = !gasCell && lf !== M.WALL && (KIND[lf] === 3 ? 0 : lf) !== cls && KIND[m] !== 2;
+      const cr = !gasCell && rt !== M.WALL && (KIND[rt] === 3 ? 0 : rt) !== cls && KIND[m] !== 2;
+      const pat = PAT[m];
+      const col = m === M.STEAM || m === M.SMOKE ? INK_GREY : m === M.FUME ? INK_OCHRE : m === M.GLASS || m === M.ICE ? INK_SOFT : INK;
+      const s = sh[p];
+      for (let ly = 0; ly < cp; ly++) {
+        const yy = py0 + ly, o = yy * bw + px0, prow = (yy % T) * T;
+        for (let lx = 0; lx < cp; lx++) {
+          let on = 0;
+          if ((cu && ly === 0) || (cd && ly === cp - 1) || (cl && lx === 0) || (cr && lx === cp - 1)) on = 2;
+          else if (pat) on = pat[prow + ((px0 + lx) % T)];
+          else if (m === M.SAND) on = ((lx * 3 + ly * 5 + s) % 7 === 0) ? 1 : 0;
+          else if (m === M.SEED) on = (lx >= 1 && lx <= 2 && ly >= 1 && ly <= 2) ? 1 : 0;
+          buf[o + lx] = on ? (on === 2 ? INK : col) : 0;
+        }
+      }
+    }
+  }
+  ictx.putImageData(inkImg, 0, 0);
+}
+
+function render(now) {
+  const { cp, bx, by, bw, bh } = L;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const sk = fx.shake > 0.3 ? fx.shake : 0; fx.shake *= 0.86;
+  ctx.drawImage(bgC, 0, 0);
+  ctx.save();
+  if (sk) ctx.translate((Math.random() - 0.5) * sk, (Math.random() - 0.5) * sk);
+  // hand-tint wash: soft (bilinear), misregistered by ~1px
+  ctx.imageSmoothingEnabled = true;
+  ctx.globalCompositeOperation = "multiply";
+  if (WASH_BLUR) {
+    // cheap watercolour bleed: downsample the wash to half resolution, then upscale bilinearly (no CSS filter: too slow without a GPU)
+    sctx.clearRect(0, 0, W / 2, H / 2); sctx.imageSmoothingEnabled = true;
+    sctx.drawImage(tintC, 0, 0, W / 2, H / 2);
+    ctx.globalAlpha = 0.8;
+    ctx.drawImage(softC, 0.5, 0, W / 2 - 1, H / 2 - 0.5, bx + cp + 1.5, by + 1.5, bw - 2 * cp, bh - cp);
+    ctx.globalAlpha = 0.55;
+  }
+  ctx.drawImage(tintC, 1, 0, W - 2, H - 1, bx + cp + 1.2, by + 1, bw - 2 * cp, bh - cp);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
+  // flames glow a touch over the paper (watercolour pooling)
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(inkC, bx, by);
+  ctx.restore();
+  if (!DBG.nooverlay) drawOverlay(now);
+}
+
+function drawOverlay(now) {
+  const { cp, bx, by, bw, bh } = L, S = R.S;
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  // ---- element plate: four alchemical triangles above the beaker, lit by the focus ledger
+  const focus = focusLedger();
+  const fr = focus ? (focus.result || scoreLedger(focus, R.mods)) : null;
+  const ex0 = bx + bw * 0.06, ey = by - cp * 10.6, es = cp * 2.4;
+  ctx.font = `${Math.max(12, cp * 2.8)}px "Noto Serif TC", serif`; ctx.textBaseline = "middle"; ctx.textAlign = "left";
+  for (let e = 0; e < 4; e++) {
+    const x = ex0 + e * cp * 11, on = fr && fr.lit[e];
+    drawElement(ctx, e, x, ey, es, on);
+    ctx.fillStyle = on ? ELC[e] : "rgba(42,28,18,.45)";
+    ctx.fillText(ELN[e], x + es + cp, ey);
+  }
+  ctx.fillStyle = "rgba(42,28,18,.8)";
+  ctx.font = `${Math.max(12, cp * 2.6)}px "Noto Serif TC", serif`;
+  const elemTxt = fr ? `元素 ×${fr.elem}${fr.chain ? `（含連鎖 +${fr.chain}）` : ""}${fr.four ? "　四象齊聚！" : ""}` : "元素：每點亮一個 +1";
+  ctx.fillText(elemTxt, ex0 + cp * 46, ey);
+  if (focus) { ctx.fillStyle = "rgba(42,28,18,.55)"; ctx.font = `italic ${Math.max(11, cp * 2.3)}px "Noto Serif TC", serif`; ctx.fillText(`（${ledgerTitle(focus)}）`, ex0 + cp * 46, ey + cp * 3.4); }
+
+  // ---- lid
+  const lidY = by - cp * 2.6;
+  if (S.lid) {
+    ctx.fillStyle = "#7a5634"; ctx.strokeStyle = "#2a1c12"; ctx.lineWidth = 1.5;
+    ctx.fillRect(bx - cp * 2.4, lidY - cp * 1.2, bw + cp * 4.8, cp * 2.2); ctx.strokeRect(bx - cp * 2.4, lidY - cp * 1.2, bw + cp * 4.8, cp * 2.2);
+    ctx.globalAlpha = 0.6; ctx.lineWidth = 0.7;
+    for (let x = bx - cp * 2; x < bx + bw + cp * 2.4; x += 5) { ctx.beginPath(); ctx.moveTo(x, lidY - cp * 1.2); ctx.lineTo(x + 3, lidY + cp); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#2a1c12"; ctx.fillRect(bx + bw / 2 - cp * 2, lidY - cp * 2.6, cp * 4, cp * 1.4);
+  }
+  if (fx.lidFly) {
+    const t = (now - fx.lidFly.born) / 1000;
+    if (t > 1.6) fx.lidFly = null;
+    else {
+      ctx.save(); ctx.translate(bx + bw / 2 + fx.lidFly.vx * t * 60, lidY - t * 260 + t * t * 220); ctx.rotate(t * 5 * Math.sign(fx.lidFly.vx || 1));
+      ctx.globalAlpha = Math.max(0, 1 - t / 1.6);
+      ctx.fillStyle = "#7a5634"; ctx.strokeStyle = "#2a1c12"; ctx.fillRect(-bw / 4, -cp, bw / 2, cp * 2.2); ctx.strokeRect(-bw / 4, -cp, bw / 2, cp * 2.2);
+      ctx.restore();
+      ctx.save(); ctx.font = `900 ${cp * 7}px "Noto Serif TC", serif`; ctx.textAlign = "center"; ctx.fillStyle = "#b8381e"; ctx.strokeStyle = "#f3e9cf"; ctx.lineWidth = 4;
+      ctx.globalAlpha = Math.max(0, 1 - t / 1.2); ctx.strokeText("爆蓋！", bx + bw / 2, by + cp * 14); ctx.fillText("爆蓋！", bx + bw / 2, by + cp * 14); ctx.restore();
+    }
+  }
+  // ---- pressure gauge fill
+  const gg = L.gauge, frac = Math.min(1, S.gas / S.lidMax);
+  ctx.fillStyle = S.lid ? (frac > 0.8 ? "#b8381e" : "#9a4a2a") : "rgba(120,90,60,.3)";
+  const fh = gg.gh * frac;
+  ctx.fillRect(gg.gx + 1, gg.gy + gg.gh - fh, gg.gw - 2, fh);
+  ctx.beginPath(); ctx.arc(gg.gx + gg.gw / 2, gg.gy + gg.gh + gg.gw * 0.7, gg.gw * 0.8, 0, 7); ctx.fill();
+  ctx.fillStyle = "#2a1c12"; ctx.font = `${Math.max(10, cp * 2.2)}px "Noto Serif TC", serif`; ctx.textAlign = "center";
+  ctx.fillText(S.lid ? Math.round(frac * 100) + "%" : "開蓋", gg.gx + gg.gw / 2, gg.gy - cp * 2);
+  if (S.lid && frac > 0.8 && (now >> 7) & 1) { ctx.strokeStyle = "#b8381e"; ctx.lineWidth = 2; ctx.strokeRect(gg.gx - 2, gg.gy - 2, gg.gw + 4, gg.gh + 4); }
+
+  // ---- nozzle / match cursor
+  if (G.hover && !G.ended) {
+    if (G.matchMode) {
+      const x = bx + (G.aimX + 0.5) * cp, y = by + (Math.max(0, G.hoverY) + 0.5) * cp;
+      ctx.strokeStyle = "#b8381e"; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.arc(x, y, cp * 3.5, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+      const cell = G.hoverY >= 0 && G.hoverY < H ? S.t[G.hoverY * W + G.aimX] : 0;
+      const what = { [M.SULFUR]: "硫磺：點燃→藍焰", [M.OIL]: "油：點燃→燃燒", [M.PLANT]: "植物：可燃", [M.POWDER]: "火藥：會爆炸！", [M.SEED]: "種子：可燃", [M.WATER]: "水：火會被澆熄", [M.E]: "空氣：火柴會白白燒掉" }[cell] || "這裡點不著";
+      ctx.font = `${Math.max(12, cp * 2.8)}px "Noto Serif TC", serif`; ctx.textAlign = "left";
+      ctx.fillStyle = "rgba(246,238,214,.9)"; const tw = ctx.measureText(what).width; ctx.fillRect(x + cp * 4.5, y - cp * 2.4, tw + 10, cp * 4.4);
+      ctx.fillStyle = "#2a1c12"; ctx.fillText(what, x + cp * 4.5 + 5, y);
+    } else if (G.sel >= 0 || G.pourP && G.holding) {
+      const m = G.pourP && G.holding ? G.pourP.m : G.hand[G.sel];
+      if (m !== undefined) {
+        const x = bx + (G.aimX + 0.5) * cp;
+        ctx.globalAlpha = G.holding ? 1 : 0.7;
+        drawPourVial(ctx, x, by - cp * 3, m, G.holding);
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+  // active pours: falling stream marker
+  for (const P of R.active) { const x = bx + (P.x + 0.5) * cp; ctx.strokeStyle = VIALS[P.m].c; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, by - cp * 2); ctx.lineTo(x, by + cp * 2); ctx.stroke(); }
+
+  // ---- chain lines (ink, slightly wobbly)
+  ctx.strokeStyle = "#2a1c12";
+  for (let i = fx.chains.length - 1; i >= 0; i--) {
+    const c = fx.chains[i], age = (now - c.born) / 1000;
+    if (age > 3.2) { fx.chains.splice(i, 1); continue; }
+    const tx = c.toRef.x / c.toRef.n, ty = c.toRef.y / c.toRef.n;
+    const x0 = bx + c.from[0] * cp, y0 = by + c.from[1] * cp, x1 = bx + tx * cp, y1 = by + ty * cp;
+    const k = Math.min(1, age / 0.35);
+    ctx.globalAlpha = Math.max(0, 1 - Math.max(0, age - 2.2));
+    ctx.lineWidth = 1.6; ctx.setLineDash([6, 3]);
+    ctx.beginPath(); ctx.moveTo(x0, y0);
+    const mx = (x0 + x1) / 2 + (y1 - y0) * 0.15, my = (y0 + y1) / 2 - (x1 - x0) * 0.15;
+    ctx.quadraticCurveTo(mx, my, x0 + (x1 - x0) * k, y0 + (y1 - y0) * k); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(x0, y0, 3, 0, 7); ctx.fill();
+    if (k >= 1) {
+      ctx.beginPath(); ctx.arc(x1, y1, 4, 0, 7); ctx.stroke();
+      const lbl = `連鎖 ${c.g}`;
+      ctx.font = `900 ${Math.max(13, cp * 3.2)}px "Noto Serif TC", serif`; ctx.textAlign = "left";
+      ctx.lineWidth = 4; ctx.strokeStyle = "rgba(243,233,207,.95)"; ctx.strokeText(lbl, x1 + 8, y1 - 8);
+      ctx.fillStyle = "#2a1c12"; ctx.fillText(lbl, x1 + 8, y1 - 8); ctx.strokeStyle = "#2a1c12";
+    }
+    ctx.globalAlpha = 1;
+  }
+  // ---- floating aggregated text
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (let i = fx.floats.length - 1; i >= 0; i--) {
+    const f = fx.floats[i], age = (now - f.born) / 1000;
+    if (age > 1.6) { fx.floats.splice(i, 1); continue; }
+    const x = bx + f.x * cp, y = by + f.y * cp - age * 34 - cp * 3;
+    ctx.globalAlpha = age < 1.1 ? 1 : 1 - (age - 1.1) / 0.5;
+    ctx.font = `900 ${Math.max(13, cp * 3)}px "Noto Serif TC", serif`;
+    ctx.lineWidth = 4; ctx.strokeStyle = "rgba(246,238,214,.92)"; ctx.strokeText(f.text, x, y);
+    ctx.fillStyle = ELC[f.el]; ctx.fillText(f.text, x, y);
+    ctx.globalAlpha = 1;
+  }
+  // ---- receiver flask: gold sand level and the gold line
+  drawReceiver(now);
+}
+function drawElement(g, e, x, y, s, on) {
+  const up = e === 0 || e === 3, bar = e >= 2;
+  g.beginPath();
+  if (up) { g.moveTo(x + s / 2, y - s / 2); g.lineTo(x + s, y + s / 2); g.lineTo(x, y + s / 2); }
+  else { g.moveTo(x, y - s / 2); g.lineTo(x + s, y - s / 2); g.lineTo(x + s / 2, y + s / 2); }
+  g.closePath();
+  if (on) { g.fillStyle = ELC[e]; g.globalAlpha = 0.85; g.fill(); g.globalAlpha = 1; }
+  g.strokeStyle = on ? "#2a1c12" : "rgba(42,28,18,.4)"; g.lineWidth = on ? 1.6 : 1; g.stroke();
+  if (bar) { const yy = up ? y + s / 8 : y - s / 8; g.beginPath(); g.moveTo(x + s * 0.2, yy); g.lineTo(x + s * 0.8, yy); g.stroke(); }
+}
+function drawPourVial(g, x, y, m, pouring) {
+  const cp = L.cp, c = VIALS[m].c;
+  g.save(); g.translate(x, y); if (pouring) g.rotate(Math.PI * 0.75);
+  g.fillStyle = c; g.strokeStyle = "#2a1c12"; g.lineWidth = 1.4;
+  g.beginPath(); g.moveTo(-cp * 0.8, -cp * 4.6); g.lineTo(cp * 0.8, -cp * 4.6); g.lineTo(cp * 0.8, -cp * 2.4); g.lineTo(cp * 2, 0); g.lineTo(-cp * 2, 0); g.lineTo(-cp * 0.8, -cp * 2.4); g.closePath();
+  g.globalAlpha *= 0.85; g.fill(); g.globalAlpha = 1; g.stroke();
+  g.restore();
+  if (!pouring) {
+    g.font = `${Math.max(12, cp * 2.8)}px "Noto Serif TC", serif`; g.textAlign = "left"; g.fillStyle = "#2a1c12";
+    g.fillText(`按住倒出${VIALS[m].nm}`, x + cp * 3, y - cp * 1.5);
+  }
+}
+function drawReceiver(now) {
+  const f = L.flask, cp = L.cp, cap = R.target * 1.5;
+  // gold particles in flight
+  const tube = L.tube;
+  for (const p of fx.gold) {
+    if (p.done) continue;
+    const t = (now - p.born) / p.dur;
+    if (t < 0) continue;
+    let x, y;
+    if (t >= 1) { p.done = true; G.displayGold += p.v; continue; }
+    if (t < 0.3) { const k = t / 0.3; x = L.bx + p.x0 * cp + (tube[0][0] - L.bx - p.x0 * cp) * k; y = L.by + p.y0 * cp + (tube[0][1] - L.by - p.y0 * cp) * k * k; }
+    else if (t < 0.8) { const k = (t - 0.3) / 0.5, u = 1 - k; x = u * u * u * tube[0][0] + 3 * u * u * k * tube[1][0] + 3 * u * k * k * tube[2][0] + k * k * k * tube[3][0]; y = u * u * u * tube[0][1] + 3 * u * u * k * tube[1][1] + 3 * u * k * k * tube[2][1] + k * k * k * tube[3][1]; }
+    else { const k = (t - 0.8) / 0.2; x = tube[3][0]; y = tube[3][1] + (flaskY(G.displayGold / cap) - tube[3][1]) * k; }
+    ctx.fillStyle = "#c8961e"; ctx.beginPath(); ctx.arc(x, y, cp * 0.7, 0, 7); ctx.fill();
+    ctx.fillStyle = "#f3d77a"; ctx.fillRect(x - 0.5, y - 0.5, 1, 1);
+  }
+  fx.gold = fx.gold.filter(p => !p.done);
+  if (!fx.gold.length) G.displayGold = R.gold; // exact once all landed
+  const lvl = flaskY(G.displayGold / cap);
+  ctx.save(); flaskPath(ctx); ctx.clip();
+  if (G.displayGold > 0) {
+    ctx.fillStyle = "#c8961e"; ctx.fillRect(f.cx - f.r - 2, lvl, f.r * 2 + 4, f.bottom - lvl + 2);
+    // stippled sheen
+    ctx.fillStyle = "#f0d27a";
+    for (let i = 0; i < 70; i++) { const sx = f.cx - f.r + ((i * 53) % (f.r * 2)), sy = lvl + ((i * 37) % Math.max(1, (f.bottom - lvl))); if (((i + (now >> 8)) % 5) === 0) ctx.fillRect(sx, sy, 1.5, 1.5); }
+    ctx.strokeStyle = "rgba(42,28,18,.5)"; ctx.lineWidth = 0.8;
+    for (let y = lvl + 3; y < f.bottom; y += 4) { ctx.beginPath(); ctx.moveTo(f.cx - f.r, y); ctx.lineTo(f.cx + f.r, y); ctx.stroke(); }
+  }
+  ctx.restore();
+  // gold line (target)
+  const gy = flaskY(R.target / cap);
+  const reached = G.displayGold >= R.target;
+  ctx.strokeStyle = reached ? "#a87814" : "#b8381e"; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
+  ctx.beginPath(); ctx.moveTo(f.cx - f.r - cp * 2, gy); ctx.lineTo(f.cx + f.r + cp * 2, gy); ctx.stroke(); ctx.setLineDash([]);
+  ctx.font = `900 ${Math.max(12, cp * 2.8)}px "Noto Serif TC", serif`; ctx.textAlign = "center"; ctx.fillStyle = reached ? "#a87814" : "#b8381e";
+  ctx.lineWidth = 3; ctx.strokeStyle = "rgba(243,233,207,.9)";
+  ctx.strokeText("金線", f.cx, gy - cp * 2); ctx.fillText("金線", f.cx, gy - cp * 2);
+  ctx.font = `${Math.max(11, cp * 2.4)}px "Noto Serif TC", serif`; ctx.fillStyle = "#2a1c12";
+  ctx.strokeText(fmt(R.target), f.cx, gy + cp * 2.8); ctx.fillText(fmt(R.target), f.cx, gy + cp * 2.8);
+  // current amount label
+  ctx.font = `600 ${Math.max(13, cp * 3.2)}px "Noto Serif TC", serif`; ctx.fillStyle = "#a87814";
+  if (G.displayGold > 0) {
+    const over = G.displayGold > cap;
+    const lbl = over ? `${fmt(G.displayGold)}　溢出！` : fmt(G.displayGold);
+    const ly = Math.max(f.top - cp * 2, lvl - cp * 2.4);
+    ctx.strokeText(lbl, f.cx, ly); ctx.fillText(lbl, f.cx, ly);
+  }
+}
+function focusLedger() {
+  let best = null;
+  for (const Lg of R.order) if (!Lg.closed && Lg.n > 0 && (!best || Lg.lastF > best.lastF)) best = Lg;
+  if (best) return best;
+  const c = R.closedLog[R.closedLog.length - 1];
+  if (c && R.frame - c.closeF < 240) return c;
+  return null;
+}
+// lines from the pour point to its ledger card
+function drawLinks() {
+  const svg = document.getElementById("links");
+  const cr = canvas.getBoundingClientRect();
+  let out = "";
+  for (const Lg of R.order) {
+    const m = meta.get(Lg.uid); if (!m || !m.el || !m.el.isConnected) continue;
+    if (Lg.closed && performance.now() - m.closing > 1800) continue;
+    const er = m.el.getBoundingClientRect();
+    const sx = cr.left + L.bx + (m.sn ? m.sx / m.sn : Lg.x) * L.cp, sy = cr.top + L.by + (m.sn ? m.sy / m.sn : (Lg.y || 0)) * L.cp;
+    const tx = er.left, ty = er.top + 14;
+    out += `<path d="M${sx.toFixed(1)} ${sy.toFixed(1)} C ${(sx + tx) / 2} ${sy}, ${(sx + tx) / 2} ${ty}, ${tx} ${ty}" fill="none" stroke="${ledgerColor(Lg)}" stroke-width="1.3" stroke-dasharray="2 3" opacity=".8"/><circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="3" fill="${ledgerColor(Lg)}"/>`;
+  }
+  if (out !== lastLinks) { svg.innerHTML = out; lastLinks = out; }
+}
+let lastLinks = "";
+
+// ---------------- audio (optional, tiny) ----------------
+let AC = null, soundOn = false; const lastBeep = {};
+const NOTE = { burn: 196, blueflame: 233, quench: 392, solidify: 131, dissolve: 523, blast: 82, vitrify: 659, melt: 440, freeze: 784, bloom: 330, condense: 587, boil: 247, acidrain: 698, bake: 165, fume: 294, lidpop: 60, gold: 880, match: 1200, lid: 140 };
+function sfx(type, force) {
+  if (!soundOn || !AC) return;
+  const now = performance.now();
+  if (!force && now - (lastBeep[type] || 0) < 110) return;
+  lastBeep[type] = now;
+  const o = AC.createOscillator(), g = AC.createGain();
+  const big = type === "blast" || type === "lidpop";
+  o.type = big ? "sawtooth" : "triangle"; o.frequency.value = (NOTE[type] || 300) * (0.95 + Math.random() * 0.1);
+  g.gain.setValueAtTime(big ? 0.15 : 0.035, AC.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + (big ? 0.3 : 0.08));
+  o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime + 0.35);
+}
+function ensureAudio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } }
+
+// ---------------- main loop ----------------
+let lastT = performance.now(), acc = 0, cardTick = 0;
+window.__perf = { frames: 0, simMs: 0, drawMs: 0 };
+let slowAcc = 0, slowN = 0;
+function loop(now) {
+  const dt = Math.min(100, now - lastT); lastT = now;
+  // adaptive quality: machines without GPU canvas get the crisp wash only
+  if (WASH_BLUR && G && document.getElementById("overlay").hidden) { slowAcc += dt; if (++slowN === 120) { if (slowAcc / slowN > 21) WASH_BLUR = false; slowAcc = 0; slowN = 0; } }
+  if (G && R && document.getElementById("overlay").hidden && !G.ended) {
+    acc += dt;
+    const waiting = R.pours === 0 && R.matches === 0 && R.active.length === 0;
+    const speed = speedHeld || waiting ? 3 : 1;
+    let n = 0;
+    const t0 = performance.now();
+    while (acc >= 1000 / 60 && n < 4) { R.tick(speed); acc -= 1000 / 60; n++; }
+    if (acc > 100) acc = 0;
+    window.__perf.simMs += performance.now() - t0;
+    if (++cardTick % 6 === 0) for (const Lg of R.order) if (!Lg.closed) renderCard(Lg, false);
+    if (R.closedLog.length && !G.tut.done.ledger && R.closedLog.some(x => x.result.gold > 0)) G.tut.done.ledger = now;
+    if (G.tut.done.ledger && !G.tut.done.gold && now - G.tut.done.ledger > 4500) G.tut.done.gold = true;
+    checkEnd();
+  }
+  if (G && R) {
+    const t1 = performance.now();
+    flushBuckets(now);
+    if (!DBG.noink) renderBeaker();
+    render(now);
+    if (!DBG.nolinks && (cardTick & 3) === 0) drawLinks();
+    if (cardTick % 10 === 0) { updateTutorial(); renderSide(); }
+    window.__perf.drawMs += performance.now() - t1; window.__perf.frames++;
+  }
+  requestAnimationFrame(loop);
+}
+function checkEnd() {
+  const st = R.status();
+  if (st === "win" || st === "lose") {
+    G.ended = true; G.sel = -1; G.matchMode = false; renderHand(); renderSide(); setNote(null);
+    const wait = () => { if (fx.gold.length) return setTimeout(wait, 200); setTimeout(st === "win" ? roundClear : gameOver, 700); };
+    wait();
+  }
+}
+
+// ---------------- overlays ----------------
 const ov = document.getElementById("overlay");
 function showOverlay(html) { ov.innerHTML = `<div class="sheet" role="dialog" aria-modal="true">${html}</div>`; ov.hidden = false; }
 function hideOverlay() { ov.hidden = true; ov.innerHTML = ""; }
-
 function roundClear() {
   const target = TARGETS[G.round];
-  const over = Math.min(3, Math.floor((G.roundScore - target) / target * 2));
-  const earned = 3 + G.pours + Math.max(0, over);
+  const over = Math.min(3, Math.floor((R.gold - target) / target * 2));
+  const earned = 3 + R.pours + Math.max(0, over);
   G.money += earned;
   if (G.round === TARGETS.length - 1) { victory(); return; }
+  const best = R.closedLog.reduce((a, b) => (b.result.gold > (a ? a.result.gold : -1) ? b : a), null);
   G.round++; G.reroll = 1;
   rollShop();
-  showShop(`第 ${G.round} 回合過關！獲得 $${earned}（基本 3、剩餘倒料 ${G.pours}、超額 ${Math.max(0, over)}）`);
+  showShop(`煉出 ${fmt(R.gold)} 金（金線 ${fmt(target)}）。獲得 $${earned}：基本 3、剩餘倒料 ${R.pours}、超額 ${Math.max(0, over)}。${best ? `最肥的一本帳：${ledgerTitle(best)} +${fmt(best.result.gold)}。` : ""}`);
 }
 function rollShop() {
   const vials = shuffle(SHOP_VIALS.slice()).slice(0, 2).map(m => ({ kind: "vial", m, price: 3 }));
-  const pool = CATS.filter(c => !G.cats.includes(c.id));
-  const cats = shuffle(pool.slice()).slice(0, 2).map(c => ({ kind: "cat", c, price: c.price }));
-  G.shopItems = [...vials, ...cats];
+  const pool = ARCANA.filter(c => !G.arc.includes(c.id) && (!c.rare || G.round >= 2));
+  const arc = shuffle(pool.slice()).slice(0, 2).map(c => ({ kind: "arc", c, price: c.price }));
+  G.shopItems = [...vials, ...arc];
 }
 function showShop(msg) {
+  const st = STAGES[Math.floor(G.round / 3)];
   const items = G.shopItems.map((it, i) => {
     const bought = it.bought ? " bought" : "";
-    if (it.kind === "vial") { const v = VIALS[it.m]; return `<button type="button" class="item${bought}" data-i="${i}" ${it.bought ? "disabled" : ""}><span class="tag">材料瓶 · 加入牌組</span><span class="nm" style="color:${v.c}">${v.nm}</span><span class="ds">${v.ds}</span><span class="pr">$${it.price}</span></button>`; }
-    return `<button type="button" class="item${bought}" data-i="${i}" ${it.bought ? "disabled" : ""}><span class="tag">催化劑 · 永久效果</span><span class="nm">${it.c.nm}</span><span class="ds">${it.c.ds}</span><span class="pr">$${it.price}</span></button>`;
+    if (it.kind === "vial") { const v = VIALS[it.m]; return `<button type="button" class="item${bought}" data-i="${i}" ${it.bought ? "disabled" : ""}><span class="tag">材料瓶・加入牌組</span><span class="nm">${v.nm}</span><span class="ds">${v.ds}</span><span class="pr">$${it.price}</span></button>`; }
+    return `<button type="button" class="item${bought}${it.c.rare ? " rare" : ""}" data-i="${i}" ${it.bought ? "disabled" : ""}><span class="tag">秘方・永久效果</span><span class="nm">${it.c.nm}</span><span class="ds">${it.c.ds}</span><span class="pr">$${it.price}</span></button>`;
   }).join("");
   showOverlay(`
-    <h3>商店</h3>
-    <p class="muted">${msg}</p>
-    <div class="row-actions"><span class="money">$${G.money}</span><button type="button" id="reroll">重抽商品 $${G.reroll}</button></div>
+    <h3>藥鋪<span class="lat">Officina</span></h3>
+    <p class="muted" id="shopMsg">${msg}</p>
+    <div class="row-actions"><span class="money">$${G.money}</span><button type="button" id="reroll">換一批貨 $${G.reroll}</button></div>
     <div class="shop">${items}</div>
-    <div class="row-actions"><span class="muted">下一回合目標：${fmt(TARGETS[G.round])}</span><button type="button" class="primary" id="next">開始第 ${G.round + 1} 回合</button></div>`);
+    <div class="arc">${G.arc.length ? G.arc.map(id => `<i>${ARCANA.find(a => a.id === id).nm}</i>`).join("") : '<span class="muted">秘方槽 0 / 5</span>'}</div>
+    <div class="row-actions"><span class="muted">下一回合：${st.nm} 第 ${G.round % 3 + 1} 回合 · 金線 ${fmt(TARGETS[G.round])}</span><button type="button" class="primary" id="next">開始下一回合 <kbd>Enter</kbd></button></div>`);
   ov.querySelectorAll(".item").forEach(b => b.addEventListener("click", () => buy(+b.dataset.i)));
   document.getElementById("reroll").addEventListener("click", () => {
     if (G.money < G.reroll) { flashMsg("錢不夠"); return; }
-    G.money -= G.reroll; G.reroll++; rollShop(); showShop("已重抽。");
+    G.money -= G.reroll; G.reroll++; rollShop(); showShop("換了一批貨。");
   });
   document.getElementById("next").addEventListener("click", () => { hideOverlay(); startRound(); });
 }
-function flashMsg(t) { const m = ov.querySelector(".muted"); if (m) m.textContent = t; }
+function flashMsg(t) { const m = document.getElementById("shopMsg"); if (m) m.textContent = t; }
 function buy(i) {
   const it = G.shopItems[i]; if (!it || it.bought) return;
   if (G.money < it.price) { flashMsg("錢不夠"); return; }
-  if (it.kind === "cat" && G.cats.length >= MAX_CATS) { flashMsg("催化劑最多 5 個"); return; }
+  if (it.kind === "arc" && G.arc.length >= MAX_ARC) { flashMsg("秘方最多 5 個"); return; }
   G.money -= it.price; it.bought = true;
-  if (it.kind === "vial") G.deck.push(it.m); else G.cats.push(it.c.id);
-  renderSide(); showShop(it.kind === "vial" ? `已把「${VIALS[it.m].nm}」加入牌組。` : `已裝上「${it.c.nm}」。`);
+  if (it.kind === "vial") G.deck.push(it.m); else G.arc.push(it.c.id);
+  showShop(it.kind === "vial" ? `已把「${VIALS[it.m].nm}」加入牌組。` : `已習得秘方「${it.c.nm}」。`);
 }
 function gameOver() {
-  showOverlay(`<h3>實驗失敗</h3>
-    <p>第 ${G.round + 1} 回合：${fmt(G.roundScore)} / ${fmt(TARGETS[G.round])} 分。</p>
-    <p class="muted">提示：先倒「材料」佈置燒杯，最後再用火星或熔岩引爆；同一倒裡出現越多種反應，倍率越高。</p>
-    <div class="row-actions"><span></span><button type="button" class="primary" id="again">再試一次</button></div>`);
+  const best = R.closedLog.reduce((a, b) => (b.result.gold > (a ? a.result.gold : -1) ? b : a), null);
+  showOverlay(`<h3>大業中斷<span class="lat">Opus interruptum</span></h3>
+    <p>${STAGES[Math.floor(G.round / 3)].nm}第 ${G.round % 3 + 1} 回合：煉出 ${fmt(R.gold)} 金，金線是 ${fmt(TARGETS[G.round])}。</p>
+    ${best && best.result.gold > 0 ? `<p class="muted">最好的一本帳是「${ledgerTitle(best)}」+${fmt(best.result.gold)}，點亮了 ${best.result.nLit} 個元素。</p>` : ""}
+    <p class="muted">提示：先鋪可燃物（硫磺浮在水上、油浮在最上層），再用火柴點燃；一本帳點亮越多元素，倍率越高。</p>
+    <div class="row-actions"><span></span><button type="button" class="primary" id="again">重新開始大業 <kbd>Enter</kbd></button></div>`);
   document.getElementById("again").addEventListener("click", () => { hideOverlay(); newGame(); });
 }
 function victory() {
-  showOverlay(`<h3>全部 8 回合通關！</h3>
-    <p>最後一回合得分 ${fmt(G.roundScore)}。你用了 ${G.cats.length} 個催化劑、${G.deck.length} 瓶材料。</p>
-    <div class="row-actions"><span></span><button type="button" class="primary" id="again">再玩一局</button></div>`);
+  showOverlay(`<h3>大業已成<span class="lat">Opus magnum</span></h3><p>十二回合全部過關。最後一回合煉出 ${fmt(R.gold)} 金。</p>
+    <div class="row-actions"><span></span><button type="button" class="primary" id="again">再煉一次</button></div>`);
   document.getElementById("again").addEventListener("click", () => { hideOverlay(); newGame(); });
 }
 function showHelp(first) {
-  showOverlay(`<h3>${first ? "POUR DECISIONS" : "玩法"}</h3>
+  showOverlay(`<h3>爆鍋煉金<span class="lat">Pour Decisions</span></h3>
+    ${first ? `<p class="hook">把一杯泥巴煉成黃金——用真的會燒、會凝、會爆的物質。</p>` : ""}
     <ol class="howto">
-      <li>從手牌選一瓶材料，在燒杯上<b>按住</b>倒出，按住時可以左右拖曳。</li>
-      <li>材料會真的互相反應：水澆熄火、熔岩遇水凝成岩石、油遇火燃燒、酸溶蝕沙石、火藥連鎖爆炸……</li>
-      <li>每一倒的分數 = 反應分數（藍）× 倍率（紅）。<b>同一倒裡每多一種反應，倍率 +1</b>，所以先佈置、再引爆。</li>
-      <li>燒杯裡的東西會保留到回合結束。每回合 4 次倒料，達到目標就過關，到商店買新材料和催化劑。</li>
+      <li><b>倒</b>：選一瓶材料，在燒杯上按住倒出。不用等——上一瓶還在流，就能倒下一瓶。</li>
+      <li><b>點</b>：<b>火柴</b>（<kbd>F</kbd> 或右鍵）點燃你鋪好的硫磺、油；<b>蓋子</b>（<kbd>空白鍵</kbd>）困住氣體，壓力滿了就爆蓋。</li>
+      <li><b>算</b>：每一倒、每根火柴開一本帳。金＝物質 × 元素（1＋點亮的火水土氣＋連鎖）× 秘方。</li>
+      <li><b>煉</b>：結算的金砂流進受器，滿過<b>金線</b>就過關，到藥鋪添購材料與秘方。</li>
     </ol>
-    <p class="muted">這是驗證核心玩法的灰盒原型：畫面、音效、數值都是暫定。</p>
-    <div class="row-actions"><span></span><button type="button" class="primary" id="go">${first ? "開始實驗" : "繼續"}</button></div>`);
+    <p class="muted">原型 v0.2：畫面、音效、數值都是暫定。第一回合的手牌是固定的教學手牌。</p>
+    <div class="row-actions"><span></span><button type="button" class="primary" id="go">${first ? "開始大業" : "繼續"} <kbd>Enter</kbd></button></div>`);
   document.getElementById("go").addEventListener("click", hideOverlay);
-}
-function ensureAudio() {
-  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
 }
 document.getElementById("btnSound").addEventListener("click", e => {
   ensureAudio(); soundOn = !soundOn;
-  e.currentTarget.textContent = soundOn ? "音效：開" : "音效：關";
+  e.currentTarget.textContent = soundOn ? "音效 開" : "音效 關";
   e.currentTarget.setAttribute("aria-pressed", String(soundOn));
 });
 document.getElementById("btnHelp").addEventListener("click", () => showHelp(false));
-document.getElementById("btnRestart").addEventListener("click", () => newGame());
+document.getElementById("btnRestart").addEventListener("click", () => { hideOverlay(); newGame(); });
+window.addEventListener("resize", () => { computeLayout(); });
+window.addEventListener("scroll", () => { if (G) buildBg(); });
 
-newGame();
-showHelp(true);
+computeLayout();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { computeLayout(); });
+newGame(+(new URLSearchParams(location.search).get("seed")) || 0);
+if (!new URLSearchParams(location.search).has("skipintro")) showHelp(true);
 requestAnimationFrame(loop);
+window.__game = { get G() { return G; }, get R() { return R; }, get L() { return L; }, M, VIALS };
 })();
 </script>
+</body>
+</html>
