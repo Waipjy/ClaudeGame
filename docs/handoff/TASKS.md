@@ -17,7 +17,7 @@
 - [ ] 整局 bot（含商店）調第 2 回合後金線與硫磺強度
 - [x] 構築深度與局外設計 → docs/design/DEPTH_v1.md
 - [x] 無文字 UI 規範 → docs/design/UI_NO_TEXT.md
-- [ ] v0.3a 直屏無文字原型（UI_NO_TEXT §8，8 項）
+- [x] v0.3a 直屏無文字原型（UI_NO_TEXT §8，8 項）
 - [ ] v0.3b 構築版（DEPTH_v1 §6：地層、符文、瓶性、一局 16 回合）
 - [ ] 範圍與排程（里程碑、上架時間表、Next Fest 目標）
 

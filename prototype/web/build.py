@@ -1,7 +1,8 @@
-# Build index.html = template.html with sim.js inlined at /*SIM*/
+# Build index.html = template.html + sim.js + src/glyphs.js + src/core_render.js + src/game.js (all inlined)
 import os
 d = os.path.dirname(os.path.abspath(__file__))
-t = open(os.path.join(d, 'template.html'), encoding='utf-8').read()
-s = open(os.path.join(d, 'sim.js'), encoding='utf-8').read()
-open(os.path.join(d, 'index.html'), 'w', encoding='utf-8').write(t.replace('/*SIM*/', s))
-print('built index.html')
+rd = lambda p: open(os.path.join(d, p), encoding='utf-8').read()
+game = rd('src/game.js').replace('/*GLYPHS*/', rd('src/glyphs.js')).replace('/*CORE*/', rd('src/core_render.js'))
+html = rd('template.html').replace('/*SIM*/', rd('sim.js')).replace('/*GAMEJS*/', game)
+open(os.path.join(d, 'index.html'), 'w', encoding='utf-8').write(html)
+print('built index.html', len(html))

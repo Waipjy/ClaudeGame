@@ -1,207 +1,24 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>爆鍋煉金 原型</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Noto+Serif+TC:wght@400;600;900&display=swap">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#ddcfae">
+<title>PD</title>
 <style>
-/* Direction: 17th-c. alchemical engraving, hand-coloured. Paper, bistre ink, a few pigment washes.
-   Pigments: vermilion (fire), azurite (water), terre-verte (earth), smalt (air), gold leaf (score). */
-:root {
-  color-scheme: light;
-  --paper: #e8dcc0;
-  --paper-2: #dccdab;
-  --paper-3: #cbb88f;
-  --ink: #2a1c12;
-  --ink-2: #5a4532;
-  --ink-3: #8a7458;
-  --fire: #b8381e;
-  --water: #2e5e8c;
-  --earth: #5e6a2a;
-  --air: #6a5f8e;
-  --gold: #a87814;
-  --gold-hi: #e8c35a;
-  --f-latin: "IM Fell English", "Noto Serif TC", Georgia, serif;
-  --f-sc: "IM Fell English SC", "IM Fell English", Georgia, serif;
-  --f-body: "Noto Serif TC", "IM Fell English", "PMingLiU", "Songti TC", serif;
-  --f-num: "Noto Serif TC", Georgia, serif;
-}
-.num, .goalbox .big, .card .r .n, .card .r .s, .card .sum span:nth-child(even), .card .gold .v, .money, .item .pr, .tool .tc, .hist div span:last-child { font-family: var(--f-num) !important; font-variant-numeric: lining-nums tabular-nums; }
-[hidden] { display: none !important; }
-body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 4; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 55%, rgba(90,60,30,.22) 100%); }
-* { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
-body {
-  background-color: #ddcfae; background-attachment: fixed; background-position: 0 0;
-  color: var(--ink); font-family: var(--f-body); overflow: hidden;
-}
-#app {
-  height: 100vh; display: grid; gap: 8px 16px;
-  grid-template-columns: var(--cw, 900px) minmax(300px, 500px);
-  grid-template-rows: auto auto 1fr;
-  padding: 8px 16px 10px; width: fit-content; max-width: 100vw; margin: 0 auto;
-}
-header.top { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--ink-3); padding-bottom: 6px; }
-.brand { display: flex; align-items: baseline; gap: 12px; }
-h1 { margin: 0; font-family: var(--f-body); font-weight: 900; font-size: 24px; letter-spacing: .12em; }
-h1 .lat { font-family: var(--f-sc); font-weight: 400; font-size: 17px; letter-spacing: .06em; color: var(--ink-2); margin-left: 6px; }
-.stagebar { font-family: var(--f-body); font-size: 14px; color: var(--ink-2); display: flex; align-items: baseline; gap: 10px; }
-.stagebar b { font-weight: 900; color: var(--ink); font-size: 16px; }
-.stagebar .lat { font-family: var(--f-latin); font-style: italic; }
-.top-actions { display: flex; gap: 6px; }
-button { font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--ink-2); border-radius: 2px; padding: 5px 12px; cursor: pointer; }
-button:hover:not(:disabled) { background: rgba(90, 69, 50, .1); }
-button:focus-visible { outline: 2px solid var(--fire); outline-offset: 2px; }
-button:disabled { opacity: .4; cursor: not-allowed; }
-button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 600; }
-button.primary:hover:not(:disabled) { background: #48331f; }
-kbd { font-family: var(--f-num); font-size: .85em; border: 1px solid var(--ink-3); border-bottom-width: 2px; padding: 0 4px; border-radius: 2px; color: var(--ink-2); background: rgba(255,255,255,.25); }
-
-.stage { grid-column: 1; grid-row: 2; position: relative; justify-self: start; }
-canvas#view { display: block; touch-action: none; cursor: crosshair; }
-.under { grid-column: 1; grid-row: 3; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; min-height: 0; }
-.hand { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-.vial { position: relative; display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 2px 8px; text-align: left; padding: 6px 8px; height: 100px; overflow: hidden; align-content: start;
-  background: rgba(244, 236, 214, .55); border: 1px solid var(--ink-3); transition: transform .12s, box-shadow .12s, border-color .12s; }
-.vial canvas { grid-row: 1 / span 3; width: 34px; height: 60px; }
-.vial .nm { font-weight: 900; font-size: 17px; line-height: 1.2; }
-.vial .nm .k { float: right; font-weight: 400; }
-.vial .ds { font-size: 12.5px; line-height: 1.45; color: var(--ink-2); }
-.vial:hover:not(:disabled) { transform: translateY(-2px); }
-.vial.sel { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink), 4px 4px 0 rgba(42,28,18,.25); transform: translateY(-4px); background: rgba(250, 244, 226, .85); }
-.vial.new { animation: drawin .35s ease-out; }
-@keyframes drawin { from { transform: translateY(18px); opacity: 0; } }
-.vial.empty { border-style: dashed; opacity: .5; height: 100px; display: grid; place-items: center; font-size: 13px; color: var(--ink-3); }
-.decknote { grid-column: 1 / -1; font-size: 12px; line-height: 16px; height: 16px; overflow: hidden; color: var(--ink-3); margin-top: 2px; }
-.tools { display: grid; gap: 6px; min-width: 150px; align-content: start; }
-.tool { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 10px; height: 34px; text-align: left; background: rgba(244, 236, 214, .55); }
-.tool .tn { font-weight: 900; }
-.tool .tc { font-family: var(--f-latin); font-size: 18px; }
-.tool.on { background: var(--ink); color: var(--paper); }
-.tool.on kbd { color: var(--paper); border-color: var(--paper-3); background: transparent; }
-.tool.pulse { animation: pulse 1.1s ease-in-out infinite; }
-@keyframes pulse { 50% { box-shadow: 0 0 0 4px rgba(184, 56, 30, .35); border-color: var(--fire); } }
-
-aside.ledger { grid-column: 2; grid-row: 2 / span 2; min-width: 0; display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 8px; min-height: 0; }
-.goalbox { border: 1px solid var(--ink-3); background: rgba(244, 236, 214, .5); padding: 8px 12px; display: grid; gap: 4px; }
-.goalbox .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.goalbox .big { font-size: 28px; font-weight: 600; line-height: 1; color: var(--gold); }
-.goalbox .big small { font-size: 16px; color: var(--ink-2); }
-.goalbox .meta { font-size: 13px; color: var(--ink-2); }
-.formula { font-size: 12.5px; color: var(--ink-2); }
-.formula b { color: var(--ink); }
-h2 { margin: 0; font-size: 13px; letter-spacing: .3em; color: var(--ink-2); font-weight: 600; display: flex; justify-content: space-between; }
-.cards { display: flex; flex-direction: column; gap: 8px; overflow: hidden; min-height: 0; }
-.card { position: relative; border: 1px solid var(--ink-2); background: rgba(247, 240, 222, .82); padding: 7px 10px 8px 14px; display: grid; gap: 3px; font-size: 13px; transition: opacity .4s, transform .4s; }
-.card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--c); opacity: .85; }
-.card .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.card .ttl { font-weight: 900; font-size: 15px; }
-.card .st { font-size: 12px; color: var(--ink-3); }
-.card .rws { display: grid; gap: 1px; }
-.card .r { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto auto; gap: 6px; align-items: center; font-variant-numeric: tabular-nums; }
-.card .r .n { color: var(--ink-3); font-family: var(--f-latin); }
-.card .r .s { font-family: var(--f-latin); min-width: 56px; text-align: right; }
-.card .r.half .n::after { content: " ½"; color: var(--fire); }
-.card .r.hl { background: rgba(232, 195, 90, .35); }
-.card .sum { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 1px 8px; border-top: 1px solid var(--ink-3); padding-top: 4px; margin-top: 2px; font-variant-numeric: tabular-nums; }
-.card .sum span:nth-child(even) { font-family: var(--f-latin); text-align: right; }
-.card .sum .hl { background: rgba(232, 195, 90, .35); }
-.card .els { display: inline-flex; gap: 2px; vertical-align: middle; margin-left: 4px; }
-.card .gold { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px double var(--ink-2); padding-top: 3px; margin-top: 2px; }
-.card .gold .v { font-family: var(--f-latin); font-size: 24px; color: var(--gold); }
-.card .gold .v.pop { animation: goldpop .5s ease-out; }
-@keyframes goldpop { 0% { transform: scale(1.5); } 100% { transform: scale(1); } }
-.card.closed { opacity: .92; }
-.card.mini { padding: 5px 10px 5px 14px; }
-.card.mini .rws, .card.mini .sum, .card.mini .gold { display: none; }
-.hist { max-height: 9.5em; overflow: hidden; }
-.card .empty { color: var(--ink-3); font-style: italic; }
-.hist { font-size: 12.5px; color: var(--ink-2); display: grid; gap: 2px; border-top: 1px solid var(--ink-3); padding-top: 4px; }
-.hist div { display: flex; justify-content: space-between; gap: 8px; }
-.hist div span:last-child { color: var(--gold); }
-.elsym { width: 14px; height: 14px; display: inline-block; vertical-align: -2px; }
-
-svg#links { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 5; }
-.note { position: fixed; z-index: 15; max-width: 300px; background: #f6eed6; border: 1px solid var(--ink); padding: 8px 12px 9px; font-size: 14px; line-height: 1.55; box-shadow: 3px 3px 0 rgba(42, 28, 18, .2); pointer-events: none; transition: opacity .25s; }
-.note::before { content: "師父批注"; display: block; font-size: 11px; letter-spacing: .25em; color: var(--fire); margin-bottom: 2px; }
-.note b { color: var(--fire); }
-.note .arr { position: absolute; width: 12px; height: 12px; background: #f6eed6; border: 1px solid var(--ink); transform: rotate(45deg); }
-.toast { position: fixed; z-index: 16; left: 50%; transform: translateX(-50%); top: 64px; background: var(--ink); color: var(--paper); padding: 6px 14px; font-size: 14px; pointer-events: none; opacity: 0; transition: opacity .2s; }
-.toast.show { opacity: 1; }
-
-.overlay { position: fixed; inset: 0; background: rgba(60, 44, 28, .45); display: grid; place-items: center; padding: 16px; z-index: 30; }
-.sheet { background: var(--paper); background-image: radial-gradient(ellipse at 50% 30%, #f1e7cf 0%, #e3d4b2 75%, #d2bf96 100%); border: 1px solid var(--ink); outline: 1px solid var(--ink-3); outline-offset: -7px; padding: 26px 30px; width: min(760px, 100%); max-height: calc(100% - 32px); overflow: auto; display: grid; gap: 14px; box-shadow: 6px 8px 0 rgba(42, 28, 18, .25); }
-.sheet h3 { margin: 0; font-weight: 900; font-size: 26px; letter-spacing: .1em; }
-.sheet h3 .lat { font-family: var(--f-sc); font-weight: 400; font-size: 18px; color: var(--ink-2); margin-left: 8px; letter-spacing: .04em; }
-.sheet p { margin: 0; line-height: 1.75; max-width: 62ch; }
-.sheet .muted { color: var(--ink-2); font-size: 14px; }
-.sheet .hook { font-size: 20px; font-weight: 600; }
-.howto { display: grid; gap: 6px; margin: 0; padding-left: 22px; line-height: 1.7; }
-.shop { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.item { border: 1px solid var(--ink-2); background: rgba(250, 244, 228, .6); padding: 10px 12px; display: grid; gap: 4px; text-align: left; }
-.item .tag { font-size: 11px; letter-spacing: .2em; color: var(--ink-3); }
-.item .nm { font-weight: 900; font-size: 17px; }
-.item .ds { font-size: 13px; color: var(--ink-2); line-height: 1.5; }
-.item .pr { font-family: var(--f-latin); font-size: 18px; color: var(--gold); }
-.item.bought { opacity: .35; }
-.item.rare { border-color: var(--fire); }
-.row-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
-.money { font-family: var(--f-latin); font-size: 26px; color: var(--gold); }
-.arc { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; }
-.arc i { font-style: normal; border: 1px solid var(--ink-3); padding: 1px 8px; background: rgba(250,244,228,.5); }
-@media (prefers-reduced-motion: reduce) { .vial, .card { transition: none; } .tool.pulse, .vial.new, .card .gold .v.pop { animation: none; } }
+body { background-color: #cdbd98; overflow: hidden; display: grid; place-items: center; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+body::after { content: ""; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 55%, rgba(90,60,30,.22) 100%); }
+canvas#view { display: block; touch-action: none; box-shadow: 0 0 0 1px #5a4532, 0 0 0 5px rgba(90,69,50,.18); outline: none; -webkit-tap-highlight-color: transparent; }
 </style>
 </head>
 <body>
-<div id="app">
-  <header class="top">
-    <div class="brand"><h1>爆鍋煉金<span class="lat">Pour Decisions</span></h1></div>
-    <div class="stagebar" id="stagebar"></div>
-    <div class="top-actions">
-      <button id="btnSound" type="button" aria-pressed="false">音效 關</button>
-      <button id="btnHelp" type="button">玩法</button>
-      <button id="btnRestart" type="button">重新開始</button>
-    </div>
-  </header>
-
-  <section class="stage" id="stage">
-    <canvas id="view" aria-label="燒杯：選一瓶材料後在這裡按住倒出；右鍵點火柴"></canvas>
-  </section>
-
-  <section class="under">
-    <div>
-      <div class="hand" id="hand"></div>
-      <div class="decknote" id="decknote"></div>
-    </div>
-    <div class="tools">
-      <button class="tool" id="tMatch" type="button" title="點火：之後在燒杯上點一下（或直接右鍵）"><span><span class="tn">火柴</span> <kbd>F</kbd>/<kbd>右鍵</kbd></span><span class="tc" id="matchN">2</span></button>
-      <button class="tool" id="tLid" type="button" title="蓋上蓋子：氣體累積壓力，滿了就爆蓋"><span><span class="tn">蓋子</span> <kbd>空白鍵</kbd></span><span class="tc" id="lidState">開</span></button>
-      <button class="tool" id="tSeal" type="button" title="立刻結算所有帳本，結束這一回合"><span><span class="tn">封瓶</span> <kbd>Enter</kbd></span><span class="tc">⊗</span></button>
-    </div>
-  </section>
-
-  <aside class="ledger">
-    <div class="goalbox">
-      <div class="row"><span class="big" id="goldNow">0<small> / 0 金</small></span><span class="meta" id="poursLeft"></span></div>
-      <div class="formula">每一倒開一本帳：<b>物質</b>（反應×點數）× <b>元素</b>（1＋點亮的火水土氣＋連鎖）× <b>秘方</b>。</div>
-    </div>
-    <h2><span>帳本</span><span id="arcN"></span></h2>
-    <div class="cards" id="cards"></div>
-  </aside>
-</div>
-<svg id="links" aria-hidden="true"></svg>
-<div class="note" id="note" hidden><span id="noteText"></span><i class="arr" id="noteArr"></i></div>
-<div class="toast" id="toast"></div>
-<div class="overlay" id="overlay" hidden></div>
-
+<canvas id="view"></canvas>
 <script>
 // Pour Decisions《爆鍋煉金》— falling-sand simulation core + round rules (prototype v0.2).
 // Pure and deterministic given seed + inputs. Used by the browser prototype (inlined) and by node (tests / bots).
 (function (root) {
-  const W = 160, H = 128;
+  const W = 100, H = 150;
   const M = { E:0, SAND:1, WATER:2, OIL:3, FIRE:4, LAVA:5, STONE:6, STEAM:7, ACID:8, POWDER:9, ICE:10, GLASS:11,
               SEED:12, PLANT:13, SMOKE:14, WALL:15, EMBER:16, MUD:17, SULFUR:18, FUME:19 };
   const KIND = [], DEN = [];  // kind: 0 empty 1 powder 2 liquid 3 gas 4 solid
@@ -252,7 +69,7 @@ svg#links { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-even
           stamp = new Uint16Array(N), flash = new Uint8Array(N),
           src = new Uint8Array(N), gen = new Uint8Array(N), rk = new Uint8Array(N);
     const rnd = mulberry32(seed >>> 0);
-    const S = { W, H, t, life, shade, flash, src, gen, rk, frame: 0, gas: 0, lid: false, lidMax: 1100,
+    const S = { W, H, t, life, shade, flash, src, gen, rk, frame: 0, gas: 0, lid: false, lidMax: 800,
                 mods: mods || {}, onEvent: null, onLidPop: null, lastEventFrame: 0 };
 
     function reset() {
@@ -687,477 +504,334 @@ svg#links { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-even
 <script>
 (function () {
 "use strict";
-const { W, H, M, KIND, RX, EL, RULES, createRound, scoreLedger, ptsOf, mulberry32 } = window.PDSim;
+const { W, H, M, KIND, RX, RXK, RULES, createRound, scoreLedger, ptsOf, mulberry32 } = window.PDSim;
+const ICP = 3;           // ink-layer pixels per cell (fixed); on screen it is scaled to L.cp
+const LW = 390;          // logical width; logical height follows the window (600..880)
+
+// ---- text guard: nothing in this game draws text. Any fillText / strokeText is a violation (digits go through drawNum). ----
+for (const k of ["fillText", "strokeText"]) {
+  const o = CanvasRenderingContext2D.prototype[k];
+  CanvasRenderingContext2D.prototype[k] = function (t) { window.__textViolations.push(String(t)); console.error("text-violation: " + t); return o.apply(this, arguments); };
+}
 
 // ---------------- content ----------------
-const VIALS = {
-  [M.SAND]:   { nm: "沙",   ds: "堆成斜坡。遇熔岩 → 玻璃。", c: "#c99a4c" },
-  [M.WATER]:  { nm: "水",   ds: "遇火 → 淬熄成蒸汽；遇熔岩 → 凝岩；讓種子發芽。", c: "#2e5e8c" },
-  [M.OIL]:    { nm: "油",   ds: "浮在水上。遇火 → 整片燃燒。", c: "#6e4a5e" },
-  [M.EMBER]:  { nm: "火星", ds: "落地後才起火——自帶延遲的引信。", c: "#c4501f" },
-  [M.LAVA]:   { nm: "熔岩", ds: "遇水 → 凝岩；遇沙 → 玻璃；遇泥 → 燒陶；點燃可燃物。", c: "#b8381e" },
-  [M.ACID]:   { nm: "酸液", ds: "溶蝕沙、岩、泥、玻璃與植物。", c: "#7f9a3a" },
-  [M.POWDER]: { nm: "火藥", ds: "遇火 → 爆炸，會連環引爆。", c: "#3c3430" },
-  [M.ICE]:    { nm: "冰屑", ds: "遇熱 → 融成水；讓旁邊的水結凍。", c: "#8fb3b9" },
-  [M.SEED]:   { nm: "種子", ds: "遇水 → 萌芽蔓延；植物可燃。", c: "#7d7a2e" },
-  [M.SULFUR]: { nm: "硫磺", ds: "浮在水面。遇火 → 慢燒藍焰、冒硫煙；硫煙碰水 → 酸雨。", c: "#c9b02a" },
-};
-const RXINFO = {
-  burn: "燃燒", blueflame: "藍焰", blast: "爆炸", quench: "淬熄", condense: "凝結", melt: "融冰", freeze: "結凍",
-  acidrain: "酸雨", solidify: "凝岩", vitrify: "熔玻", dissolve: "溶蝕", bake: "燒陶", bloom: "萌芽", boil: "沸騰", fume: "硫煙", lidpop: "爆蓋",
-};
-const ELC = ["#b8381e", "#2e5e8c", "#5e6a2a", "#6a5f8e"];
-const ELN = ["火", "水", "土", "氣"];
 const ARCANA = [
-  { id: "pyro",       nm: "縱火狂",     ds: "燃燒、藍焰每次 +3 物質。", price: 5 },
-  { id: "tower",      nm: "冷凝塔",     ds: "淬熄、凝結、沸騰的點數 ×3。", price: 6 },
-  { id: "glass",      nm: "吹玻璃工坊", ds: "一本帳每熔出 40 格玻璃，元素 +1。", price: 6 },
-  { id: "demolition", nm: "爆破專家",   ds: "爆炸範圍變大，爆炸 +12 物質。", price: 6 },
-  { id: "greenhouse", nm: "溫室",       ds: "植物蔓延 3 倍，萌芽 +2 物質。", price: 5 },
-  { id: "alkahest",   nm: "萬能溶劑",   ds: "酸液 70% 機率不被消耗。", price: 5 },
-  { id: "nozzle",     nm: "大口徑噴嘴", ds: "每瓶倒出的量 +50%。", price: 7 },
-  { id: "hotplate",   nm: "酒精燈",     ds: "杯底的泥會把水煮沸、把冰融化。", price: 5 },
-  { id: "spare",      nm: "備用量杯",   ds: "每回合多 1 次倒料。", price: 7 },
-  { id: "magma",      nm: "地心熔爐",   ds: "凝岩 +8 物質。", price: 5 },
-  { id: "freezer",    nm: "冰窖",       ds: "水遇冰結凍機率 ×10，結凍 +3 物質。", price: 5 },
-  { id: "matchbox",   nm: "火柴盒",     ds: "每回合多 1 根火柴。", price: 5 },
-  { id: "thickglass", nm: "厚玻璃",     ds: "壓力上限 +40%，爆蓋點數 ×2。", price: 6 },
-  { id: "ashes",      nm: "灰燼回收",   ds: "有燃燒卻沒有土元素的帳，也點亮土。", price: 6 },
-  { id: "scorched",   nm: "焦土",       ds: "稀有：一本帳燃燒＋藍焰 ≥800 次時，金 ×2。", price: 9, rare: true },
-  { id: "popritual",  nm: "爆蓋儀式",   ds: "稀有：含爆蓋的帳，金 ×3。", price: 9, rare: true },
+  { id: "pyro", price: 5 }, { id: "tower", price: 6 }, { id: "glass", price: 6 }, { id: "demolition", price: 6 }, { id: "greenhouse", price: 5 },
+  { id: "alkahest", price: 5 }, { id: "nozzle", price: 7 }, { id: "hotplate", price: 5 }, { id: "spare", price: 7 }, { id: "magma", price: 5 },
+  { id: "freezer", price: 5 }, { id: "matchbox", price: 5 }, { id: "thickglass", price: 6 }, { id: "ashes", price: 6 },
+  { id: "scorched", price: 9, rare: true }, { id: "popritual", price: 9, rare: true },
 ];
-const STAGES = [
-  { nm: "黑化", lat: "Nigredo", tint: [0.96, 0.95, 0.93] },
-  { nm: "白化", lat: "Albedo", tint: [1.0, 1.0, 1.0] },
-  { nm: "黃化", lat: "Citrinitas", tint: [1.0, 0.97, 0.88] },
-  { nm: "紅化", lat: "Rubedo", tint: [1.0, 0.93, 0.90] },
-];
+const ACT_COL = ["#3b3228", "#efe9d8", "#d4a62a", "#b8381e"];
+const ACT_TINT = [[0.96, 0.95, 0.93], [1, 1, 1], [1, 0.97, 0.88], [1, 0.93, 0.90]];
 const TARGETS = [20000, 30000, 45000, 65000, 90000, 120000, 160000, 210000, 270000, 350000, 450000, 600000];
 const START_DECK = [M.SAND, M.SAND, M.WATER, M.WATER, M.OIL, M.EMBER, M.SULFUR, M.LAVA];
-const FIRST_HAND = [M.WATER, M.SULFUR, M.OIL, M.LAVA];
+const FIRST_HAND = [M.WATER, M.LAVA, M.OIL, M.SULFUR];
 const FIRST_DRAW = [M.SAND, M.EMBER, M.SAND, M.WATER];
 const SHOP_VIALS = [M.ACID, M.POWDER, M.ICE, M.SEED, M.LAVA, M.OIL, M.WATER, M.SULFUR, M.SAND, M.EMBER];
 const HAND = 4, BASE_POURS = 4, BASE_MATCHES = 2, MAX_ARC = 5;
+const FLAMMABLE = [M.OIL, M.PLANT, M.SEED, M.SULFUR, M.POWDER];
+const DISCOVER = { burn: [M.OIL, M.EMBER], blueflame: [M.SULFUR, M.EMBER], blast: [M.POWDER, M.EMBER], quench: [M.WATER, M.EMBER], condense: [M.WATER, M.WATER],
+  melt: [M.ICE, M.LAVA], freeze: [M.WATER, M.ICE], acidrain: [M.SULFUR, M.WATER], solidify: [M.LAVA, M.WATER], vitrify: [M.SAND, M.LAVA], dissolve: [M.ACID, M.SAND],
+  bake: [M.LAVA, M.SAND], bloom: [M.SEED, M.WATER], boil: [M.WATER, M.LAVA], fume: [M.SULFUR, M.EMBER], lidpop: [M.EMBER, M.EMBER] };
+// what a falling material does to what it lands on (used for the ghost preview only)
+const PRE = {
+  [M.LAVA]: { [M.WATER]: ["solidify", "steam"], [M.ICE]: ["melt", "solidify"], [M.SAND]: ["vitrify"], [M.MUD]: ["bake"], [M.OIL]: ["burn"], [M.PLANT]: ["burn"], [M.SEED]: ["burn"], [M.SULFUR]: ["blueflame"], [M.POWDER]: ["blast"] },
+  [M.WATER]: { [M.SEED]: ["bloom"], [M.PLANT]: ["bloom"], [M.ICE]: ["freeze"], [M.FIRE]: ["quench", "steam"], [M.LAVA]: ["solidify", "steam"] },
+  [M.ACID]: { [M.SAND]: ["dissolve"], [M.STONE]: ["dissolve"], [M.GLASS]: ["dissolve"], [M.ICE]: ["dissolve"], [M.PLANT]: ["dissolve"], [M.SEED]: ["dissolve"], [M.POWDER]: ["dissolve"], [M.MUD]: ["dissolve"] },
+  [M.OIL]: { [M.FIRE]: ["burn"], [M.LAVA]: ["burn"] },
+  [M.POWDER]: { [M.FIRE]: ["blast"], [M.LAVA]: ["blast"] },
+  [M.ICE]: { [M.WATER]: ["freeze"], [M.LAVA]: ["melt"], [M.FIRE]: ["melt"] },
+  [M.SEED]: { [M.WATER]: ["bloom"], [M.LAVA]: ["burn"], [M.FIRE]: ["burn"] },
+  [M.SAND]: { [M.LAVA]: ["vitrify"], [M.ACID]: ["dissolve"] },
+  [M.EMBER]: { [M.OIL]: ["burn"], [M.SULFUR]: ["blueflame"], [M.POWDER]: ["blast"], [M.SEED]: ["burn"], [M.PLANT]: ["burn"] },
+  [M.SULFUR]: { [M.FIRE]: ["blueflame"], [M.LAVA]: ["blueflame"] },
+};
 
 // ---------------- state ----------------
-let G = null, R = null;
-let speedHeld = false;
 const canvas = document.getElementById("view");
 const ctx = canvas.getContext("2d");
-const DPR = Math.min(2, window.devicePixelRatio || 1);
-let L = null; // layout
+let DPR = Math.min(2, window.devicePixelRatio || 1);
+let G = null, R = null, L = null;
+const QS = new URLSearchParams(location.search);
 const tintC = document.createElement("canvas"); tintC.width = W; tintC.height = H;
 const tctx = tintC.getContext("2d");
 const softC = document.createElement("canvas"); softC.width = W / 2; softC.height = H / 2; const sctx = softC.getContext("2d");
 const tintImg = tctx.createImageData(W, H);
-const inkC = document.createElement("canvas"); const ictx = inkC.getContext("2d");
-let inkImg = null, ink32 = null;
-let bgC = null;
-const QS = new URLSearchParams(location.search);
-const DBG = { nolinks: QS.has("nolinks"), noink: QS.has("noink"), nooverlay: QS.has("nooverlay"), nosim: QS.has("nosim") };
-let WASH_BLUR = !QS.has("noblur");
-const fx = { floats: [], buckets: new Map(), chains: [], gold: [], lidFly: null, shake: 0 };
-const meta = new Map(); // ledger uid -> UI meta
-
+const inkC = document.createElement("canvas"); inkC.width = W * ICP; inkC.height = H * ICP; const ictx = inkC.getContext("2d");
+const inkImg = ictx.createImageData(W * ICP, H * ICP), ink32 = new Uint32Array(inkImg.data.buffer);
+let bgC = null, bgS = null, WASH_BLUR = !QS.has("noblur");
+const fx = { floats: [], buckets: new Map(), chains: [], gold: [], tallyQ: [], tally: null, lidFly: null, shake: 0, disc: [], coins: [], bump: {} };
+const meta = new Map();
+const seen = new Set();
+let mode = "play"; // play | shop | lose | win
+let soundOn = true, AC = null, lastBeep = {};
+const ptr = { x: -1, y: -1, down: false, type: "mouse", inside: false };
+let D = null; // active drag
 function hex(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const easeIn = t => t * t * t, easeOut = t => 1 - Math.pow(1 - t, 3);
+const backOut = t => { const c = 1.9; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+const NOW = () => performance.now();
 
-// ---------------- game flow ----------------
-function newGame(seed) {
-  G = { seed: seed || ((Math.random() * 1e9) | 0), round: 0, money: 4, deck: START_DECK.slice(), arc: [],
-        draw: [], hand: [], disc: [], sel: -1, matchMode: false, aimX: 80, hoverY: -1, hover: false, pourP: null,
-        holding: false, shopItems: [], reroll: 1, displayGold: 0, ended: false, tut: { step: 0, done: {} }, lidUsed: false, frame0: 0 };
-  G.rng = mulberry32(G.seed);
-  startRound();
-}
-function mods() { const o = {}; for (const c of G.arc) o[c] = true; return o; }
-function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = (G.rng() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
-function startRound() {
-  const md = mods();
-  R = createRound({ seed: G.seed + G.round * 101, mods: md, pours: BASE_POURS + (md.spare ? 1 : 0), matches: BASE_MATCHES + (md.matchbox ? 1 : 0),
-                    target: TARGETS[G.round], lidMax: md.thickglass ? 1540 : 1100 });
-  R.onOpen = onOpen; R.onClose = onClose; R.onRx = onRx;
-  R.S.onLidPop = onLidPop;
-  if (G.round === 0) { G.hand = FIRST_HAND.slice(); G.draw = FIRST_DRAW.slice().reverse(); G.disc = []; }
-  else { G.draw = shuffle(G.deck.slice()); G.hand = []; G.disc = []; while (G.hand.length < HAND && G.draw.length) G.hand.push(G.draw.pop()); }
-  G.sel = -1; G.matchMode = false; G.pourP = null; G.displayGold = 0; G.ended = false; G.newIdx = -1;
-  fx.floats = []; fx.buckets.clear(); fx.chains = []; fx.gold = []; fx.lidFly = null;
-  meta.clear();
-  document.getElementById("cards").innerHTML = `<div class="card mini placeholder" style="--c:#a8957a"><div class="hd"><span class="st">每倒一瓶、每點一根火柴，這裡就開一本帳，記下它引起的每個反應。</span></div></div>`;
-  buildBg();
-  renderHand(); renderSide();
-}
+// ---------------- glyphs: digits + every icon, all hand-drawn on canvas (no fonts, no emoji) ----------------
+const INK = "#2a1c12", PAPER = "#efe4c8";
+const COL = { sand: "#d9b46a", water: "#5b8fae", oil: "#c98a2e", lava: "#c43c24", acid: "#8db04a", powder: "#4a4440", ice: "#a9d0d4",
+  seed: "#7f9a3a", ember: "#d9582a", sulfur: "#e3cf47", stone: "#8c8478", mud: "#8a6a45", gold: "#c8961e", goldHi: "#f0d27a",
+  fire: "#b8381e", blue: "#3553b8", steam: "#b7bcb8", smoke: "#9a9088", glass: "#bcd6d9", plant: "#5f8a3c" };
+const ELC = ["#b8381e", "#2e5e8c", "#5e6a2a", "#6a5f8e"];
+window.__textViolations = [];
 
-// ---------------- ledger callbacks ----------------
-function ledgerColor(Lg) { return Lg.kind === "pour" ? VIALS[Lg.m].c : Lg.kind === "match" ? "#b8381e" : "#8a7458"; }
-function ledgerTitle(Lg) {
-  if (Lg.kind === "pour") return `第 ${G.pourCount[Lg.id]} 倒・${VIALS[Lg.m].nm}`;
-  if (Lg.kind === "match") return "火柴";
-  return "餘波";
-}
-function onOpen(Lg) {
-  if (!G.pourCount) G.pourCount = {};
-  if (Lg.kind === "pour") { G.pourIdx = (G.pourIdx || 0) + 1; G.pourCount[Lg.id] = BASE_POURS + (mods().spare ? 1 : 0) - R.pours; }
-  const m = { el: null, sx: 0, sy: 0, sn: 0, genPos: [], lastRender: 0, closing: 0, gone: false };
-  meta.set(Lg.uid, m);
-  const el = document.createElement("div");
-  el.className = "card"; el.style.setProperty("--c", ledgerColor(Lg));
-  el.innerHTML = `<div class="hd"><span class="ttl">${ledgerTitle(Lg)}</span><span class="st">${Lg.kind === "pour" ? "倒料中…" : "反應中…"}</span></div><div class="rws"><div class="empty">還沒有反應</div></div><div class="sum"></div><div class="gold"><span>金</span><span class="v">—</span></div>`;
-  m.el = el;
-  const cards = document.getElementById("cards");
-  const ph = cards.querySelector(".placeholder"); if (ph) ph.remove();
-  cards.insertBefore(el, cards.firstChild);
-  trimCards();
-}
-function trimCards(minisToHist) {
-  const cards = document.getElementById("cards");
-  if (minisToHist) for (const c of [...cards.querySelectorAll(".card.mini")]) { if (!c.querySelector(".st").textContent.startsWith("已佈置") && !c.querySelector(".st").textContent.startsWith("什麼")) continue; moveToHist(cards, c); }
-  // keep at most 3 full cards; older ones collapse into the history list
-  const full = [...cards.querySelectorAll(".card")];
-  let hist = cards.querySelector(".hist");
-  for (let i = 3; i < full.length; i++) {
-    const c = full[i];
-    moveToHist(cards, c);
-  }
-}
-function moveToHist(cards, c) {
-  let hist = cards.querySelector(".hist");
-  if (!hist) { hist = document.createElement("div"); hist.className = "hist"; cards.appendChild(hist); }
-  const t = c.querySelector(".ttl").textContent, v = c.querySelector(".gold .v").textContent;
-  const d = document.createElement("div"); d.innerHTML = `<span>${t}${c.classList.contains("mini") ? (t === "火柴" ? "（落空）" : "（佈置）") : ""}</span><span>${v === "—" ? "…" : v}</span>`;
-  hist.insertBefore(d, hist.firstChild);
-  c.remove();
-}
-function onRx(Lg, type, p, g) {
-  const m = meta.get(Lg.uid);
-  const x = p % W, y = (p / W) | 0;
-  m.sx += x; m.sy += y; m.sn++;
-  // chain positions per generation
-  const gp = m.genPos[g] || (m.genPos[g] = { x: 0, y: 0, n: 0, t: performance.now() });
-  gp.x += x; gp.y += y; gp.n++;
-  if (gp.n === 1 && g >= 2 && m.genPos[g - 1] && Math.hypot(m.genPos[g - 1].x / m.genPos[g - 1].n - x, m.genPos[g - 1].y / m.genPos[g - 1].n - y) < 55) {
-    const pp = m.genPos[g - 1];
-    fx.chains.push({ uid: Lg.uid, g, from: [pp.x / pp.n, pp.y / pp.n], toRef: gp, born: performance.now() });
-    if (fx.chains.length > 8) fx.chains.shift();
-  }
-  // aggregated floating text: ledger × type × 16×16 block, 0.5 s
-  let b = null;
-  for (const bb of fx.buckets.values()) {
-    if (bb.uid !== Lg.uid || bb.type !== type) continue;
-    const dx = bb.x / bb.n - x, dy = bb.y / bb.n - y;
-    if (dx * dx + dy * dy < 26 * 26 || fx.buckets.size + fx.floats.length >= 12) { b = bb; break; }
-  }
-  if (!b) { b = { uid: Lg.uid, type, n: 0, x: 0, y: 0, t0: performance.now() }; fx.buckets.set(fx.bucketId = (fx.bucketId || 0) + 1, b); }
-  b.n++; b.x += x; b.y += y;
-  if (type === "blast" || type === "lidpop") fx.shake = Math.min(10, fx.shake + (type === "lidpop" ? 1.5 : 0.6));
-  sfx(type);
-}
-function flushBuckets(now) {
-  for (const [k, b] of fx.buckets) {
-    if (now - b.t0 < 500) continue;
-    fx.buckets.delete(k);
-    if (b.n < 4 && fx.floats.length >= 4 && b.type !== "lidpop") continue;
-    const pts = ptsOf(b.type, R.mods);
-    const text = `${RXINFO[b.type]} ×${b.n}  +${fmt(b.n * pts)}`;
-    // de-overlap against live floats (in cell units; a float is ~text.length*1.6 cells wide, 5 tall)
-    const fw = text.length * 2.3, fh = 6;
-    let fx0 = b.x / b.n, fy0 = b.y / b.n;
-    let placed = false;
-    for (let tries = 0; tries < 8; tries++) {
-      let hit = false;
-      for (const o of fx.floats) {
-        const oy = o.y - (now - o.born) / 1000 * 34 / L.cp;
-        if (Math.abs(o.x - fx0) < (fw + o.w) / 2 && Math.abs(oy - fy0) < fh) { hit = true; break; }
-      }
-      if (!hit) { placed = true; break; }
-      fy0 -= fh;
-    }
-    if (!placed && b.type !== "lidpop" && b.type !== "blast") continue; // the ledger card still has it
-    fx.floats.push({ text, w: fw, el: RX[b.type].el[0], x: Math.max(fw / 2, Math.min(W - fw / 2, fx0)), y: Math.max(16, fy0), born: now, big: b.type === "lidpop" || b.type === "blast" });
-  }
-  while (fx.floats.length > 12) fx.floats.shift();
-}
-function onClose(Lg) {
-  const m = meta.get(Lg.uid);
-  m.closing = performance.now();
-  renderCard(Lg, true);
-  tally(Lg, m);
-}
-function onLidPop(gasN) {
-  fx.lidFly = { born: performance.now(), vx: (R.S.rnd() - 0.5) * 6 };
-  fx.shake = 12;
-  toast(`爆蓋！${gasN} 格氣體一次炸開`);
-  G.tut.done.pop = true;
-  sfx("lidpop", true);
-}
-
-// Balatro-ish settlement: rows light up in calculation order, then gold flows to the receiver.
-function tally(Lg, m) {
-  const el = m.el, res = Lg.result;
-  el.querySelector(".st").textContent = Lg.why === "forced" ? "第 4 本帳：提前結算" : "結算";
-  if (res.gold === 0) {
-    el.classList.add("mini", "closed");
-    el.querySelector(".gold .v").textContent = "0";
-    el.querySelector(".st").textContent = Lg.kind === "pour" ? "已佈置：之後被點燃，記在點火那本帳" : Lg.kind === "match" ? "什麼也沒點著" : "";
-    setTimeout(() => { if (el.isConnected) { const cards = document.getElementById("cards"); const full = [...cards.querySelectorAll(".card")]; if (full.indexOf(el) >= 0 && full.length > 1) { cards.appendChild(el); trimCards(true); } } }, 2500);
-    return;
-  }
-  const rows = [...el.querySelectorAll(".r"), ...el.querySelectorAll(".sum > span:nth-child(odd)")];
-  let i = 0;
-  const step = () => {
-    rows.forEach(r => r.classList.remove("hl"));
-    if (i < rows.length) {
-      rows[i].classList.add("hl"); const sib = rows[i].nextElementSibling; if (sib && rows[i].parentElement.classList.contains("sum")) sib.classList.add("hl");
-      i++; setTimeout(() => { if (sib) sib.classList.remove("hl"); step(); }, 90);
-    } else {
-      const v = el.querySelector(".gold .v");
-      v.textContent = res.gold > 0 ? "+" + fmt(res.gold) : "0";
-      v.classList.remove("pop"); void v.offsetWidth; v.classList.add("pop");
-      el.querySelector(".st").textContent = res.gold > 0 ? "金砂流入受器 ⟶" : "沒有反應";
-      el.classList.add("closed");
-      spawnGold(Lg, m, res.gold);
-      if (res.gold > 0) sfx("gold", true);
-    }
+// ---- digits: strokes in a 4 x 6 box ----
+const GLYPH = {
+  "0": g => { g.moveTo(3.8, 3); g.ellipse(2, 3, 1.8, 2.9, 0, 0, Math.PI * 2); },
+  "1": g => { g.moveTo(1, 1.4); g.lineTo(2.4, 0); g.lineTo(2.4, 6); g.moveTo(1, 6); g.lineTo(3.8, 6); },
+  "2": g => { g.moveTo(0.3, 1.7); g.bezierCurveTo(0.2, -0.6, 3.8, -0.6, 3.7, 1.7); g.bezierCurveTo(3.6, 3.2, 0.5, 4.6, 0.2, 6); g.lineTo(3.9, 6); },
+  "3": g => { g.moveTo(0.4, 0.5); g.bezierCurveTo(1.2, -0.3, 3.8, -0.2, 3.6, 1.5); g.bezierCurveTo(3.5, 2.7, 2.4, 2.9, 1.6, 2.9); g.bezierCurveTo(2.8, 2.9, 4, 3.4, 3.8, 4.6); g.bezierCurveTo(3.6, 6.4, 0.9, 6.5, 0.2, 5.4); },
+  "4": g => { g.moveTo(3, 6); g.lineTo(3, 0); g.lineTo(0.2, 4.2); g.lineTo(4, 4.2); },
+  "5": g => { g.moveTo(3.6, 0); g.lineTo(0.8, 0); g.lineTo(0.5, 2.8); g.bezierCurveTo(1.5, 2.2, 3.9, 2.4, 3.8, 4.4); g.bezierCurveTo(3.7, 6.4, 0.9, 6.5, 0.2, 5.4); },
+  "6": g => { g.moveTo(3.5, 0.2); g.bezierCurveTo(1, 0.6, 0.2, 2.5, 0.2, 4.1); g.bezierCurveTo(0.2, 6.5, 3.8, 6.5, 3.8, 4.3); g.bezierCurveTo(3.8, 2.4, 0.9, 2.3, 0.3, 4.1); },
+  "7": g => { g.moveTo(0.2, 0); g.lineTo(3.8, 0); g.lineTo(1.4, 6); },
+  "8": g => { g.moveTo(3.5, 1.5); g.ellipse(2, 1.5, 1.5, 1.45, 0, 0, Math.PI * 2); g.moveTo(3.8, 4.4); g.ellipse(2, 4.4, 1.8, 1.6, 0, 0, Math.PI * 2); },
+  "9": g => { g.save(); g.translate(4, 6); g.rotate(Math.PI); GLYPH["6"](g); g.restore(); },
+  "×": g => { g.moveTo(0.6, 1.7); g.lineTo(3.4, 4.5); g.moveTo(3.4, 1.7); g.lineTo(0.6, 4.5); },
+  "+": g => { g.moveTo(2, 1.4); g.lineTo(2, 4.6); g.moveTo(0.4, 3); g.lineTo(3.6, 3); },
+  "-": g => { g.moveTo(0.4, 3); g.lineTo(3.6, 3); },
+  "−": g => { g.moveTo(0.4, 3); g.lineTo(3.6, 3); },
+  "=": g => { g.moveTo(0.5, 2.2); g.lineTo(3.5, 2.2); g.moveTo(0.5, 3.8); g.lineTo(3.5, 3.8); },
+  "/": g => { g.moveTo(3.4, 0); g.lineTo(0.6, 6); },
+  "%": g => { g.moveTo(1.9, 1.2); g.ellipse(1.1, 1.2, 0.8, 0.9, 0, 0, Math.PI * 2); g.moveTo(3.7, 4.8); g.ellipse(2.9, 4.8, 0.8, 0.9, 0, 0, Math.PI * 2); g.moveTo(3.5, 0); g.lineTo(0.5, 6); },
+  ".": g => { g.moveTo(0.9, 5.7); g.lineTo(0.92, 5.7); },
+  ",": g => { g.moveTo(2.2, 5.3); g.lineTo(1.6, 6.7); },
+  "k": g => { g.moveTo(0.7, 0); g.lineTo(0.7, 6); g.moveTo(3.4, 1.9); g.lineTo(0.7, 3.9); g.moveTo(1.7, 3.3); g.lineTo(3.7, 6); },
+};
+const ADV = { "1": 4, ".": 2.2, ",": 2.4, "-": 4.4, "−": 4.4, "k": 4.6 };
+function numWidth(str, size) { let w = 0; const s = size / 6; for (const ch of String(str)) w += (ADV[ch] || 5) * s; return w - 0.8 * s; }
+// size = glyph height in logical px. opt: color, align (l/c/r), halo (paper outline), wt (stroke weight, in 1/6 size units)
+function drawNum(g, str, x, y, size, opt) {
+  opt = opt || {};
+  str = String(str);
+  for (const ch of str) if (!GLYPH[ch]) { window.__textViolations.push(ch); console.error("text-violation: " + ch); return; }
+  const s = size / 6, w = numWidth(str, size);
+  let x0 = opt.align === "r" ? x - w : opt.align === "c" || !opt.align ? x - w / 2 : x;
+  const y0 = opt.base === "top" ? y : y - size / 2;
+  g.save(); g.lineCap = "round"; g.lineJoin = "round";
+  const pass = (col, lw) => {
+    g.strokeStyle = col; g.lineWidth = lw; g.beginPath();
+    let cx = x0;
+    for (const ch of str) { g.save(); g.translate(cx, y0); g.scale(s, s); const m = g.getTransform(); GLYPH[ch](g); g.restore(); cx += (ADV[ch] || 5) * s; }
+    g.stroke();
   };
-  step();
-}
-function spawnGold(Lg, m, gold) {
-  if (gold <= 0) return;
-  const k = Math.max(6, Math.min(48, Math.round(gold / (R.target / 30))));
-  const cx = m.sn ? m.sx / m.sn : (Lg.x || 80), cy = m.sn ? m.sy / m.sn : 60;
-  const now = performance.now();
-  for (let i = 0; i < k; i++) fx.gold.push({ x0: cx + (Math.random() - 0.5) * 10, y0: cy + (Math.random() - 0.5) * 8, born: now + i * 28, v: gold / k, done: false, dur: 900 + Math.random() * 250 });
-}
-
-// ---------------- input ----------------
-function cellFromEvent(e) {
-  const r = canvas.getBoundingClientRect();
-  const px = (e.clientX - r.left), py = (e.clientY - r.top);
-  const x = Math.floor((px - L.bx) / L.cp), y = Math.floor((py - L.by) / L.cp);
-  return { x, y, inside: x >= 1 && x < W - 1 && y >= -12 && y < H - 1 };
-}
-canvas.addEventListener("contextmenu", e => e.preventDefault());
-canvas.addEventListener("pointermove", e => {
-  const c = cellFromEvent(e);
-  G.hover = c.inside; G.aimX = Math.max(5, Math.min(W - 6, c.x)); G.hoverY = c.y;
-  if (G.pourP && G.holding) R.aim(G.pourP, G.aimX);
-});
-canvas.addEventListener("pointerleave", () => { G.hover = false; });
-canvas.addEventListener("pointerdown", e => {
-  if (G.ended) return;
-  ensureAudio();
-  const c = cellFromEvent(e);
-  if (!c.inside) return;
-  if (e.button === 2 || G.matchMode) { strikeAt(c.x, Math.max(0, c.y)); return; }
-  if (G.sel < 0) { toast(G.hand.length ? "先在下方選一瓶材料（或按 1–4）" : "手上沒有材料了"); return; }
-  if (R.S.lid) { toast("蓋子蓋著不能倒料：按空白鍵打開"); pulse("tLid"); return; }
-  if (R.pours <= 0) { toast("這回合的倒料用完了"); return; }
-  canvas.setPointerCapture(e.pointerId);
-  G.aimX = Math.max(5, Math.min(W - 6, c.x));
-  const mat = G.hand[G.sel];
-  const P = R.startPour(mat, G.aimX);
-  if (!P) return;
-  G.pourP = P; G.holding = true;
-  G.disc.push(G.hand.splice(G.sel, 1)[0]);
-  if (G.draw.length === 0 && G.disc.length && G.round > 0) G.draw = shuffle(G.disc.splice(0));
-  if (G.draw.length) { G.hand.splice(G.sel, 0, G.draw.pop()); G.newIdx = G.sel; } else G.newIdx = -1;
-  G.sel = -1;
-  G.tut.done.pour = (G.tut.done.pour || 0) + 1;
-  if (mat === M.SULFUR) G.tut.done.sulfur = true;
-  renderHand(); renderSide();
-});
-const release = () => { G.holding = false; };
-canvas.addEventListener("pointerup", release); canvas.addEventListener("pointercancel", release);
-
-function strikeAt(x, y) {
-  if (R.matches <= 0) { toast("火柴用完了"); G.matchMode = false; renderSide(); return; }
-  R.strike(Math.max(2, Math.min(W - 3, x)), Math.max(1, Math.min(H - 3, y)));
-  G.matchMode = false; G.tut.done.match = true;
-  sfx("match", true);
-  renderSide();
-}
-function toggleLid() {
-  if (G.ended) return;
-  R.toggleLid(); G.lidUsed = true; G.tut.done.lid = true;
-  if (R.S.lid) sfx("lid", true);
-  renderSide();
-}
-function seal() {
-  if (G.ended) return;
-  R.closeAll(); renderSide();
-}
-function selectVial(i) {
-  if (i >= G.hand.length) return;
-  G.sel = G.sel === i ? -1 : i; G.matchMode = false; renderHand(); renderSide();
-}
-document.getElementById("tMatch").addEventListener("click", () => { if (R.matches > 0) { G.matchMode = !G.matchMode; G.sel = -1; renderHand(); renderSide(); } else toast("火柴用完了"); });
-document.getElementById("tLid").addEventListener("click", toggleLid);
-document.getElementById("tSeal").addEventListener("click", seal);
-window.addEventListener("keydown", e => {
-  if (!document.getElementById("overlay").hidden) { if (e.key === "Enter") { const b = document.querySelector("#overlay .primary"); if (b) { e.preventDefault(); b.click(); } } return; }
-  if (e.key >= "1" && e.key <= "4") selectVial(+e.key - 1);
-  else if (e.key === "f" || e.key === "F") document.getElementById("tMatch").click();
-  else if (e.key === " ") { e.preventDefault(); toggleLid(); }
-  else if (e.key === "Enter") { e.preventDefault(); seal(); }
-  else if (e.key === "Escape") { G.sel = -1; G.matchMode = false; renderHand(); renderSide(); }
-  else if (e.key === "Shift") speedHeld = true;
-});
-window.addEventListener("keyup", e => { if (e.key === "Shift") speedHeld = false; });
-
-// ---------------- side UI ----------------
-const elHand = document.getElementById("hand");
-function vialIcon(m) {
-  const c = document.createElement("canvas"); c.width = 34; c.height = 60;
-  const g = c.getContext("2d");
-  const col = VIALS[m].c;
-  g.strokeStyle = "#2a1c12"; g.lineWidth = 1.2; g.fillStyle = col;
-  // flask silhouette
-  g.beginPath(); g.moveTo(13, 4); g.lineTo(21, 4); g.lineTo(21, 22); g.quadraticCurveTo(32, 32, 31, 46); g.quadraticCurveTo(30, 57, 17, 57);
-  g.quadraticCurveTo(4, 57, 3, 46); g.quadraticCurveTo(2, 32, 13, 22); g.closePath();
-  g.save(); g.clip();
-  g.globalAlpha = 0.75; g.fillRect(0, 30, 34, 30); g.globalAlpha = 1;
-  g.strokeStyle = "rgba(42,28,18,.7)"; g.lineWidth = 0.8;
-  for (let y = 32; y < 60; y += 3) { g.beginPath(); g.moveTo(0, y); g.lineTo(34, y); g.stroke(); }
+  // path points are baked in at construction time, so the stroke width is set in device space here
+  const lw = Math.max(1.1, (opt.wt || 0.72) * s);
+  if (opt.halo) pass(opt.halo === true ? PAPER : opt.halo, lw + Math.max(2.2, s * 1.2));
+  pass(opt.color || INK, lw);
   g.restore();
-  g.strokeStyle = "#2a1c12"; g.lineWidth = 1.2;
-  g.beginPath(); g.moveTo(13, 4); g.lineTo(21, 4); g.lineTo(21, 22); g.quadraticCurveTo(32, 32, 31, 46); g.quadraticCurveTo(30, 57, 17, 57);
-  g.quadraticCurveTo(4, 57, 3, 46); g.quadraticCurveTo(2, 32, 13, 22); g.closePath(); g.stroke();
-  g.fillStyle = "#6b4a2a"; g.fillRect(12, 1, 10, 5); g.strokeRect(12, 1, 10, 5);
-  return c;
 }
-function renderHand() {
-  elHand.innerHTML = "";
-  for (let i = 0; i < HAND; i++) {
-    const m = G.hand[i];
-    if (m === undefined) { const d = document.createElement("div"); d.className = "vial empty"; d.textContent = "空"; elHand.appendChild(d); continue; }
-    const v = VIALS[m];
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "vial" + (G.sel === i ? " sel" : "") + (G.newIdx === i ? " new" : "");
-    b.disabled = R.pours <= 0 || G.ended;
-    b.appendChild(vialIcon(m));
-    const nm = document.createElement("div"); nm.className = "nm"; nm.innerHTML = `${v.nm}<kbd class="k">${i + 1}</kbd>`;
-    const ds = document.createElement("div"); ds.className = "ds"; ds.textContent = v.ds;
-    b.appendChild(nm); b.appendChild(ds);
-    b.addEventListener("click", () => selectVial(i));
-    elHand.appendChild(b);
-  }
-  G.newIdx = -1;
-  document.getElementById("decknote").textContent = `牌組 ${G.deck.length} 瓶 · 抽牌堆 ${G.draw.length} · 倒過的瓶子回合結束後洗回`;
-}
-function renderSide() {
-  const st = STAGES[Math.floor(G.round / 3)];
-  document.getElementById("stagebar").innerHTML = `<b>${st.nm}</b><span class="lat">${st.lat}</span><span>第 ${G.round % 3 + 1} / 3 回合 · 大業 ${G.round + 1} / 12</span>`;
-  document.getElementById("goldNow").innerHTML = `${fmt(G.displayGold)}<small> / ${fmt(R.target)} 金</small>`;
-  document.getElementById("poursLeft").innerHTML = `倒料 <b>${R.pours}</b> · 火柴 <b>${R.matches}</b> · $${G.money}`;
-  document.getElementById("matchN").textContent = "|".repeat(R.matches) || "0";
-  const tm = document.getElementById("tMatch"); tm.classList.toggle("on", G.matchMode); tm.disabled = R.matches <= 0 || G.ended;
-  const tl = document.getElementById("tLid"); tl.classList.toggle("on", R.S.lid); document.getElementById("lidState").textContent = R.S.lid ? "蓋" : "開";
-  document.getElementById("arcN").textContent = G.arc.length ? "秘方 " + G.arc.map(id => ARCANA.find(a => a.id === id).nm).join("・") : "";
-  [...elHand.children].forEach((b, i) => { if (b.tagName === "BUTTON") b.disabled = R.pours <= 0 || G.ended; });
-}
-function elSvg(e, on) {
-  const c = on ? ELC[e] : "#a8957a";
-  const up = e === 0 || e === 3, bar = e >= 2;
-  const tri = up ? "M7 1.5 L13 12.5 L1 12.5 Z" : "M1 1.5 L13 1.5 L7 12.5 Z";
-  const ln = bar ? (up ? `<line x1="3" y1="8.5" x2="11" y2="8.5" stroke="${on ? "#2a1c12" : c}" stroke-width="1.2"/>` : `<line x1="3" y1="5.5" x2="11" y2="5.5" stroke="${on ? "#2a1c12" : c}" stroke-width="1.2"/>`) : "";
-  return `<svg class="elsym" viewBox="0 0 14 14"><path d="${tri}" fill="${on ? c : "none"}" fill-opacity=".8" stroke="${on ? "#2a1c12" : c}" stroke-width="1.2"/>${ln}</svg>`;
-}
-function renderCard(Lg, final) {
-  const m = meta.get(Lg.uid); if (!m || !m.el) return;
-  const res = scoreLedger(Lg, R.mods);
-  const rws = m.el.querySelector(".rws");
-  if (!res.rows.length) rws.innerHTML = `<div class="empty">${Lg.kind === "pour" ? "還沒有反應——它會等你點燃或倒入對頭" : "還沒有反應"}</div>`;
-  else rws.innerHTML = res.rows.map(r => `<div class="r${r.halved ? " half" : ""}">${elSvg(RX[r.type].el[0], true)}<span>${RXINFO[r.type]}</span><span class="n">×${r.n}×${r.pts}</span><span class="s">${fmt(r.sub)}</span></div>`).join("");
-  const els = [0, 1, 2, 3].map(e => elSvg(e, res.lit[e])).join("");
-  let sum = "";
-  if (res.rows.length) {
-    if (res.stale) sum += `<span>佈置（碰到 2 倒以前的陳料）</span><span>+${fmt(res.stale)}</span>`;
-    sum += `<span>物質</span><span>${fmt(res.matter)}</span>`;
-    sum += `<span>元素 1＋${res.nLit}<span class="els">${els}</span>${res.chain ? `＋連鎖 ${res.chain}` : ""}${res.four ? "＋四象 2" : ""}${res.elemMods ? `＋秘方 ${res.elemMods}` : ""}</span><span>×${res.elem}</span>`;
-    for (const a of res.arcana) sum += `<span>秘方・${ARCANA.find(x => x.id === a.id).nm}</span><span>×${a.x}</span>`;
-  }
-  m.el.querySelector(".sum").innerHTML = sum;
-  if (!final) {
-    const v = m.el.querySelector(".gold .v"); v.textContent = res.gold > 0 ? "≈" + fmt(res.gold) : "—";
-    const pouring = R.active.some(P => P.L === Lg);
-    m.el.querySelector(".st").textContent = pouring ? "倒料中…" : res.rows.length ? "反應中…" : "等待中…";
-  }
-}
-let toastT = 0;
-function toast(t) { const el = document.getElementById("toast"); el.textContent = t; el.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove("show"), 1800); }
-function pulse(id) { const b = document.getElementById(id); b.classList.remove("pulse"); void b.offsetWidth; b.classList.add("pulse"); setTimeout(() => b.classList.remove("pulse"), 2400); }
-function fmt(n) { n = Math.round(n); return n >= 1e7 ? (n / 1e6).toFixed(1) + "M" : n.toLocaleString("en-US"); }
-
-// ---------------- tutorial notes (round 1, then only when relevant) ----------------
-function setNote(text, anchorEl, side) {
-  const n = document.getElementById("note");
-  if (!text) { n.hidden = true; G.noteKey = null; return; }
-  if (G.noteKey !== text) { document.getElementById("noteText").innerHTML = text; G.noteKey = text; }
-  n.hidden = false;
-  const r = anchorEl.getBoundingClientRect(), nr = n.getBoundingClientRect(), a = document.getElementById("noteArr");
-  let x, y;
-  if (side === "above") { x = r.left + r.width / 2 - nr.width / 2; y = r.top - nr.height - 14; a.style.cssText = `left:${nr.width / 2 - 6}px;bottom:-7px;border-left:none;border-top:none;`; }
-  else if (side === "left") { x = r.left - nr.width - 14; y = r.top + r.height / 2 - nr.height / 2; a.style.cssText = `right:-7px;top:${nr.height / 2 - 6}px;border-left:none;border-bottom:none;`; }
-  else { x = r.left + r.width / 2 - nr.width / 2; y = r.bottom + 12; a.style.cssText = `left:${nr.width / 2 - 6}px;top:-7px;border-right:none;border-bottom:none;`; }
-  x = Math.max(8, Math.min(innerWidth - nr.width - 8, x)); y = Math.max(8, Math.min(innerHeight - nr.height - 8, y));
-  n.style.left = x + "px"; n.style.top = y + "px";
-}
-function canvasAnchor(cx, cy) { // a virtual element at beaker cell coords
-  const r = canvas.getBoundingClientRect();
-  const x = r.left + L.bx + cx * L.cp, y = r.top + L.by + cy * L.cp;
-  return { getBoundingClientRect: () => ({ left: x - 2, top: y - 2, right: x + 2, bottom: y + 2, width: 4, height: 4 }) };
-}
-function updateTutorial() {
-  if (!G || G.ended || !document.getElementById("overlay").hidden) { setNote(null); return; }
-  const d = G.tut.done, S = R.S;
-  const first = G.round === 0;
-  const hasFuel = G.sulfurCells > 30 || G.oilCells > 30;
-  if (first && !d.pour) {
-    if (G.sel < 0) return setNote("選一瓶<b>水</b>（點它，或按 <kbd>1</kbd>）。", elHand.children[0], "above");
-    return setNote("在燒杯上方<b>按住</b>倒出，按住時左右拖曳可以移動落點。", canvasAnchor(80, 30), "below");
-  }
-  if (first && !d.sulfur && d.pour < 3) {
-    const i = G.hand.indexOf(M.SULFUR), wi = G.hand.indexOf(M.WATER);
-    if (G.waterCells < 200 && wi >= 0) return setNote(`不用等它停——隨時可以倒下一瓶。先倒<b>水</b>，再把<b>硫磺</b>倒在水面上（它會浮著）。`, elHand.children[wi], "above");
-    if (i >= 0) return setNote(`不用等它停——隨時可以倒下一瓶。把<b>硫磺</b>倒在水面上（它會浮著）。`, elHand.children[i], "above");
-  }
-  if (R.matches > 0 && !d.match && hasFuel && (first || G.round < 3)) {
-    if (G.matchMode) return setNote("點在<b>硫磺</b>或<b>油</b>上。點在空氣裡會浪費火柴。", canvasAnchor(G.fuelX, G.fuelY), "below");
-    return setNote(`可燃物已經鋪好了。按<b>火柴</b>（<kbd>F</kbd>），或直接在燒杯上<b>右鍵</b>點火。`, document.getElementById("tMatch"), "left");
-  }
-  if (first && d.match && !d.ledger) return setNote("右邊每一倒都有一本<b>帳</b>：燒得越久越廣，物質越多；點亮的<b>火水土氣</b>越多，倍率越高。", document.getElementById("cards"), "left");
-  if (first && d.ledger && !d.gold) return setNote("結算後金砂流進右邊的<b>受器</b>。金砂滿過<b>金線</b>就過關。", canvasAnchor(W + 20, 60), "left");
-  if (!d.lid && !G.lidUsed && S.gas > 120 && (first || G.round < 3) && !S.lid)
-    return setNote("杯裡有很多氣體了。按 <kbd>空白鍵</kbd> <b>蓋上蓋子</b>：壓力錶滿了會<b>爆蓋</b>，一次大賺。蓋著時不能倒料。", document.getElementById("tLid"), "left");
-  if (S.lid && !d.pop && (first || G.round < 3)) return setNote("左邊的<b>壓力錶</b>到頂就爆蓋。想倒料，再按一次空白鍵打開。", canvasAnchor(-6, 40), "below");
-  const st = R.status();
-  if (st === "wait") return setNote(`倒料用完了，還有 ${R.matches} 根火柴：點燃還沒燒的東西，或按 <b>封瓶</b>（<kbd>Enter</kbd>）結束。`, document.getElementById("tSeal"), "left");
-  setNote(null);
+function fmt(n) {
+  n = Math.round(n);
+  if (n < 10000) return String(n);
+  const k = n / 1000;
+  return (k >= 100 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, "")) + "k";
 }
 
-// ---------------- rendering ----------------
-function computeLayout() {
-  const hh = document.querySelector("header.top").offsetHeight, uh = 118; // hand row is fixed-height by CSS
-  const availH = innerHeight - hh - uh - 26; // header + hand row + padding + gaps
-  const availW = innerWidth - 32 - 16 - 340;           // padding + gap + ledger min
-  let cp = 3;
-  for (let c = 6; c >= 3; c--) {
-    const w = c * (W + 14 + 8 + 40 + 3), h = c * (H + 14 + 3);
-    if (w <= availW && h <= availH) { cp = c; break; }
-  }
-  const bx = 14 * cp, by = 14 * cp, bw = W * cp, bh = H * cp;
-  const cw = cp * (W + 14 + 8 + 40 + 3), ch = cp * (H + 14 + 3);
-  L = { cp, bx, by, bw, bh, cw, ch, rx: bx + bw + 8 * cp, rw: 40 * cp };
-  canvas.width = cw * DPR; canvas.height = ch * DPR;
-  canvas.style.width = cw + "px"; canvas.style.height = ch + "px";
-  document.getElementById("app").style.setProperty("--cw", cw + "px");
-  if (!paperTile) { paperTile = makePaperTile(); document.body.style.backgroundImage = `url(${paperTile.toDataURL()})`; }
-  inkC.width = bw; inkC.height = bh;
-  inkImg = ictx.createImageData(bw, bh); ink32 = new Uint32Array(inkImg.data.buffer);
-  buildPatterns();
-  if (G) buildBg();
+// ---- tiny helpers ----
+function wash(g, col, a) { g.save(); g.globalAlpha = a == null ? 0.78 : a; g.fillStyle = col; g.fill(); g.restore(); }
+function ink(g, lw) { g.strokeStyle = INK; g.lineWidth = lw || 1.4; g.lineCap = "round"; g.lineJoin = "round"; g.stroke(); }
+function tri(g, pts) { g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); }
+
+// ---- element triangles (alchemical signs) ----
+function drawEl(g, e, x, y, s, on, dashed, pop) {
+  const up = e === 0 || e === 3, bar = e >= 2, k = pop ? 1 + pop * 0.35 : 1;
+  g.save(); g.translate(x, y); g.scale(k, k);
+  g.beginPath();
+  if (up) { g.moveTo(0, -s); g.lineTo(s * 0.95, s * 0.7); g.lineTo(-s * 0.95, s * 0.7); } else { g.moveTo(-s * 0.95, -s * 0.7); g.lineTo(s * 0.95, -s * 0.7); g.lineTo(0, s); }
+  g.closePath();
+  if (on) wash(g, ELC[e], 0.85);
+  g.strokeStyle = on ? INK : "rgba(42,28,18,.42)"; g.lineWidth = on ? 1.8 : 1.2;
+  if (dashed) g.setLineDash([3, 2.5]);
+  g.stroke(); g.setLineDash([]);
+  if (bar) { const yy = up ? s * 0.16 : -s * 0.16, hw = up ? s * 0.55 : s * 0.55; g.beginPath(); g.moveTo(-hw - s * 0.2, yy); g.lineTo(hw + s * 0.2, yy); g.stroke(); }
+  g.restore();
 }
 
-// value-noise for paper (periodic with period P so the tile repeats seamlessly)
+// ---- material vials: silhouette (unique per material) + symbol ----
+const SIL = {
+  [M.SAND]: g => { g.moveTo(.36, .08); g.lineTo(.64, .08); g.lineTo(.6, .26); g.bezierCurveTo(1.08, .34, 1.02, 1.0, .5, 1.0); g.bezierCurveTo(-.02, 1.0, -.08, .34, .4, .26); g.closePath(); },
+  [M.WATER]: g => { g.moveTo(.4, .03); g.lineTo(.6, .03); g.lineTo(.6, .32); g.bezierCurveTo(.99, .4, .99, .99, .5, .99); g.bezierCurveTo(.01, .99, .01, .4, .4, .32); g.closePath(); },
+  [M.OIL]: g => { g.moveTo(.42, .01); g.lineTo(.58, .01); g.lineTo(.58, .27); g.bezierCurveTo(.8, .31, .8, .38, .8, .46); g.lineTo(.8, .94); g.quadraticCurveTo(.8, .99, .74, .99); g.lineTo(.26, .99); g.quadraticCurveTo(.2, .99, .2, .94); g.lineTo(.2, .46); g.bezierCurveTo(.2, .38, .2, .31, .42, .27); g.closePath(); },
+  [M.LAVA]: g => { g.moveTo(.2, .1); g.lineTo(.8, .1); g.lineTo(.8, .2); g.bezierCurveTo(1.04, .4, 1.04, .94, .8, .99); g.lineTo(.2, .99); g.bezierCurveTo(-.04, .94, -.04, .4, .2, .2); g.closePath(); },
+  [M.ACID]: g => { g.moveTo(.38, .02); g.lineTo(.62, .02); g.lineTo(.62, .26); g.lineTo(.92, .34); g.lineTo(.92, .99); g.lineTo(.08, .99); g.lineTo(.08, .34); g.lineTo(.38, .26); g.closePath(); },
+  [M.POWDER]: g => { g.moveTo(.22, .1); g.lineTo(.78, .1); g.bezierCurveTo(1.02, .3, 1.02, .78, .78, .98); g.lineTo(.22, .98); g.bezierCurveTo(-.02, .78, -.02, .3, .22, .1); g.closePath(); },
+  [M.ICE]: g => { g.moveTo(.5, .02); g.lineTo(.95, .26); g.lineTo(.95, .74); g.lineTo(.5, .99); g.lineTo(.05, .74); g.lineTo(.05, .26); g.closePath(); },
+  [M.SEED]: g => { g.moveTo(.5, .2); g.lineTo(.26, .02); g.lineTo(.32, .26); g.bezierCurveTo(.0, .38, -.02, .99, .5, .99); g.bezierCurveTo(1.02, .99, 1.0, .38, .68, .26); g.lineTo(.74, .02); g.closePath(); },
+  [M.EMBER]: g => { g.moveTo(.06, .42); g.lineTo(.94, .42); g.lineTo(.94, .99); g.lineTo(.06, .99); g.closePath(); },
+  [M.SULFUR]: g => { g.moveTo(.42, .03); g.lineTo(.58, .03); g.lineTo(.58, .38); g.bezierCurveTo(1.02, .44, 1.02, .97, .5, .97); g.bezierCurveTo(-.02, .97, -.02, .44, .42, .38); g.closePath(); },
+};
+const SYMC = { [M.SAND]: [.5, .66], [M.WATER]: [.5, .68], [M.OIL]: [.5, .66], [M.LAVA]: [.5, .6], [M.ACID]: [.5, .66], [M.POWDER]: [.5, .55], [M.ICE]: [.5, .52], [M.SEED]: [.5, .62], [M.EMBER]: [.5, .72], [M.SULFUR]: [.5, .68] };
+const VCOL = { [M.SAND]: COL.sand, [M.WATER]: COL.water, [M.OIL]: COL.oil, [M.LAVA]: COL.lava, [M.ACID]: COL.acid, [M.POWDER]: COL.powder, [M.ICE]: COL.ice, [M.SEED]: COL.seed, [M.EMBER]: COL.ember, [M.SULFUR]: COL.sulfur };
+const SYM = {
+  [M.SAND]: (g, s) => { for (const [x, y] of [[-.5, .4], [.5, .4], [0, -.45]]) { g.beginPath(); g.arc(x * s, y * s, s * .24, 0, 7); g.fillStyle = INK; g.fill(); } },
+  [M.WATER]: (g, s) => { g.beginPath(); g.moveTo(-s, 0); g.quadraticCurveTo(-s * .5, -s * .8, 0, 0); g.quadraticCurveTo(s * .5, s * .8, s, 0); g.stroke(); g.beginPath(); g.moveTo(-s * .7, s * .55); g.quadraticCurveTo(-s * .35, 0, 0, s * .55); g.quadraticCurveTo(s * .35, s * 1.1, s * .7, s * .55); g.stroke(); },
+  [M.OIL]: (g, s) => { g.beginPath(); g.moveTo(0, -s * .9); g.bezierCurveTo(s * .7, -s * .1, s * .6, s * .5, 0, s * .5); g.bezierCurveTo(-s * .6, s * .5, -s * .7, -s * .1, 0, -s * .9); g.stroke(); g.beginPath(); g.moveTo(-s * .8, s * .95); g.lineTo(s * .8, s * .95); g.stroke(); },
+  [M.LAVA]: (g, s) => { for (const dx of [-.6, 0, .6]) { g.beginPath(); g.moveTo(dx * s, s * .8); g.lineTo((dx - .2) * s, s * .2); g.lineTo((dx + .15) * s, -s * .2); g.lineTo(dx * s, -s * .85); g.stroke(); } },
+  [M.ACID]: (g, s) => { g.beginPath(); g.arc(0, 0, s * .8, 0.6, Math.PI * 2 - 0.6); g.stroke(); g.beginPath(); g.arc(s * .8, 0, s * .32, Math.PI * .5, Math.PI * 1.5); g.stroke(); },
+  [M.POWDER]: (g, s) => { g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? s * .4 : s * .95; g[i ? "lineTo" : "moveTo"](Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); g.stroke(); },
+  [M.ICE]: (g, s) => { for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; g.beginPath(); g.moveTo(Math.cos(a) * s, Math.sin(a) * s); g.lineTo(-Math.cos(a) * s, -Math.sin(a) * s); g.stroke(); } g.beginPath(); g.arc(0, 0, s * .45, 0, 7); g.stroke(); },
+  [M.SEED]: (g, s) => { g.beginPath(); g.moveTo(0, s * .9); g.lineTo(0, -s * .1); g.stroke(); for (const d of [-1, 1]) { g.beginPath(); g.moveTo(0, -s * .1); g.quadraticCurveTo(d * s * .9, -s * .1, d * s * .9, -s * .9); g.quadraticCurveTo(d * s * .1, -s * .8, 0, -s * .1); g.stroke(); } },
+  [M.EMBER]: (g, s) => { for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; g.beginPath(); g.moveTo(Math.cos(a) * s * .35, Math.sin(a) * s * .35); g.lineTo(Math.cos(a) * s * .95, Math.sin(a) * s * .95); g.stroke(); } },
+  [M.SULFUR]: (g, s) => { tri(g, [[0, -s], [s * .7, -s * .15], [-s * .7, -s * .15]]); g.stroke(); g.beginPath(); g.moveTo(0, -s * .15); g.lineTo(0, s * .95); g.moveTo(-s * .45, s * .5); g.lineTo(s * .45, s * .5); g.stroke(); },
+};
+// draw a vial in box (x,y,w,h). opt: dim, filled(0..1 liquid level), halo
+function drawVial(g, m, x, y, w, h, opt) {
+  opt = opt || {};
+  g.save(); g.translate(x, y); g.scale(w, h);
+  g.beginPath(); SIL[m](g);
+  g.save(); g.clip();
+  g.fillStyle = "rgba(246,238,214,.8)"; g.fillRect(-.2, -.2, 1.4, 1.4);
+  g.globalAlpha = opt.dim ? 0.35 : 0.72; g.fillStyle = VCOL[m]; g.fillRect(-.2, m === M.EMBER ? .44 : .36, 1.4, 1);
+  g.globalAlpha = opt.dim ? 0.2 : 0.55; g.strokeStyle = INK; g.lineWidth = 0.9 / Math.min(w, h);
+  const step = 3.2 / h;
+  for (let yy = .42; yy < 1.02; yy += step) { g.beginPath(); g.moveTo(-.1, yy); g.lineTo(1.1, yy); g.stroke(); }
+  g.restore();
+  g.beginPath(); SIL[m](g);
+  g.setTransform(g.getTransform()); // keep
+  g.restore();
+  // outline in device scale
+  g.save(); g.translate(x, y); g.scale(w, h); g.beginPath(); SIL[m](g); g.restore();
+  g.strokeStyle = opt.dim ? "rgba(42,28,18,.4)" : INK; g.lineWidth = opt.lw || 1.5; g.lineJoin = "round"; g.stroke();
+  // cork / lid detail for some
+  g.save();
+  if (m === M.EMBER) { g.strokeStyle = INK; g.lineWidth = 1; g.beginPath(); g.moveTo(x + w * .06, y + h * .6); g.lineTo(x + w * .94, y + h * .6); g.stroke(); }
+  if (m === M.POWDER) { g.strokeStyle = INK; g.lineWidth = 1; for (const f of [.28, .8]) { g.beginPath(); g.moveTo(x + w * .03, y + h * f); g.lineTo(x + w * .97, y + h * f); g.stroke(); } }
+  g.restore();
+  // symbol
+  const sc = SYMC[m], s = Math.min(w, h) * (m === M.EMBER ? .2 : .2);
+  g.save(); g.translate(x + w * sc[0], y + h * sc[1]);
+  g.globalAlpha = opt.dim ? 0.5 : 1;
+  g.lineCap = "round"; g.lineJoin = "round";
+  g.strokeStyle = PAPER; g.lineWidth = 4.2; g.fillStyle = PAPER; SYM[m](g, s);
+  g.strokeStyle = INK; g.lineWidth = Math.max(1.3, w * 0.035); g.fillStyle = INK; SYM[m](g, s);
+  g.restore();
+}
+
+// ---- reaction result icons (centered, half-size s) ----
+function flame(g, s, col) {
+  g.beginPath(); g.moveTo(0, -s); g.bezierCurveTo(s * .2, -s * .5, s * .85, -s * .1, s * .65, s * .45); g.bezierCurveTo(s * .5, s * .95, -s * .5, s * .95, -s * .65, s * .4); g.bezierCurveTo(-s * .8, -s * .05, -s * .25, -s * .35, 0, -s);
+  g.closePath(); wash(g, col, .9); ink(g, 1.3);
+  g.beginPath(); g.moveTo(0, s * .15); g.bezierCurveTo(s * .3, s * .35, s * .25, s * .7, 0, s * .72); g.bezierCurveTo(-s * .3, s * .7, -s * .3, s * .35, 0, s * .15); wash(g, "#f0b443", .95);
+}
+function drop(g, x, y, s, col) { g.beginPath(); g.moveTo(x, y - s); g.bezierCurveTo(x + s * .8, y, x + s * .7, y + s * .8, x, y + s * .8); g.bezierCurveTo(x - s * .7, y + s * .8, x - s * .8, y, x, y - s); wash(g, col, .85); ink(g, 1.1); }
+function cloud(g, s, col) { g.beginPath(); g.moveTo(-s * .8, s * .2); g.bezierCurveTo(-s * 1.1, -s * .3, -s * .4, -s * .6, -s * .2, -s * .4); g.bezierCurveTo(0, -s * .9, s * .7, -s * .7, s * .6, -s * .1); g.bezierCurveTo(s * 1.1, -s * .1, s * 1.1, s * .3, s * .7, s * .3); g.lineTo(-s * .7, s * .3); g.closePath(); wash(g, col, .85); ink(g, 1.2); }
+function wavy(g, x, y, s, n) { for (let i = 0; i < n; i++) { const dx = x + (i - (n - 1) / 2) * s * .55; g.beginPath(); g.moveTo(dx, y + s * .9); g.bezierCurveTo(dx + s * .4, y + s * .4, dx - s * .4, y, dx, y - s * .3); g.bezierCurveTo(dx + s * .35, y - s * .6, dx - s * .2, y - s * .8, dx, y - s); g.stroke(); } }
+const RXICON = {
+  burn: (g, s) => flame(g, s, COL.fire),
+  blueflame: (g, s) => flame(g, s, COL.blue),
+  blast: (g, s) => { g.beginPath(); for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8, r = i % 2 ? s * .5 : s; g[i ? "lineTo" : "moveTo"](Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); wash(g, "#e8752f", .92); ink(g, 1.3); g.beginPath(); g.arc(0, 0, s * .3, 0, 7); wash(g, "#f0d27a", .95); },
+  steam: (g, s) => { g.strokeStyle = "#6c726e"; g.lineWidth = 1.6; g.lineCap = "round"; wavy(g, 0, 0, s, 3); },
+  quench: (g, s) => { g.strokeStyle = "#6c726e"; g.lineWidth = 1.5; wavy(g, -s * .15, -s * .1, s * .85, 3); drop(g, s * .5, s * .5, s * .38, COL.water); },
+  condense: (g, s) => { cloud(g, s * .9, "#d8dcd6"); for (const dx of [-.4, 0, .4]) { drop(g, dx * s, s * .78, s * .2, COL.water); } },
+  melt: (g, s) => { tri(g, [[-s * .7, -s * .6], [s * .7, -s * .6], [s * .7, s * .15], [-s * .7, s * .15]]); wash(g, COL.ice, .85); ink(g, 1.3); g.beginPath(); g.moveTo(-s * .3, -s * .3); g.lineTo(0, -s * .1); g.stroke(); drop(g, 0, s * .62, s * .26, COL.water); },
+  freeze: (g, s) => { g.lineWidth = 1.8; g.strokeStyle = "#4f8d97"; for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; g.beginPath(); g.moveTo(Math.cos(a) * s, Math.sin(a) * s); g.lineTo(-Math.cos(a) * s, -Math.sin(a) * s); g.stroke(); for (const d of [-1, 1]) { g.beginPath(); const bx = Math.cos(a) * s * .6 * d, by = Math.sin(a) * s * .6 * d; g.moveTo(bx, by); g.lineTo(bx + Math.cos(a + 2.2 * d) * s * .3, by + Math.sin(a + 2.2 * d) * s * .3); g.stroke(); } } },
+  acidrain: (g, s) => { cloud(g, s * .9, COL.acid); for (const dx of [-.4, 0, .4]) { g.beginPath(); g.moveTo(dx * s, s * .55); g.lineTo(dx * s - s * .1, s * .95); ink(g, 1.4); } g.beginPath(); g.arc(s * .35, -s * .1, s * .16, 0, 7); g.fillStyle = INK; g.fill(); },
+  solidify: (g, s) => { tri(g, [[-s * .9, s * .6], [-s * .6, -s * .3], [-s * .1, -s * .8], [s * .5, -s * .55], [s * .9, s * .1], [s * .7, s * .7]]); wash(g, COL.stone, .85); ink(g, 1.4); g.beginPath(); g.moveTo(-s * .1, -s * .8); g.lineTo(-s * .05, s * .2); g.lineTo(s * .7, s * .7); g.moveTo(-s * .6, -s * .3); g.lineTo(-s * .05, s * .2); ink(g, 1); },
+  vitrify: (g, s) => { tri(g, [[0, -s], [s * .85, -s * .2], [s * .4, s * .9], [-s * .4, s * .9], [-s * .85, -s * .2]]); wash(g, COL.glass, .8); ink(g, 1.4); g.beginPath(); g.moveTo(-s * .85, -s * .2); g.lineTo(s * .85, -s * .2); g.moveTo(-s * .3, -s * .2); g.lineTo(-s * .4, s * .9); g.moveTo(s * .3, -s * .2); g.lineTo(s * .4, s * .9); ink(g, 1); },
+  dissolve: (g, s) => { g.beginPath(); g.moveTo(-s * .8, -s * .8); g.lineTo(s * .8, -s * .8); g.lineTo(s * .8, s * .1); g.arc(s * .55, s * .1, s * .25, 0, Math.PI, false); g.lineTo(s * .05, s * .1); g.arc(-s * .15, s * .1, s * .2, 0, Math.PI, false); g.lineTo(-s * .8, s * .1); g.closePath(); wash(g, COL.sand, .8); ink(g, 1.4); drop(g, s * .55, s * .72, s * .2, COL.acid); drop(g, -s * .15, s * .6, s * .16, COL.acid); },
+  bake: (g, s) => { g.beginPath(); g.moveTo(-s * .5, -s * .8); g.lineTo(s * .5, -s * .8); g.bezierCurveTo(s * 1.1, -s * .3, s * 1.0, s * .85, s * .5, s * .9); g.lineTo(-s * .5, s * .9); g.bezierCurveTo(-s * 1.0, s * .85, -s * 1.1, -s * .3, -s * .5, -s * .8); g.closePath(); wash(g, "#b0623a", .88); ink(g, 1.4); g.beginPath(); g.moveTo(-s * .8, 0); g.lineTo(s * .8, 0); g.moveTo(0, -s * .8); g.lineTo(0, 0); g.moveTo(-s * .4, 0); g.lineTo(-s * .4, s * .9); g.moveTo(s * .4, 0); g.lineTo(s * .4, s * .9); ink(g, 1); },
+  bloom: (g, s) => { g.beginPath(); g.moveTo(0, s * .95); g.lineTo(0, -s * .1); ink(g, 1.6); for (const d of [-1, 1]) { g.beginPath(); g.moveTo(0, s * .25); g.quadraticCurveTo(d * s * 1.0, s * .2, d * s * .9, -s * .5); g.quadraticCurveTo(d * s * .1, -s * .35, 0, s * .25); wash(g, COL.plant, .9); ink(g, 1.3); } g.beginPath(); g.moveTo(0, -s * .1); g.quadraticCurveTo(s * .45, -s * .6, 0, -s * 1.0); g.quadraticCurveTo(-s * .45, -s * .6, 0, -s * .1); wash(g, "#8fbf4c", .95); ink(g, 1.2); },
+  boil: (g, s) => { for (const [x, y, r] of [[-.35, .55, .3], [.35, .15, .4], [-.15, -.45, .28], [.45, -.75, .16]]) { g.beginPath(); g.arc(x * s, y * s, r * s, 0, 7); wash(g, "#cfe0e4", .6); ink(g, 1.3); } },
+  fume: (g, s) => { g.strokeStyle = "#a89a2a"; g.lineWidth = 2.2; g.lineCap = "round"; wavy(g, 0, 0, s, 3); g.strokeStyle = INK; g.lineWidth = .9; wavy(g, 0, 0, s, 3); },
+  lidpop: (g, s) => { g.beginPath(); g.ellipse(0, s * .55, s * .95, s * .26, 0, 0, 7); wash(g, "#a8774a", .95); ink(g, 1.4); g.beginPath(); g.moveTo(-s * .12, s * .3); g.lineTo(-s * .12, s * .12); g.lineTo(s * .12, s * .12); g.lineTo(s * .12, s * .3); ink(g, 1.2); for (const dx of [-.5, 0, .5]) { g.beginPath(); g.moveTo(dx * s, -s * .15); g.lineTo(dx * s, -s * .95); g.moveTo(dx * s - s * .2, -s * .65); g.lineTo(dx * s, -s * .95); g.lineTo(dx * s + s * .2, -s * .65); ink(g, 1.5); } },
+};
+function drawRx(g, type, x, y, s) { g.save(); g.translate(x, y); g.lineCap = "round"; g.lineJoin = "round"; (RXICON[type] || RXICON.burn)(g, s); g.restore(); }
+
+// ---- tool and UI icons ----
+function drawMatch(g, x, y, s, lit, count) {
+  g.save(); g.translate(x, y); g.lineCap = "round"; g.lineJoin = "round";
+  const n = Math.max(1, Math.min(4, count || 1));
+  for (let i = 0; i < n; i++) {
+    g.save(); g.rotate(-0.5 + (i - (n - 1) / 2) * 0.28); g.translate((i - (n - 1) / 2) * s * .22, 0);
+    g.beginPath(); g.moveTo(0, -s * .55); g.lineTo(0, s * 1.0); g.strokeStyle = "#a8774a"; g.lineWidth = s * .22; g.stroke(); g.strokeStyle = INK; g.lineWidth = 1; g.stroke();
+    g.beginPath(); g.ellipse(0, -s * .65, s * .22, s * .3, 0, 0, 7); wash(g, lit ? "#f0b443" : "#b8381e", 1); ink(g, 1.2);
+    g.restore();
+  }
+  g.restore();
+}
+function drawLid(g, x, y, s, closed) {
+  g.save(); g.translate(x, y + (closed ? s * .25 : 0));
+  g.beginPath(); g.ellipse(0, 0, s * .95, s * .32, 0, 0, 7); wash(g, "#a8774a", .95); ink(g, 1.5);
+  g.beginPath(); g.moveTo(-s * .2, -s * .1); g.quadraticCurveTo(0, -s * .62, s * .2, -s * .1); ink(g, 1.5);
+  if (closed) { g.beginPath(); g.moveTo(-s * .95, s * .5); g.lineTo(s * .95, s * .5); ink(g, 1.4); } else { g.save(); g.globalAlpha = .55; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(-s * .95, s * .62); g.lineTo(s * .95, s * .62); ink(g, 1.2); g.restore(); }
+  g.restore();
+}
+function drawHourglass(g, x, y, s) {
+  g.save(); g.translate(x, y); g.rotate(Math.PI);
+  g.beginPath(); g.moveTo(-s * .65, -s); g.lineTo(s * .65, -s); g.lineTo(s * .08, 0); g.lineTo(s * .65, s); g.lineTo(-s * .65, s); g.lineTo(-s * .08, 0); g.closePath(); wash(g, "rgba(246,238,214,.9)", 1); ink(g, 1.5);
+  g.beginPath(); g.moveTo(-s * .4, -s * .85); g.lineTo(s * .4, -s * .85); g.lineTo(0, -s * .3); g.closePath(); wash(g, COL.sand, .9);
+  g.beginPath(); g.moveTo(-s * .5, s * .95); g.lineTo(0, s * .2); g.lineTo(s * .5, s * .95); g.closePath(); wash(g, COL.sand, .9);
+  g.beginPath(); g.moveTo(-s * .8, -s); g.lineTo(s * .8, -s); g.moveTo(-s * .8, s); g.lineTo(s * .8, s); ink(g, 2);
+  g.restore();
+}
+function drawCoin(g, x, y, r, a) {
+  g.save(); g.globalAlpha = a == null ? 1 : a; g.beginPath(); g.arc(x, y, r, 0, 7); g.fillStyle = COL.gold; g.fill(); ink(g, 1.4);
+  g.beginPath(); g.arc(x, y, r * .62, 0, 7); g.strokeStyle = "rgba(42,28,18,.7)"; g.lineWidth = 1; g.stroke();
+  g.beginPath(); g.arc(x - r * .3, y - r * .3, r * .22, 0, 7); g.fillStyle = COL.goldHi; g.fill(); g.restore();
+}
+function drawSpeaker(g, x, y, s, on) {
+  g.save(); g.translate(x, y);
+  g.beginPath(); g.moveTo(-s * .8, -s * .3); g.lineTo(-s * .3, -s * .3); g.lineTo(s * .2, -s * .8); g.lineTo(s * .2, s * .8); g.lineTo(-s * .3, s * .3); g.lineTo(-s * .8, s * .3); g.closePath(); wash(g, "#a8957a", .8); ink(g, 1.5);
+  if (on) { for (const k of [.5, .95]) { g.beginPath(); g.arc(s * .2, 0, s * k, -0.8, 0.8); ink(g, 1.5); } }
+  else { g.beginPath(); g.moveTo(s * .45, -s * .5); g.lineTo(s * 1.0, s * .5); g.moveTo(s * 1.0, -s * .5); g.lineTo(s * .45, s * .5); ink(g, 1.8); }
+  g.restore();
+}
+function drawRestart(g, x, y, s, col) {
+  g.save(); g.translate(x, y); g.beginPath(); g.arc(0, 0, s * .8, -2.5, 3.6); g.strokeStyle = col || INK; g.lineWidth = s * .26; g.lineCap = "round"; g.stroke();
+  g.beginPath(); g.moveTo(s * .55, -s * .95); g.lineTo(s * 1.0, -s * .35); g.lineTo(s * .2, -s * .3); g.closePath(); g.fillStyle = col || INK; g.fill(); g.restore();
+}
+function drawDoor(g, x, y, s) {
+  g.save(); g.translate(x, y);
+  g.beginPath(); g.rect(-s * .9, -s, s * 1.2, s * 2); wash(g, "#a8774a", .9); ink(g, 1.6);
+  g.beginPath(); g.arc(s * .05, s * .1, s * .08, 0, 7); g.fillStyle = INK; g.fill();
+  g.beginPath(); g.moveTo(s * .55, 0); g.lineTo(s * 1.15, 0); g.moveTo(s * .9, -s * .3); g.lineTo(s * 1.2, 0); g.lineTo(s * .9, s * .3); ink(g, 2.2);
+  g.restore();
+}
+function drawReroll(g, x, y, s) {
+  g.save(); g.translate(x, y);
+  for (const d of [0, Math.PI]) { g.save(); g.rotate(d); g.beginPath(); g.arc(0, 0, s * .75, -2.6, -0.3); ink(g, 2.2); g.beginPath(); g.moveTo(s * .55, -s * .95); g.lineTo(s * .95, -s * .25); g.lineTo(s * .3, -s * .35); g.closePath(); g.fillStyle = INK; g.fill(); g.restore(); }
+  g.restore();
+}
+function drawPip(g, x, y, w, h, used) {
+  g.save(); g.globalAlpha = used ? .28 : 1; g.beginPath(); g.moveTo(x + w * .38, y); g.lineTo(x + w * .62, y); g.lineTo(x + w * .62, y + h * .3); g.bezierCurveTo(x + w * 1.05, y + h * .4, x + w * 1.0, y + h, x + w * .5, y + h); g.bezierCurveTo(x, y + h, x - w * .05, y + h * .4, x + w * .38, y + h * .3); g.closePath(); g.fillStyle = used ? "rgba(0,0,0,0)" : "rgba(168,119,74,.8)"; g.fill(); g.strokeStyle = INK; g.lineWidth = 1.2; g.stroke(); g.restore();
+}
+function drawHand(g, x, y, k, press) { // fingertip at (x,y), pointing up
+  g.save(); g.translate(x, y); g.scale(k, k); g.globalAlpha = .88; g.lineJoin = "round"; g.lineCap = "round";
+  g.beginPath(); g.moveTo(-5, 7); g.quadraticCurveTo(-5, -1, 0, -1); g.quadraticCurveTo(5, -1, 5, 7); g.lineTo(5, 22);
+  g.lineTo(12, 22); g.quadraticCurveTo(17, 22, 17, 27); g.lineTo(17, 44); g.quadraticCurveTo(17, 54, 7, 56); g.lineTo(-9, 56); g.quadraticCurveTo(-16, 54, -16, 44); g.lineTo(-16, 31); g.quadraticCurveTo(-21, 25, -17, 21); g.quadraticCurveTo(-13, 20, -9, 26); g.lineTo(-5, 28); g.closePath();
+  g.fillStyle = "#f1e3c6"; g.fill(); g.strokeStyle = INK; g.lineWidth = 1.6; g.stroke();
+  g.beginPath(); g.moveTo(1, 30); g.lineTo(1, 38); g.moveTo(8, 30); g.lineTo(8, 38); g.lineWidth = 1; g.stroke();
+  g.restore();
+}
+function drawSkull(g) {}
+// ---- arcana badges: a reaction icon + a modifier number ----
+const ARC_ICON = {
+  pyro: ["burn", "+3"], tower: ["quench", "×3"], glass: ["vitrify", "+1"], demolition: ["blast", "+12"], greenhouse: ["bloom", "×3"],
+  alkahest: ["dissolve", "%"], nozzle: ["vial", "×1"], hotplate: ["boil", "+1"], spare: ["vial", "+1"], magma: ["solidify", "+8"],
+  freezer: ["freeze", "×10"], matchbox: ["match", "+1"], thickglass: ["lidpop", "×2"], ashes: ["burn", "="], scorched: ["burn", "×2"], popritual: ["lidpop", "×3"],
+};
+function drawBadge(g, id, x, y, r, rare, dim) {
+  const [ic, tag] = ARC_ICON[id];
+  g.save(); g.translate(x, y); g.globalAlpha = dim ? .4 : 1;
+  g.beginPath(); g.arc(0, 0, r, 0, 7); g.fillStyle = "rgba(246,238,214,.92)"; g.fill();
+  g.strokeStyle = rare ? COL.gold : INK; g.lineWidth = rare ? 2.6 : 1.6; g.stroke();
+  if (rare) { g.beginPath(); g.arc(0, 0, r - 3, 0, 7); g.lineWidth = 1; g.strokeStyle = INK; g.stroke(); }
+  if (ic === "vial") drawVial(g, M.WATER, -r * .32, -r * .55, r * .64, r * 1.0, {});
+  else if (ic === "match") drawMatch(g, 0, -r * .05, r * .5, false, 1);
+  else drawRx(g, ic, 0, -r * .08, r * .5);
+  g.restore();
+  g.save(); g.translate(x, y);
+  if (tag && r >= 12) { const tw = numWidth(tag, r * .5) + 4; g.beginPath(); g.rect(r * .85 - tw, r * .45, tw, r * .6); g.fillStyle = "rgba(246,238,214,.95)"; g.fill(); g.strokeStyle = INK; g.lineWidth = 1; g.stroke(); drawNum(g, tag, r * .85 - tw / 2, r * .75, r * .42, { color: "#b8381e" }); }
+  g.restore();
+}
+
 let paperTile = null;
 function makeNoise(seed, P) {
   P = P || 64;
@@ -1186,84 +860,6 @@ function makePaperTile() {
   g.putImageData(im, 0, 0);
   return c;
 }
-function buildBg() {
-  const cw = L.cw, ch = L.ch;
-  bgC = document.createElement("canvas"); bgC.width = cw; bgC.height = ch;
-  const g = bgC.getContext("2d");
-  // same paper as the page, aligned to the viewport so the canvas has no visible edge
-  const r = canvas.getBoundingClientRect();
-  const pat = g.createPattern(paperTile, "repeat");
-  g.save(); g.translate(-r.left, -r.top); g.fillStyle = pat; g.fillRect(r.left, r.top, cw, ch); g.restore();
-  const tint = STAGES[Math.floor(G.round / 3)].tint;
-  if (tint[0] !== 1 || tint[1] !== 1 || tint[2] !== 1) { g.globalCompositeOperation = "multiply"; g.fillStyle = `rgb(${tint[0] * 255},${tint[1] * 255},${tint[2] * 255})`; g.fillRect(L.bx - L.cp * 2, L.by - L.cp * 3, L.bw + L.cp * 4, L.bh + L.cp * 4); g.globalCompositeOperation = "source-over"; }
-  // foxing spots inside the glass
-  const r0 = mulberry32(99 + G.round);
-  for (let i = 0; i < 10; i++) { g.fillStyle = `rgba(140,96,48,${0.03 + r0() * 0.05})`; g.beginPath(); g.arc(L.bx + r0() * L.bw, L.by + r0() * L.bh, 2 + r0() * 8, 0, 7); g.fill(); }
-  drawFurniture(g);
-}
-function inkLine(g, pts, w, wob) {
-  g.beginPath();
-  for (let i = 0; i < pts.length; i++) { const [x, y] = pts[i]; const j = wob ? Math.sin(i * 1.7 + x * 0.05) * wob : 0; if (i === 0) g.moveTo(x + j, y); else g.lineTo(x + j, y + j * 0.5); }
-  g.lineWidth = w; g.stroke();
-}
-function drawFurniture(g) {
-  const { cp, bx, by, bw, bh, rx, rw } = L;
-  g.strokeStyle = "#2a1c12"; g.fillStyle = "#2a1c12"; g.lineCap = "round"; g.lineJoin = "round";
-  // beaker glass: double line + hatched shading on the walls
-  g.lineWidth = 2; g.strokeRect(bx - cp * 0.6, by - cp * 2, bw + cp * 1.2, bh + cp * 1.6);
-  g.lineWidth = 0.8; g.strokeRect(bx - cp * 1.4, by - cp * 2, bw + cp * 2.8, bh + cp * 2.4);
-  g.save(); g.globalAlpha = 0.5; g.lineWidth = 0.7;
-  for (let y = by; y < by + bh; y += 4) { g.beginPath(); g.moveTo(bx - cp * 1.4, y); g.lineTo(bx - cp * 0.6, y + 2); g.stroke(); g.beginPath(); g.moveTo(bx + bw + cp * 0.6, y); g.lineTo(bx + bw + cp * 1.4, y + 2); g.stroke(); }
-  g.restore();
-  // rim lip
-  g.lineWidth = 1.5; g.beginPath(); g.ellipse(bx + bw / 2, by - cp * 2, bw / 2 + cp * 1.6, cp * 0.9, 0, 0, Math.PI * 2); g.stroke();
-  // graduations
-  g.font = `${Math.max(10, cp * 2.4)}px "IM Fell English", serif`; g.textAlign = "left"; g.textBaseline = "middle";
-  const rom = ["I", "II", "III", "IV", "V", "VI", "VII"];
-  for (let i = 1; i <= 7; i++) {
-    const y = by + bh - i * (bh / 8);
-    g.lineWidth = 1; g.beginPath(); g.moveTo(bx + bw - cp * 3, y); g.lineTo(bx + bw, y); g.stroke();
-    g.globalAlpha = 0.7; g.fillText(rom[i - 1], bx + bw - cp * 7.5, y); g.globalAlpha = 1;
-  }
-  // pressure gauge (left)
-  const gx = cp * 4, gy = by + cp * 6, gh = bh * 0.6, gw = cp * 3.2;
-  L.gauge = { gx, gy, gw, gh };
-  g.lineWidth = 1.2; g.strokeRect(gx, gy, gw, gh);
-  g.beginPath(); g.arc(gx + gw / 2, gy + gh + gw * 0.7, gw * 0.9, 0, Math.PI * 2); g.stroke();
-  for (let i = 0; i <= 10; i++) { const y = gy + gh - i * gh / 10; g.beginPath(); g.moveTo(gx + gw, y); g.lineTo(gx + gw + (i % 5 ? cp : cp * 2), y); g.stroke(); }
-  g.save(); g.translate(gx - cp * 1.2, gy + gh / 2); g.rotate(-Math.PI / 2); g.textAlign = "center";
-  g.font = `${Math.max(12, cp * 2.8)}px "Noto Serif TC", serif`; g.fillText("壓 力", 0, 0); g.restore();
-  // receiver: alembic tube from beaker rim to the flask
-  const fx0 = rx + rw / 2, fr = rw * 0.42, fcy = by + bh - fr - cp * 2;
-  const neckTop = by + bh * 0.28, neckW = rw * 0.16;
-  L.flask = { cx: fx0, cy: fcy, r: fr, neckTop, neckW, bottom: fcy + fr, top: neckTop };
-  g.lineWidth = 1.4;
-  const tube = [[bx + bw + cp * 1.4, by + cp * 2], [bx + bw + cp * 4, by - cp * 4], [fx0 - cp * 2, by - cp * 6], [fx0, neckTop - cp * 3]];
-  L.tube = tube;
-  g.beginPath(); g.moveTo(tube[0][0], tube[0][1]); g.bezierCurveTo(tube[1][0], tube[1][1], tube[2][0], tube[2][1], tube[3][0], tube[3][1]); g.stroke();
-  g.beginPath(); g.moveTo(tube[0][0] + cp * 1.4, tube[0][1] + cp); g.bezierCurveTo(tube[1][0] + cp * 1.4, tube[1][1] + cp * 1.2, tube[2][0] + cp * 1.2, tube[2][1] + cp * 1.4, tube[3][0] + cp * 1.4, tube[3][1] + cp * 0.5); g.stroke();
-  // flask outline
-  flaskPath(g); g.lineWidth = 2; g.stroke();
-  g.save(); flaskPath(g); g.clip(); g.globalAlpha = 0.35; g.lineWidth = 0.7;
-  for (let y = L.flask.top; y < L.flask.bottom; y += 5) { g.beginPath(); g.moveTo(fx0 + fr * 0.55, y); g.lineTo(fx0 + fr, y + 3); g.stroke(); }
-  g.restore();
-  g.textAlign = "center"; g.font = `italic ${Math.max(12, cp * 2.6)}px "IM Fell English", serif`;
-  g.fillText("Receptaculum", fx0, fcy + fr + cp * 2.4);
-  // element plate above beaker
-  g.font = `${Math.max(11, cp * 2.4)}px "Noto Serif TC", serif`; g.textAlign = "left"; g.globalAlpha = 0.85;
-  g.restore && 0;
-}
-function flaskPath(g) {
-  const f = L.flask;
-  g.beginPath();
-  g.moveTo(f.cx - f.neckW, f.neckTop);
-  g.lineTo(f.cx - f.neckW, f.cy - f.r * 0.88);
-  g.arc(f.cx, f.cy, f.r, -Math.PI / 2 - 0.42, Math.PI * 1.5 + 0.42, true);
-  g.lineTo(f.cx + f.neckW, f.neckTop);
-}
-// level (0..1) -> y inside the flask; capacity 1.5× target, gold line at 2/3
-function flaskY(frac) { const f = L.flask; return f.bottom - Math.min(1, frac) * (f.bottom - f.neckTop - L.cp * 2); }
-
 // ---- engraving patterns ----
 let PAT = null; // per material: Uint8Array 12x12 ink mask (0/1)
 const TINT = {}, TINTA = {};
@@ -1300,7 +896,7 @@ function buildPatterns() {
 function renderBeaker() {
   const S = R.S, t = S.t, life = S.life, sh = S.shade, fl = S.flash;
   const td = tintImg.data;
-  let sulfur = 0, oil = 0, water = 0, fxs = 0, fys = 0;
+  let sulfur = 0, oil = 0, water = 0, fxs = -1, fys = 0, fd = 1e9;
   for (let p = 0, i = 0; p < W * H; p++, i += 4) {
     const m = t[p];
     let a = 0, c = null;
@@ -1309,21 +905,20 @@ function renderBeaker() {
     else if (m === M.SULFUR && life[p] > 0) { c = ((sh[p] + S.frame) & 7) < 3 ? BLUE2 : BLUE; a = 0.95; }
     else if (m === M.LAVA && ((sh[p] + (S.frame >> 1)) & 31) < 4) { c = FIRE_RAMP[3]; a = 0.95; }
     else { c = TINT[m]; a = TINTA[m]; }
-    if (m === M.SULFUR) { sulfur++; if (sulfur < 200 && life[p] === 0) { fxs += p % W; fys += (p / W) | 0; } }
+    if (m === M.SULFUR) { sulfur++; if (life[p] === 0 && t[p - W] === M.E) { const dd = Math.abs((p % W) - W / 2); if (dd < fd) { fd = dd; fxs = p % W; fys = (p / W) | 0; } } }
     if (m === M.WATER) water++;
-    if (m === M.OIL) { oil++; if (sulfur < 1 && oil < 200) { fxs += p % W; fys += (p / W) | 0; } }
+    if (m === M.OIL) { oil++; if (sulfur < 1 && t[p - W] === M.E) { const dd = Math.abs((p % W) - W / 2); if (dd < fd) { fd = dd; fxs = p % W; fys = (p / W) | 0; } } }
     let r = c[0], g = c[1], b = c[2];
     const v = ((sh[p] & 15) - 7) * 1.6; r += v; g += v; b += v;
     if (fl[p]) { const f = fl[p] / 255 * 0.55; r += (240 - r) * f; g += (196 - g) * f; b += (90 - b) * f; a = Math.max(a, f + 0.3); }
     td[i] = r; td[i + 1] = g; td[i + 2] = b; td[i + 3] = a * 255;
   }
   G.sulfurCells = sulfur; G.oilCells = oil; G.waterCells = water;
-  const nf = Math.min(200, sulfur > 30 ? sulfur : oil);
-  if (nf > 0) { G.fuelX = Math.round(fxs / nf); G.fuelY = Math.round(fys / nf); }
+  if (fxs >= 0) { G.fuelX = fxs; G.fuelY = fys + 1; } else { G.fuelX = null; G.fuelY = null; }
   tctx.putImageData(tintImg, 0, 0);
 
   // ink layer
-  const cp = L.cp, bw = L.bw, bh = L.bh, T = 12;
+  const cp = ICP, bw = W * ICP, bh = H * ICP, T = 12;
   const INK = 0xff121c2a; // ABGR little-endian: rgb(42,28,18)
   const INK_SOFT = 0x99121c2a, INK_GREY = 0x88505a66, INK_OCHRE = 0xaa2a6a7a;
   const buf = ink32;
@@ -1365,396 +960,905 @@ function renderBeaker() {
   ictx.putImageData(inkImg, 0, 0);
 }
 
-function render(now) {
-  const { cp, bx, by, bw, bh } = L;
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  const sk = fx.shake > 0.3 ? fx.shake : 0; fx.shake *= 0.86;
-  ctx.drawImage(bgC, 0, 0);
-  ctx.save();
-  if (sk) ctx.translate((Math.random() - 0.5) * sk, (Math.random() - 0.5) * sk);
-  // hand-tint wash: soft (bilinear), misregistered by ~1px
-  ctx.imageSmoothingEnabled = true;
-  ctx.globalCompositeOperation = "multiply";
-  if (WASH_BLUR) {
-    // cheap watercolour bleed: downsample the wash to half resolution, then upscale bilinearly (no CSS filter: too slow without a GPU)
-    sctx.clearRect(0, 0, W / 2, H / 2); sctx.imageSmoothingEnabled = true;
-    sctx.drawImage(tintC, 0, 0, W / 2, H / 2);
-    ctx.globalAlpha = 0.8;
-    ctx.drawImage(softC, 0.5, 0, W / 2 - 1, H / 2 - 0.5, bx + cp + 1.5, by + 1.5, bw - 2 * cp, bh - cp);
-    ctx.globalAlpha = 0.55;
-  }
-  ctx.drawImage(tintC, 1, 0, W - 2, H - 1, bx + cp + 1.2, by + 1, bw - 2 * cp, bh - cp);
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = "source-over";
-  // flames glow a touch over the paper (watercolour pooling)
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(inkC, bx, by);
-  ctx.restore();
-  if (!DBG.nooverlay) drawOverlay(now);
+
+
+// ---------------- layout ----------------
+function layout() {
+  const iw = window.innerWidth, ih = window.innerHeight;
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  let sc = Math.min(iw / LW, (ih * 0.5625 * 1.0001) / LW);
+  if (ih / sc < 600) sc = ih / 600;
+  const Hl = Math.min(880, ih / sc);
+  const cssW = LW * sc, cssH = Hl * sc;
+  canvas.style.width = cssW + "px"; canvas.style.height = cssH + "px";
+  canvas.width = Math.round(cssW * DPR); canvas.height = Math.round(cssH * DPR);
+  const bx = 8, rightW = 60;
+  const availTop = 72, availBot = Hl - 214;
+  const cp = Math.min((LW - bx - 12 - rightW) / W, (availBot - availTop) / H);
+  const bw = W * cp, bh = H * cp, by = availTop + (availBot - availTop - bh) / 2;
+  const rx0 = bx + bw + 8, rcx = rx0 + (LW - 8 - rx0) / 2;
+  L = { sc, Hl, cssW, cssH, cp, bx, by, bw, bh, rx0, rcx, rw: LW - 8 - rx0,
+        handY: Hl - 186, handH: 106, actY: Hl - 72, actH: 60, pipY: Hl - 208 };
+  L.slot = i => { const w = (LW - 16 - 18) / 4; return { x: 8 + i * (w + 6), y: L.handY, w, h: L.handH }; };
+  L.btn = { match: { x: 8, y: L.actY, w: 118, h: L.actH }, lid: { x: 136, y: L.actY, w: 118, h: L.actH }, seal: { x: 264, y: L.actY, w: 118, h: L.actH }, sound: { x: 236, y: 0, w: 44, h: 44 } };
+  // right column
+  L.dial = { cx: rcx, cy: by + 40, r: Math.min(26, L.rw / 2 + 2) };
+  L.elY = i => by + 78 + i * 25;
+  L.baseY = by + 188; L.multY = by + 207;
+  const fTop = by + 226, fBot = by + bh;
+  const fr = Math.min(L.rw / 2 + 1, (fBot - fTop) * 0.34);
+  L.flask = { cx: rcx, r: fr, neckW: fr * 0.28, neckTop: fTop, cy: fBot - fr - 2, bottom: fBot - 2 };
+  L.shopOY = Math.max(0, (Hl - 693) * 0.4);
+  buildBg();
+}
+const toLogical = (e) => { const r = canvas.getBoundingClientRect(); return [(e.clientX - r.left) / L.sc, (e.clientY - r.top) / L.sc]; };
+const cellX = cx => L.bx + (cx + 0.5) * L.cp, cellY = cy => L.by + (cy + 0.5) * L.cp;
+const pxToCell = (x, y) => [Math.floor((x - L.bx) / L.cp), Math.floor((y - L.by) / L.cp)];
+const inRect = (x, y, r, pad) => { pad = pad || 0; return x >= r.x - pad && x <= r.x + r.w + pad && y >= r.y - pad && y <= r.y + r.h + pad; };
+function clientOf(lx, ly) { const r = canvas.getBoundingClientRect(); return [r.left + lx * L.sc, r.top + ly * L.sc]; }
+
+// ---------------- static background ----------------
+function wobbleRect(g, x, y, w, h, seed, lw) {
+  const r = mulberry32(seed); const j = () => (r() - 0.5) * 1.6;
+  g.beginPath(); g.moveTo(x + j(), y + j()); g.lineTo(x + w + j(), y + j()); g.lineTo(x + w + j(), y + h + j()); g.lineTo(x + j(), y + h + j()); g.lineTo(x + j() - 0.5, y + j() - 1); g.lineWidth = lw || 1.4; g.stroke();
+}
+function buildBg() {
+  if (!paperTile) { paperTile = makePaperTile(); document.body.style.backgroundImage = `url(${paperTile.toDataURL()})`; }
+  bgC = document.createElement("canvas"); bgC.width = canvas.width; bgC.height = canvas.height;
+  const g = bgC.getContext("2d"); g.setTransform(DPR * L.sc, 0, 0, DPR * L.sc, 0, 0);
+  g.fillStyle = g.createPattern(paperTile, "repeat"); g.fillRect(0, 0, LW, L.Hl);
+  const tint = ACT_TINT[G ? Math.min(3, Math.floor(G.round / 3)) : 0];
+  g.globalCompositeOperation = "multiply"; g.fillStyle = `rgb(${tint[0] * 255},${tint[1] * 255},${tint[2] * 255})`; g.fillRect(0, 0, LW, L.Hl); g.globalCompositeOperation = "source-over";
+  const r0 = mulberry32(99 + (G ? G.round : 0));
+  for (let i = 0; i < 12; i++) { g.fillStyle = `rgba(140,96,48,${0.03 + r0() * 0.05})`; g.beginPath(); g.arc(r0() * LW, r0() * L.Hl, 2 + r0() * 8, 0, 7); g.fill(); }
+  bgS = document.createElement("canvas"); bgS.width = bgC.width; bgS.height = bgC.height; bgS.getContext("2d").drawImage(bgC, 0, 0);
+  g.strokeStyle = INK; g.fillStyle = INK; g.lineCap = "round"; g.lineJoin = "round";
+  const { bx, by, bw, bh, cp } = L;
+  // beaker glass: double wall with hatching, thick base, little spout
+  const ix = bx + cp, iw = bw - 2 * cp, iy = by, ih = bh - cp;
+  g.lineWidth = 2.2; g.beginPath(); g.moveTo(ix - 3, iy - 6); g.lineTo(ix - 3, iy + ih + 3); g.lineTo(ix + iw + 3, iy + ih + 3); g.lineTo(ix + iw + 3, iy - 6); g.stroke();
+  g.lineWidth = 0.8; g.beginPath(); g.moveTo(ix - 7, iy - 4); g.lineTo(ix - 7, iy + ih + 7); g.lineTo(ix + iw + 7, iy + ih + 7); g.lineTo(ix + iw + 7, iy - 4); g.stroke();
+  g.save(); g.globalAlpha = 0.5; g.lineWidth = 0.7;
+  for (let y = iy; y < iy + ih; y += 5) { g.beginPath(); g.moveTo(ix - 7, y); g.lineTo(ix - 3, y + 2.5); g.stroke(); g.beginPath(); g.moveTo(ix + iw + 3, y); g.lineTo(ix + iw + 7, y + 2.5); g.stroke(); }
+  g.restore();
+  g.lineWidth = 1.6; g.beginPath(); g.moveTo(ix - 9, iy - 6); g.lineTo(ix - 3, iy - 6); g.moveTo(ix + iw + 3, iy - 6); g.lineTo(ix + iw + 9, iy - 8); g.stroke();
+  for (let i = 1; i <= 7; i++) { const y = iy + ih - i * (ih / 8); g.lineWidth = i % 2 ? 1 : 1.6; g.beginPath(); g.moveTo(ix + iw - (i % 2 ? 7 : 12), y); g.lineTo(ix + iw, y); g.stroke(); }
+  // hand slots and buttons
+  g.strokeStyle = "rgba(42,28,18,.75)";
+  for (let i = 0; i < HAND; i++) { const s = L.slot(i); wobbleRect(g, s.x, s.y, s.w, s.h, 10 + i, 1.2); }
+  for (const k of ["match", "lid", "seal"]) { const b = L.btn[k]; wobbleRect(g, b.x, b.y, b.w, b.h, 30 + k.length, 1.5); }
+  // dial frame
+  const d = L.dial; g.strokeStyle = INK; g.lineWidth = 1.6; g.beginPath(); g.arc(d.cx, d.cy, d.r, Math.PI, 0); g.lineTo(d.cx + d.r, d.cy + 4); g.lineTo(d.cx - d.r, d.cy + 4); g.closePath(); g.stroke();
+  for (let i = 0; i <= 8; i++) { const a = Math.PI + i * Math.PI / 8; g.lineWidth = i % 2 ? 0.8 : 1.3; g.beginPath(); g.moveTo(d.cx + Math.cos(a) * d.r * 0.78, d.cy + Math.sin(a) * d.r * 0.78); g.lineTo(d.cx + Math.cos(a) * d.r * 0.95, d.cy + Math.sin(a) * d.r * 0.95); g.stroke(); }
+  g.fillStyle = "rgba(184,56,30,.35)"; g.beginPath(); g.arc(d.cx, d.cy, d.r * 0.74, Math.PI * 1.8, Math.PI * 2); g.lineTo(d.cx, d.cy); g.closePath(); g.fill();
+  // hatch shading in flask drawn dynamically
+}
+function flaskPath(g) {
+  const f = L.flask; g.beginPath();
+  g.moveTo(f.cx - f.neckW, f.neckTop); g.lineTo(f.cx - f.neckW, f.cy - f.r * 0.88);
+  g.arc(f.cx, f.cy, f.r, -Math.PI / 2 - 0.34, Math.PI * 1.5 + 0.34, true); g.lineTo(f.cx + f.neckW, f.neckTop);
+}
+function flaskY(frac) { const f = L.flask; return f.bottom - Math.min(1.02, frac) * (f.bottom - f.neckTop - 10); }
+
+// ---------------- audio ----------------
+const NOTE = { burn: 196, blueflame: 233, quench: 392, solidify: 131, dissolve: 523, blast: 82, vitrify: 659, melt: 440, freeze: 784, bloom: 330, condense: 587, boil: 247, acidrain: 698, bake: 165, fume: 294, lidpop: 60 };
+function ensureAudio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (AC && AC.state === "suspended") AC.resume().catch(() => {}); }
+function tone(f, dur, type, vol, slide) {
+  if (!soundOn || !AC) return;
+  const o = AC.createOscillator(), g = AC.createGain(); o.type = type || "triangle"; o.frequency.value = f;
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f * slide), AC.currentTime + dur);
+  g.gain.setValueAtTime(vol || 0.05, AC.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
+  o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime + dur + 0.02);
+}
+function sfx(type, force) {
+  if (!soundOn || !AC) return;
+  const n = NOW(); if (!force && n - (lastBeep[type] || 0) < 110) return; lastBeep[type] = n;
+  const big = type === "blast" || type === "lidpop";
+  tone((NOTE[type] || 300) * (0.95 + Math.random() * 0.1), big ? 0.3 : 0.08, big ? "sawtooth" : "triangle", big ? 0.15 : 0.035);
+}
+const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+
+// ---------------- game flow ----------------
+function newGame(seed) {
+  G = { seed: seed || ((Math.random() * 1e9) | 0), round: 0, money: 4, shownMoney: 4, deck: START_DECK.slice(), arc: [], draw: [], hand: [], disc: [], sel: -1, matchMode: false,
+        pourP: null, holding: false, shopItems: [], reroll: 1, displayGold: 0, ended: false, tut: 0, lidUsed: false, idleSince: NOW(), pourN: 0, shake: {}, lineFlash: 0, reachedFlag: false, slideIn: {} };
+  G.rng = mulberry32(G.seed);
+  startRound();
+}
+function mods() { const o = {}; for (const c of G.arc) o[c] = true; return o; }
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = (G.rng() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function startRound() {
+  mode = "play";
+  const md = mods();
+  R = createRound({ seed: G.seed + G.round * 101, mods: md, pours: BASE_POURS + (md.spare ? 1 : 0), matches: BASE_MATCHES + (md.matchbox ? 1 : 0), target: TARGETS[G.round], lidMax: md.thickglass ? 1120 : 800 });
+  R.onOpen = onOpen; R.onClose = onClose; R.onRx = onRx; R.S.onLidPop = onLidPop;
+  if (G.round === 0) { G.hand = FIRST_HAND.slice(); G.draw = FIRST_DRAW.slice().reverse(); G.disc = []; G.tut = 0; }
+  else { G.tut = 9; G.draw = shuffle(G.deck.slice()); G.hand = []; G.disc = []; while (G.hand.length < HAND && G.draw.length) G.hand.push(G.draw.pop()); }
+  G.sel = -1; G.matchMode = false; G.pourP = null; G.holding = false; G.displayGold = 0; G.ended = false; G.reachedFlag = false; G.lidUsed = false; G.pourN = 0; G.idleSince = NOW();
+  fx.floats = []; fx.buckets.clear(); fx.chains = []; fx.gold = []; fx.tallyQ = []; fx.tally = null; fx.lidFly = null; fx.disc = []; fx.coins = [];
+  meta.clear(); gasHist.length = 0; D = null;
+  for (let i = 0; i < HAND; i++) G.slideIn[i] = NOW() + i * 70;
+  buildBg();
+}
+// tutorial: which vials may be used right now (round 1 only). 0 water, 1 lava, 2 oil/sulfur, 3 match (oil/sulfur still ok), 9 free
+function slotAllowed(i) {
+  const m = G.hand[i]; if (m === undefined) return false;
+  if (G.tut >= 9) return true;
+  if (G.tut === 0) return m === M.WATER;
+  if (G.tut === 1) return m === M.LAVA;
+  return m === M.OIL || m === M.SULFUR;
+}
+function matchAllowed() { return R.matches > 0 && (G.tut >= 3); }
+function lidAllowed() { return G.tut >= 9; }
+function sealAllowed() { return G.tut >= 9; }
+function advanceTut(ev, mat) {
+  if (G.tut === 0 && ev === "pour" && mat === M.WATER) G.tut = 1;
+  else if (G.tut === 1 && ev === "pour" && mat === M.LAVA) G.tut = 2;
+  else if (G.tut === 2 && ev === "pour" && mat === M.OIL) G.tut = 3;
+  else if (G.tut === 3 && (ev === "match" || ev === "fire")) G.tut = 9;
+  G.idleSince = NOW();
 }
 
-function drawOverlay(now) {
-  const { cp, bx, by, bw, bh } = L, S = R.S;
-  ctx.lineCap = "round"; ctx.lineJoin = "round";
-  // ---- element plate: four alchemical triangles above the beaker, lit by the focus ledger
-  const focus = focusLedger();
-  const fr = focus ? (focus.result || scoreLedger(focus, R.mods)) : null;
-  const ex0 = bx + bw * 0.06, ey = by - cp * 10.6, es = cp * 2.4;
-  ctx.font = `${Math.max(12, cp * 2.8)}px "Noto Serif TC", serif`; ctx.textBaseline = "middle"; ctx.textAlign = "left";
-  for (let e = 0; e < 4; e++) {
-    const x = ex0 + e * cp * 11, on = fr && fr.lit[e];
-    drawElement(ctx, e, x, ey, es, on);
-    ctx.fillStyle = on ? ELC[e] : "rgba(42,28,18,.45)";
-    ctx.fillText(ELN[e], x + es + cp, ey);
+// ---------------- ledger callbacks ----------------
+function onOpen(Lg) { meta.set(Lg.uid, { sx: 0, sy: 0, sn: 0, genPos: [] }); }
+function onRx(Lg, type, p, g) {
+  const m = meta.get(Lg.uid); if (!m) return;
+  const x = p % W, y = (p / W) | 0;
+  m.sx += x; m.sy += y; m.sn++;
+  const gp = m.genPos[g] || (m.genPos[g] = { x: 0, y: 0, n: 0 });
+  gp.x += x; gp.y += y; gp.n++;
+  if (gp.n === 1 && g >= 2 && m.genPos[g - 1] && Math.hypot(m.genPos[g - 1].x / m.genPos[g - 1].n - x, m.genPos[g - 1].y / m.genPos[g - 1].n - y) < 40) {
+    const pp = m.genPos[g - 1]; fx.chains.push({ g, from: [pp.x / pp.n, pp.y / pp.n], toRef: gp, born: NOW() }); if (fx.chains.length > 6) fx.chains.shift();
   }
-  ctx.fillStyle = "rgba(42,28,18,.8)";
-  ctx.font = `${Math.max(12, cp * 2.6)}px "Noto Serif TC", serif`;
-  const elemTxt = fr ? `元素 ×${fr.elem}${fr.chain ? `（含連鎖 +${fr.chain}）` : ""}${fr.four ? "　四象齊聚！" : ""}` : "元素：每點亮一個 +1";
-  ctx.fillText(elemTxt, ex0 + cp * 46, ey);
-  if (focus) { ctx.fillStyle = "rgba(42,28,18,.55)"; ctx.font = `italic ${Math.max(11, cp * 2.3)}px "Noto Serif TC", serif`; ctx.fillText(`（${ledgerTitle(focus)}）`, ex0 + cp * 46, ey + cp * 3.4); }
+  let b = null;
+  for (const bb of fx.buckets.values()) {
+    if (bb.uid !== Lg.uid || bb.type !== type) continue;
+    const dx = bb.x / bb.n - x, dy = bb.y / bb.n - y;
+    if (dx * dx + dy * dy < 20 * 20 || fx.buckets.size + fx.floats.length >= 12) { b = bb; break; }
+  }
+  if (!b) { b = { uid: Lg.uid, type, n: 0, x: 0, y: 0, t0: NOW() }; fx.buckets.set(fx.bucketId = (fx.bucketId || 0) + 1, b); }
+  b.n++; b.x += x; b.y += y;
+  if (type === "blast" || type === "lidpop") fx.shake = Math.min(7, fx.shake + (type === "lidpop" ? 1.2 : 0.5));
+  sfx(type);
+}
+function flushBuckets(now) {
+  for (const [k, b] of fx.buckets) {
+    if (now - b.t0 < 450) continue;
+    fx.buckets.delete(k);
+    if (b.n < 3 && fx.floats.length >= 4 && b.type !== "lidpop") continue;
+    const val = b.n * ptsOf(b.type, R.mods);
+    const fw = 16 + numWidth("+" + fmt(val), 10) / L.cp * 1.0; // cells
+    let fx0 = b.x / b.n, fy0 = b.y / b.n, placed = false;
+    for (let tries = 0; tries < 8; tries++) {
+      let hit = false;
+      for (const o of fx.floats) { const oy = o.y - (now - o.born) / 1000 * 30 / L.cp; if (Math.abs(o.x - fx0) < (fw + o.w) / 2 && Math.abs(oy - fy0) < 6) { hit = true; break; } }
+      if (!hit) { placed = true; break; } fy0 -= 6;
+    }
+    if (!placed && b.type !== "lidpop" && b.type !== "blast") continue;
+    const first = !seen.has(b.type); seen.add(b.type);
+    fx.floats.push({ type: b.type, val, w: fw, x: clamp(fx0, fw / 2, W - fw / 2), y: Math.max(8, fy0), born: now, big: b.type === "lidpop" || b.type === "blast" });
+    if (first) fx.disc.push({ type: b.type, x: clamp(fx0, 14, W - 14), y: Math.max(14, fy0 - 10), born: now });
+  }
+  while (fx.floats.length > 12) fx.floats.shift();
+}
+function onClose(Lg) {
+  const m = meta.get(Lg.uid);
+  if (G.tut === 3 && Lg.result.rows.some(r => r.type === 'burn' || r.type === 'blueflame' || r.type === 'blast')) advanceTut('fire');
+  if (Lg.result.gold <= 0) return;
+  fx.tallyQ.push({ Lg, res: Lg.result, cx: m && m.sn ? m.sx / m.sn : (Lg.x || W / 2), cy: m && m.sn ? m.sy / m.sn : H / 2 });
+}
+function onLidPop() { fx.lidFly = { born: NOW(), vx: (R.S.rnd() - 0.5) * 6 }; fx.shake = 9; sfx("lidpop", true); buzz(60); }
 
-  // ---- lid
-  const lidY = by - cp * 2.6;
+// ---- scoring animation, in calculation order (Balatro): base numbers fly to the element column, x multiplier lands, they collide into gold, gold sand flows into the receiver ----
+function startTally(now) {
+  const q = fx.tallyQ.shift(); if (!q) return;
+  const res = q.res, rows = res.rows.slice();
+  if (res.stale) rows.push({ type: "stale", sub: res.stale });
+  const chips = rows.slice(0, 6); if (rows.length > 6) chips[5] = { type: rows[5].type, sub: rows.slice(5).reduce((a, r) => a + r.sub, 0) };
+  const elOf = r => (RX[r.type] ? RX[r.type].el : []);
+  fx.tally = { t0: now, res, cx: q.cx, cy: q.cy, chips, elOf, k: fx.tallyQ.length > 1 ? 1.7 : 1, base: 0, shown: 0, landed: 0, phase: 0, lit: [0, 0, 0, 0], pop: [0, 0, 0, 0], multPop: 0, goldPop: 0, spawned: false };
+}
+const T_STAGGER = 110, T_FLY = 350;
+function updateTally(now) {
+  if (!fx.tally && fx.tallyQ.length) startTally(now);
+  const T = fx.tally; if (!T) return;
+  const t = (now - T.t0) * T.k;
+  const B = { x: L.rcx, y: L.baseY }, Mx = { x: L.rcx, y: L.multY };
+  T.chips.forEach((c, i) => {
+    if (!c.done && t >= i * T_STAGGER + T_FLY) {
+      c.done = true; T.base += c.sub; T.landed++; T.basePop = now;
+      for (const e of T.elOf(c)) { T.lit[e] = 1; T.pop[e] = now; }
+      tone(330 * Math.pow(2, i / 12 * 1.0 * 2), 0.09, "triangle", 0.05);
+    }
+  });
+  const tA = (T.chips.length - 1) * T_STAGGER + T_FLY;
+  if (t >= tA + 150 && !T.multShown) { T.multShown = true; T.multPop = now; for (let e = 0; e < 4; e++) if (T.res.lit[e]) { T.lit[e] = 1; T.pop[e] = now; } tone(180, 0.18, "square", 0.04); }
+  const tC = tA + 150 + 520;
+  if (t >= tC + 260 && !T.goldShown) {
+    T.goldShown = true; T.goldPop = now;
+    fx.shake = Math.max(fx.shake, Math.min(7, 1.2 + Math.log10(Math.max(10, T.res.gold) / 100) * 1.4));
+    tone(220, 0.35, "sawtooth", 0.06, 2.2); tone(440, 0.4, "triangle", 0.05); buzz(25);
+  }
+  if (T.goldShown && !T.spawned && t >= tC + 260 + 450) { T.spawned = true; T.spawnAt = now; spawnGold(T); }
+  if (T.spawned && now - T.spawnAt > 450) fx.tally = null;
+}
+function tallyGeom(T, now) { // positions of everything at time now
+  const t = (now - T.t0) * T.k;
+  const tA = (T.chips.length - 1) * T_STAGGER + T_FLY, tC = tA + 150 + 520;
+  const C = { x: L.bx + L.bw * 0.5, y: L.by + L.bh * 0.3 };
+  return { t, tA, tC, C };
+}
+function spawnGold(T) {
+  const gold = T.res.gold;
+  const k = clamp(Math.round(gold / (R.target / 28)), 8, 44);
+  const now = NOW(), C = { x: L.bx + L.bw * 0.5, y: L.by + L.bh * 0.3 };
+  for (let i = 0; i < k; i++) fx.gold.push({ x0: C.x + (Math.random() - 0.5) * 30, y0: C.y + (Math.random() - 0.5) * 12, born: now + i * 22, v: gold / k, done: false, dur: 800 + Math.random() * 250, spread: (Math.random() - 0.5) });
+  if (gold >= 0) tone(520, 0.12, "triangle", 0.04);
+}
+
+// ---------------- input ----------------
+function dropCol(tipX) { return clamp(Math.round((tipX - L.bx) / L.cp - 0.5), 5, W - 6); }
+function tipOf() { const off = ptr.type === "touch" || ptr.type === "pen" ? 66 : 22; return { x: D.x, y: D.y - off, off }; }
+function inBeakerTip(tx, ty) { return tx >= L.bx - 6 && tx <= L.bx + L.bw + 6 && ty >= L.by - 24 && ty <= L.by + L.bh; }
+function hitSlot(x, y) { for (let i = 0; i < HAND; i++) if (inRect(x, y, L.slot(i), 2)) return i; return -1; }
+function nudge(key) { G.shake[key] = NOW(); }
+
+canvas.addEventListener("contextmenu", e => e.preventDefault());
+canvas.addEventListener("pointermove", e => {
+  const [x, y] = toLogical(e); ptr.x = x; ptr.y = y; ptr.type = e.pointerType || "mouse"; ptr.inside = true;
+  if (D) { D.x = x; D.y = y; if (Math.hypot(x - D.sx, y - D.sy) > 9) D.moved = true; D.vx = (D.vx || 0) * 0.7 + (e.movementX || 0) * 0.3; }
+  if (G && G.pourP && G.holding && mode === "play") { const [cx] = pxToCell(x, y); R.aim(G.pourP, clamp(cx, 5, W - 6)); }
+});
+canvas.addEventListener("pointerleave", () => { ptr.inside = false; });
+canvas.addEventListener("pointerdown", e => {
+  ensureAudio();
+  const [x, y] = toLogical(e); ptr.x = x; ptr.y = y; ptr.down = true; ptr.type = e.pointerType || "mouse"; ptr.inside = true;
+  try { canvas.setPointerCapture(e.pointerId); } catch (er) {}
+  G.idleSince = NOW();
+  if (mode !== "play") return screenDown(x, y);
+  if (G.ended) return;
+  if (inRect(x, y, L.btn.sound, 2)) { soundOn = !soundOn; ensureAudio(); tone(660, 0.1); return; }
+  // right click = quick match strike (desktop)
+  if (e.button === 2) { const [cx, cy] = pxToCell(x, y); if (matchAllowed() && cx > 0 && cx < W - 1) strikeAt(cx, clamp(cy, 1, H - 3)); return; }
+  const i = hitSlot(x, y);
+  if (i >= 0 && G.hand[i] !== undefined) {
+    if (!slotAllowed(i) || R.pours <= 0 || R.S.lid) { nudge("s" + i); return; }
+    D = { kind: "vial", slot: i, m: G.hand[i], sx: x, sy: y, x, y, moved: false, vx: 0, t0: NOW() }; return;
+  }
+  if (inRect(x, y, L.btn.match, 2)) { if (!matchAllowed()) { nudge("match"); return; } D = { kind: "match", sx: x, sy: y, x, y, moved: false, vx: 0, t0: NOW() }; return; }
+  if (inRect(x, y, L.btn.lid, 2)) { if (!lidAllowed()) { nudge("lid"); return; } D = { kind: "lid", sx: x, sy: y, x, y, moved: false }; return; }
+  if (inRect(x, y, L.btn.seal, 2)) { if (!sealAllowed()) { nudge("seal"); return; } D = { kind: "seal", sx: x, sy: y, x, y, moved: false }; return; }
+  // beaker tap with a selected vial / match mode
+  const [cx, cy] = pxToCell(x, y);
+  if (cx > 0 && cx < W - 1 && cy >= -6 && cy < H - 1) {
+    if (G.matchMode) { strikeAt(cx, clamp(cy, 1, H - 3)); return; }
+    if (G.sel >= 0 && G.hand[G.sel] !== undefined && slotAllowed(G.sel)) { pourFromSlot(G.sel, clamp(cx, 5, W - 6), true); }
+  }
+});
+function finishDrag(e) {
+  ptr.down = false; G.holding = false;
+  if (!D) return;
+  const d = D; D = null;
+  if (mode !== "play") return;
+  if (d.kind === "vial") {
+    const tipOff = ptr.type === "touch" || ptr.type === "pen" ? 66 : 22, tx = d.x, ty = d.y - tipOff;
+    if (d.moved && inBeakerTip(tx, ty)) pourFromSlot(d.slot, dropCol(tx), false);
+    else if (!d.moved || Math.hypot(d.x - d.sx, d.y - d.sy) < 12) { G.sel = G.sel === d.slot ? -1 : d.slot; G.matchMode = false; tone(500, 0.05); }
+  } else if (d.kind === "match") {
+    const tipOff = ptr.type === "touch" || ptr.type === "pen" ? 66 : 22, tx = d.x, ty = d.y - tipOff;
+    if (d.moved && inBeakerTip(tx, ty)) { const [cx, cy] = pxToCell(tx, ty); strikeAt(clamp(cx, 2, W - 3), clamp(cy, 1, H - 3)); }
+    else if (!d.moved) { G.matchMode = !G.matchMode; G.sel = -1; tone(700, 0.05); }
+  } else if (d.kind === "lid") { if (!d.moved || Math.hypot(d.x - d.sx, d.y - d.sy) < 14) toggleLid(); }
+  else if (d.kind === "seal") { if (Math.hypot(d.x - d.sx, d.y - d.sy) < 14) seal(); }
+}
+canvas.addEventListener("pointerup", finishDrag); canvas.addEventListener("pointercancel", () => { D = null; ptr.down = false; G.holding = false; });
+window.addEventListener("keydown", e => {
+  if (!G || mode !== "play") { if (e.key === "Enter") screenDown(-1, -1, true); return; }
+  if (e.key >= "1" && e.key <= "4") { const i = +e.key - 1; if (G.hand[i] !== undefined && slotAllowed(i)) { G.sel = G.sel === i ? -1 : i; G.matchMode = false; } }
+  else if (e.key === "f" || e.key === "F") { if (matchAllowed()) { G.matchMode = !G.matchMode; G.sel = -1; } }
+  else if (e.key === " ") { e.preventDefault(); if (lidAllowed()) toggleLid(); }
+  else if (e.key === "Enter") { e.preventDefault(); if (sealAllowed()) seal(); }
+  else if (e.key === "Escape") { G.sel = -1; G.matchMode = false; }
+});
+function pourFromSlot(i, col, hold) {
+  const mat = G.hand[i];
+  const P = R.startPour(mat, col); if (!P) return;
+  G.pourP = P; G.holding = hold;
+  G.disc.push(G.hand.splice(i, 1)[0]);
+  if (G.draw.length === 0 && G.disc.length && G.round > 0) G.draw = shuffle(G.disc.splice(0));
+  if (G.draw.length) { G.hand.splice(i, 0, G.draw.pop()); G.slideIn[i] = NOW(); }
+  G.sel = -1; G.pourN++; P.anim = NOW(); P.vm = mat;
+  advanceTut("pour", mat);
+  tone(300, 0.2, "sine", 0.05, 0.6); buzz(12);
+}
+function strikeAt(x, y) {
+  if (R.matches <= 0) { nudge("match"); return; }
+  R.strike(clamp(x, 2, W - 3), clamp(y, 1, H - 3));
+  G.matchMode = false; fx.strike = { x, y, born: NOW() };
+  advanceTut("match"); sfx("burn", true); tone(1200, 0.06, "square", 0.03); buzz(15);
+}
+function toggleLid() { if (G.ended) return; R.toggleLid(); G.lidUsed = true; tone(R.S.lid ? 140 : 220, 0.15, "square", 0.05); G.lidAnim = NOW(); }
+function seal() { if (G.ended) return; R.closeAll(); tone(300, 0.2, "sine", 0.05, 0.5); }
+
+// ---------------- previews (ghost) ----------------
+function colContact(col, half) {
+  const S = R.S; let best = H - 1;
+  for (let dx = -half; dx <= half; dx++) {
+    const x = col + dx; if (x < 1 || x >= W - 1) continue;
+    for (let y = 0; y < H - 1; y++) { const m = S.t[y * W + x]; if (m !== M.E && (KIND[m] !== 3 || m === M.FIRE)) { if (y < best) best = y; break; } }
+  }
+  return best;
+}
+function previewVial(m, col) {
+  const S = R.S, half = 4, cy = colContact(col, half);
+  const tally = {};
+  for (let dx = -half; dx <= half; dx++) for (let dy = 0; dy < 4; dy++) {
+    const x = col + dx, y = cy + dy; if (x < 1 || x >= W - 1 || y >= H - 1) continue;
+    const t = S.t[y * W + x]; if (t !== M.E) tally[t] = (tally[t] || 0) + 1;
+  }
+  const items = [], table = PRE[m] || {};
+  for (const k of Object.keys(tally)) { const rxs = table[k]; if (!rxs) continue; for (const r of rxs) if (!items.find(i => i.type === r)) items.push({ type: r, n: tally[k] }); }
+  for (const it of items) it.est = RX[it.type] ? ptsOf(it.type, R.mods) * clamp(it.n * 3, 3, 120) : 0;
+  return { col, cy, half, items: items.slice(0, 3) };
+}
+function previewMatch(cx, cy) {
+  const S = R.S, r = 3, cells = []; let blast = false, water = false;
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    if (dx * dx + dy * dy > r * r) continue; const x = cx + dx, y = cy + dy; if (x < 1 || x >= W - 1 || y < 0 || y >= H - 1) continue;
+    const m = S.t[y * W + x]; if (FLAMMABLE.includes(m)) cells.push([x, y]); if (m === M.POWDER) blast = true; if (m === M.WATER) water = true;
+  }
+  return { cx, cy, cells, blast, water };
+}
+const gasHist = [];
+function predictFrac() {
+  const S = R.S; let slope = 0;
+  if (gasHist.length > 4) slope = Math.max(0, (gasHist[gasHist.length - 1].g - gasHist[0].g) / Math.max(1, gasHist[gasHist.length - 1].f - gasHist[0].f));
+  return clamp((S.gas + slope * 180) / S.lidMax, 0, 1);
+}
+
+// ---------------- rendering ----------------
+function renderBeakerLayers() {
+  renderBeaker();
+}
+function drawBeakerLayers(now) {
+  const { cp, bx, by, bw, bh } = L;
+  const sk = fx.shake > 0.3 ? fx.shake : 0; fx.shake *= 0.86;
+  ctx.save();
+  if (sk) ctx.translate((Math.random() - 0.5) * sk, (Math.random() - 0.5) * sk);
+  ctx.imageSmoothingEnabled = true; ctx.globalCompositeOperation = "multiply";
+  if (WASH_BLUR) {
+    sctx.clearRect(0, 0, W / 2, H / 2); sctx.imageSmoothingEnabled = true; sctx.drawImage(tintC, 0, 0, W / 2, H / 2);
+    ctx.globalAlpha = 0.8; ctx.drawImage(softC, 0.5, 0, W / 2 - 1, H / 2 - 0.5, bx + cp + 0.8, by + 1, bw - 2 * cp, bh - cp); ctx.globalAlpha = 0.55;
+  }
+  ctx.drawImage(tintC, 1, 0, W - 2, H - 1, bx + cp + 0.6, by + 0.6, bw - 2 * cp, bh - cp);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(inkC, 0, 0, W * ICP, H * ICP, bx, by, bw, bh);
+  ctx.imageSmoothingEnabled = true;
+  ctx.restore();
+}
+
+function focusLedger() {
+  let best = null;
+  for (const Lg of R.order) if (!Lg.closed && Lg.n > 0 && (!best || Lg.lastF > best.lastF)) best = Lg;
+  return best;
+}
+
+function drawTopBar(now) {
+  const act = Math.min(3, Math.floor(G.round / 3));
+  for (let i = 0; i < 4; i++) {
+    const cur = i === act, x = 20 + i * 22, y = 22, r = cur ? 8.5 : 5.5;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.globalAlpha = i > act ? 0.45 : 1; ctx.fillStyle = ACT_COL[i]; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = cur ? 2 : 1.2; ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  const rr = G.round % 3;
+  for (let i = 0; i < 3; i++) { const x = 118 + i * 17; ctx.beginPath(); ctx.arc(x, 22, 4.5, 0, 7); ctx.strokeStyle = INK; ctx.lineWidth = 1.4; ctx.stroke(); if (i <= rr) { ctx.fillStyle = i === rr ? "#b8381e" : INK; ctx.fill(); } }
+  // sound + coins
+  const sb = L.btn.sound; drawSpeaker(ctx, sb.x + 22, 22, 9, soundOn);
+  const mny = Math.round(G.shownMoney); const bump = fx.bump.coin ? clamp(1 - (now - fx.bump.coin) / 400, 0, 1) : 0;
+  drawCoin(ctx, 380 - numWidth(String(mny), 14) - 14, 22, 9 + bump * 2);
+  drawNum(ctx, String(mny), 380, 22, 14, { align: "r", color: bump && fx.bump.bad ? "#b8381e" : COL.gold, halo: true, wt: 0.9 });
+  // arcana badges row (above the beaker)
+  for (let i = 0; i < MAX_ARC; i++) {
+    const x = L.bx + 14 + i * 30, y = 52;
+    if (i < G.arc.length) { const a = ARCANA.find(q => q.id === G.arc[i]); drawBadge(ctx, a.id, x, y, 12, a.rare); }
+    else { ctx.beginPath(); ctx.arc(x, y, 9, 0, 7); ctx.setLineDash([2, 3]); ctx.strokeStyle = "rgba(42,28,18,.3)"; ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]); }
+  }
+}
+
+function wigAngle(key, now) { // occasional staggered wiggle for interactive things
+  let h = 0; for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+  const period = 4200 + (Math.abs(h) % 2200), ph = ((now + Math.abs(h) * 7) % period) / period;
+  return ph > 0.9 ? Math.sin((ph - 0.9) * 10 * Math.PI * 2) * 0.06 * (1 - (ph - 0.9) * 10) : 0;
+}
+function nudgeOff(key, now) { const t = G.shake[key]; if (!t) return 0; const a = (now - t) / 320; return a > 1 ? 0 : Math.sin(a * Math.PI * 6) * 4 * (1 - a); }
+function hoverLift(rect, key) { return ptr.inside && !ptr.down && ptr.type === "mouse" && inRect(ptr.x, ptr.y, rect) ? 1 : 0; }
+
+function drawHand_(now) {
+  const tut = G.tut < 9;
+  for (let i = 0; i < HAND; i++) {
+    const s = L.slot(i), m = G.hand[i];
+    if (m === undefined) { ctx.save(); ctx.setLineDash([3, 4]); ctx.strokeStyle = "rgba(42,28,18,.28)"; ctx.lineWidth = 1; ctx.strokeRect(s.x + 6, s.y + 6, s.w - 12, s.h - 12); ctx.restore(); continue; }
+    const allowed = slotAllowed(i) && R.pours > 0 && !G.ended;
+    const sel = G.sel === i, dragging = D && D.kind === "vial" && D.slot === i;
+    const si = G.slideIn[i] ? clamp((now - G.slideIn[i]) / 320, 0, 1) : 1;
+    const lift = (sel ? 10 : 0) + hoverLift(s) * 8 + (1 - backOut(si)) * -26 * 0 + (1 - easeOut(si)) * 30;
+    const dx = nudgeOff("s" + i, now);
+    ctx.save();
+    ctx.translate(s.x + s.w / 2 + dx, s.y + s.h / 2 - lift);
+    ctx.rotate(wigAngle("v" + i, now) * (allowed ? 1 : 0));
+    ctx.globalAlpha = si < 1 ? easeOut(si) : 1;
+    if (dragging && D.moved) ctx.globalAlpha = 0.28;
+    if (tut && allowed && G.tut < 3 && !dragging) { // required piece breathes
+      const k = (Math.sin(now / 280) + 1) / 2;
+      ctx.beginPath(); ctx.ellipse(0, 6, 38 + k * 4, 50 + k * 4, 0, 0, 7); ctx.strokeStyle = `rgba(184,56,30,${0.25 + k * 0.4})`; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.stroke(); ctx.setLineDash([]);
+    }
+    if (sel) { ctx.beginPath(); ctx.ellipse(0, 6, 40, 52, 0, 0, 7); ctx.strokeStyle = INK; ctx.lineWidth = 2.2; ctx.stroke(); }
+    drawVial(ctx, m, -26, -44, 52, 90, { dim: !allowed });
+    ctx.restore();
+  }
+}
+function drawButtons(now) {
+  const bm = L.btn.match, bl = L.btn.lid, bs = L.btn.seal;
+  // match
+  const ma = matchAllowed(), mOn = G.matchMode || (D && D.kind === "match");
+  ctx.save(); ctx.translate(bm.x + bm.w / 2 + nudgeOff("match", now), bm.y + bm.h / 2 - hoverLift(bm) * 4);
+  ctx.rotate(wigAngle("match", now) * (ma ? 1 : 0)); ctx.globalAlpha = ma ? 1 : 0.35;
+  if (mOn) { ctx.beginPath(); ctx.arc(0, 0, 28, 0, 7); ctx.strokeStyle = INK; ctx.lineWidth = 2.2; ctx.stroke(); }
+  if (G.tut === 3 && ma && !mOn) { const k = (Math.sin(now / 240) + 1) / 2; ctx.beginPath(); ctx.arc(0, 0, 30 + k * 4, 0, 7); ctx.strokeStyle = `rgba(184,56,30,${0.3 + k * 0.5})`; ctx.setLineDash([5, 4]); ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]); }
+  const dragging = D && D.kind === "match" && D.moved;
+  if (R.matches > 0) { ctx.globalAlpha *= dragging ? 0.3 : 1; drawMatch(ctx, -6, 2, 19, false, R.matches); }
+  ctx.restore();
+  drawNum(ctx, String(R.matches), bm.x + bm.w - 18, bm.y + bm.h - 14, 13, { align: "c", color: INK, halo: true });
+  // lid
+  const la = lidAllowed(), lOn = R.S.lid;
+  ctx.save(); ctx.translate(bl.x + bl.w / 2 + nudgeOff("lid", now), bl.y + bl.h / 2 - hoverLift(bl) * 4); ctx.rotate(wigAngle("lid", now) * (la ? 1 : 0)); ctx.globalAlpha = la ? 1 : 0.35;
+  if (lOn) { ctx.beginPath(); ctx.arc(0, 0, 28, 0, 7); ctx.strokeStyle = INK; ctx.lineWidth = 2.2; ctx.stroke(); }
+  drawLid(ctx, 0, -2, 22, lOn); ctx.restore();
+  // seal
+  const sa = sealAllowed(), pulse = R.status() === "wait";
+  ctx.save(); ctx.translate(bs.x + bs.w / 2 + nudgeOff("seal", now), bs.y + bs.h / 2 - hoverLift(bs) * 4); ctx.globalAlpha = sa ? 1 : 0.35;
+  if (pulse) { const k = (Math.sin(now / 220) + 1) / 2; ctx.beginPath(); ctx.arc(0, 0, 29 + k * 3, 0, 7); ctx.strokeStyle = `rgba(184,56,30,${0.3 + k * 0.5})`; ctx.lineWidth = 2.4; ctx.stroke(); }
+  drawHourglass(ctx, 0, 0, 17); ctx.restore();
+  // pips (remaining pours) + draw pile
+  const total = BASE_POURS + (R.mods.spare ? 1 : 0);
+  for (let i = 0; i < total; i++) drawPip(ctx, 12 + i * 20, L.pipY, 14, 20, i >= R.pours);
+  drawPip(ctx, 312, L.pipY, 11, 16, false);
+  drawNum(ctx, String(G.draw.length), 350, L.pipY + 10, 12, { align: "c", color: "#5a4532" });
+}
+
+function drawElements(now, T) {
+  const focus = focusLedger();
+  const fr = T ? null : (focus ? scoreLedger(focus, R.mods) : null);
+  for (let e = 0; e < 4; e++) {
+    const on = T ? T.lit[e] : (fr && fr.lit[e]);
+    const pop = T && T.pop[e] ? clamp(1 - (now - T.pop[e]) / 300, 0, 1) : 0;
+    drawEl(ctx, e, L.rcx, L.elY(e), 9, !!on, false, pop);
+  }
+  // ghost preview: elements this pour would newly light
+  if (G.preview) {
+    const lit = fr ? fr.lit : [0, 0, 0, 0], pulseK = (Math.sin(now / 160) + 1) / 2;
+    for (const it of G.preview.items) if (RX[it.type]) for (const e of RX[it.type].el) if (!lit[e]) { ctx.save(); ctx.globalAlpha = 0.5 + pulseK * 0.5; drawEl(ctx, e, L.rcx, L.elY(e), 11, false, true, 0); ctx.restore(); }
+  }
+  // base and multiplier numbers
+  if (T) {
+    const bp = T.basePop ? clamp(1 - (now - T.basePop) / 200, 0, 1) : 0;
+    if (T.landed) drawNum(ctx, fmt(T.base), L.rcx, L.baseY, 12 + bp * 3, { color: INK, halo: true, wt: 0.9 });
+    if (T.multShown) { const mp = clamp(1 - (now - T.multPop) / 260, 0, 1); drawNum(ctx, "×" + T.res.elem, L.rcx, L.multY, 13 + mp * 6, { color: "#b8381e", halo: true, wt: 1 }); }
+  } else if (fr && fr.matter > 0) {
+    drawNum(ctx, fmt(fr.matter), L.rcx, L.baseY, 12, { color: INK, halo: true, wt: 0.9 });
+    drawNum(ctx, "×" + fr.elem, L.rcx, L.multY, 13, { color: "#b8381e", halo: true, wt: 1 });
+  }
+}
+
+function drawDial(now) {
+  const d = L.dial, S = R.S, frac = clamp(S.gas / S.lidMax, 0, 1);
+  ctx.save(); ctx.globalAlpha = S.lid ? 1 : 0.5;
+  const a = Math.PI + frac * Math.PI + (S.lid && frac > 0.85 ? Math.sin(now / 40) * 0.04 : 0);
+  ctx.beginPath(); ctx.moveTo(d.cx, d.cy); ctx.lineTo(d.cx + Math.cos(a) * d.r * 0.85, d.cy + Math.sin(a) * d.r * 0.85); ctx.strokeStyle = frac > 0.8 && S.lid ? "#b8381e" : INK; ctx.lineWidth = 2.2; ctx.lineCap = "round"; ctx.stroke();
+  ctx.beginPath(); ctx.arc(d.cx, d.cy, 3, 0, 7); ctx.fillStyle = INK; ctx.fill();
+  ctx.restore();
+  if (G.lidHover || (D && D.kind === "lid") || (ptr.inside && ptr.type === "mouse" && inRect(ptr.x, ptr.y, L.btn.lid))) {
+    const pf = predictFrac(), pa = Math.PI + pf * Math.PI;
+    ctx.save(); ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(d.cx, d.cy); ctx.lineTo(d.cx + Math.cos(pa) * d.r * 0.9, d.cy + Math.sin(pa) * d.r * 0.9); ctx.strokeStyle = "#b8381e"; ctx.lineWidth = 1.6; ctx.stroke(); ctx.restore();
+  }
+}
+
+function drawLidOnBeaker(now) {
+  const { bx, by, bw, cp } = L, S = R.S;
+  const lidY = by - 7;
   if (S.lid) {
-    ctx.fillStyle = "#7a5634"; ctx.strokeStyle = "#2a1c12"; ctx.lineWidth = 1.5;
-    ctx.fillRect(bx - cp * 2.4, lidY - cp * 1.2, bw + cp * 4.8, cp * 2.2); ctx.strokeRect(bx - cp * 2.4, lidY - cp * 1.2, bw + cp * 4.8, cp * 2.2);
-    ctx.globalAlpha = 0.6; ctx.lineWidth = 0.7;
-    for (let x = bx - cp * 2; x < bx + bw + cp * 2.4; x += 5) { ctx.beginPath(); ctx.moveTo(x, lidY - cp * 1.2); ctx.lineTo(x + 3, lidY + cp); ctx.stroke(); }
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = "#2a1c12"; ctx.fillRect(bx + bw / 2 - cp * 2, lidY - cp * 2.6, cp * 4, cp * 1.4);
+    const drop = G.lidAnim ? clamp((now - G.lidAnim) / 220, 0, 1) : 1, yy = lidY - (1 - backOut(drop)) * 24;
+    ctx.save(); ctx.translate(bx + bw / 2, yy);
+    ctx.fillStyle = "#a8774a"; ctx.strokeStyle = INK; ctx.lineWidth = 1.6;
+    ctx.fillRect(-bw / 2 - 2, -4, bw + 4, 9); ctx.strokeRect(-bw / 2 - 2, -4, bw + 4, 9);
+    ctx.globalAlpha = 0.5; ctx.lineWidth = 0.7; for (let x = -bw / 2; x < bw / 2; x += 6) { ctx.beginPath(); ctx.moveTo(x, -4); ctx.lineTo(x + 3, 5); ctx.stroke(); } ctx.globalAlpha = 1;
+    ctx.fillStyle = INK; ctx.fillRect(-8, -9, 16, 5); ctx.restore();
   }
   if (fx.lidFly) {
     const t = (now - fx.lidFly.born) / 1000;
     if (t > 1.6) fx.lidFly = null;
-    else {
-      ctx.save(); ctx.translate(bx + bw / 2 + fx.lidFly.vx * t * 60, lidY - t * 260 + t * t * 220); ctx.rotate(t * 5 * Math.sign(fx.lidFly.vx || 1));
-      ctx.globalAlpha = Math.max(0, 1 - t / 1.6);
-      ctx.fillStyle = "#7a5634"; ctx.strokeStyle = "#2a1c12"; ctx.fillRect(-bw / 4, -cp, bw / 2, cp * 2.2); ctx.strokeRect(-bw / 4, -cp, bw / 2, cp * 2.2);
-      ctx.restore();
-      ctx.save(); ctx.font = `900 ${cp * 7}px "Noto Serif TC", serif`; ctx.textAlign = "center"; ctx.fillStyle = "#b8381e"; ctx.strokeStyle = "#f3e9cf"; ctx.lineWidth = 4;
-      ctx.globalAlpha = Math.max(0, 1 - t / 1.2); ctx.strokeText("爆蓋！", bx + bw / 2, by + cp * 14); ctx.fillText("爆蓋！", bx + bw / 2, by + cp * 14); ctx.restore();
-    }
+    else { ctx.save(); ctx.translate(bx + bw / 2 + fx.lidFly.vx * t * 50, lidY - t * 240 + t * t * 220); ctx.rotate(t * 5 * Math.sign(fx.lidFly.vx || 1)); ctx.globalAlpha = Math.max(0, 1 - t / 1.6); ctx.fillStyle = "#a8774a"; ctx.strokeStyle = INK; ctx.lineWidth = 1.6; ctx.fillRect(-bw / 4, -4, bw / 2, 9); ctx.strokeRect(-bw / 4, -4, bw / 2, 9); ctx.restore(); }
   }
-  // ---- pressure gauge fill
-  const gg = L.gauge, frac = Math.min(1, S.gas / S.lidMax);
-  ctx.fillStyle = S.lid ? (frac > 0.8 ? "#b8381e" : "#9a4a2a") : "rgba(120,90,60,.3)";
-  const fh = gg.gh * frac;
-  ctx.fillRect(gg.gx + 1, gg.gy + gg.gh - fh, gg.gw - 2, fh);
-  ctx.beginPath(); ctx.arc(gg.gx + gg.gw / 2, gg.gy + gg.gh + gg.gw * 0.7, gg.gw * 0.8, 0, 7); ctx.fill();
-  ctx.fillStyle = "#2a1c12"; ctx.font = `${Math.max(10, cp * 2.2)}px "Noto Serif TC", serif`; ctx.textAlign = "center";
-  ctx.fillText(S.lid ? Math.round(frac * 100) + "%" : "開蓋", gg.gx + gg.gw / 2, gg.gy - cp * 2);
-  if (S.lid && frac > 0.8 && (now >> 7) & 1) { ctx.strokeStyle = "#b8381e"; ctx.lineWidth = 2; ctx.strokeRect(gg.gx - 2, gg.gy - 2, gg.gw + 4, gg.gh + 4); }
+}
 
-  // ---- nozzle / match cursor
-  if (G.hover && !G.ended) {
-    if (G.matchMode) {
-      const x = bx + (G.aimX + 0.5) * cp, y = by + (Math.max(0, G.hoverY) + 0.5) * cp;
-      ctx.strokeStyle = "#b8381e"; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
-      ctx.beginPath(); ctx.arc(x, y, cp * 3.5, 0, 7); ctx.stroke(); ctx.setLineDash([]);
-      const cell = G.hoverY >= 0 && G.hoverY < H ? S.t[G.hoverY * W + G.aimX] : 0;
-      const what = { [M.SULFUR]: "硫磺：點燃→藍焰", [M.OIL]: "油：點燃→燃燒", [M.PLANT]: "植物：可燃", [M.POWDER]: "火藥：會爆炸！", [M.SEED]: "種子：可燃", [M.WATER]: "水：火會被澆熄", [M.E]: "空氣：火柴會白白燒掉" }[cell] || "這裡點不著";
-      ctx.font = `${Math.max(12, cp * 2.8)}px "Noto Serif TC", serif`; ctx.textAlign = "left";
-      ctx.fillStyle = "rgba(246,238,214,.9)"; const tw = ctx.measureText(what).width; ctx.fillRect(x + cp * 4.5, y - cp * 2.4, tw + 10, cp * 4.4);
-      ctx.fillStyle = "#2a1c12"; ctx.fillText(what, x + cp * 4.5 + 5, y);
-    } else if (G.sel >= 0 || G.pourP && G.holding) {
-      const m = G.pourP && G.holding ? G.pourP.m : G.hand[G.sel];
-      if (m !== undefined) {
-        const x = bx + (G.aimX + 0.5) * cp;
-        ctx.globalAlpha = G.holding ? 1 : 0.7;
-        drawPourVial(ctx, x, by - cp * 3, m, G.holding);
-        ctx.globalAlpha = 1;
-      }
-    }
-  }
-  // active pours: falling stream marker
-  for (const P of R.active) { const x = bx + (P.x + 0.5) * cp; ctx.strokeStyle = VIALS[P.m].c; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, by - cp * 2); ctx.lineTo(x, by + cp * 2); ctx.stroke(); }
-
-  // ---- chain lines (ink, slightly wobbly)
-  ctx.strokeStyle = "#2a1c12";
-  for (let i = fx.chains.length - 1; i >= 0; i--) {
-    const c = fx.chains[i], age = (now - c.born) / 1000;
-    if (age > 3.2) { fx.chains.splice(i, 1); continue; }
-    const tx = c.toRef.x / c.toRef.n, ty = c.toRef.y / c.toRef.n;
-    const x0 = bx + c.from[0] * cp, y0 = by + c.from[1] * cp, x1 = bx + tx * cp, y1 = by + ty * cp;
-    const k = Math.min(1, age / 0.35);
-    ctx.globalAlpha = Math.max(0, 1 - Math.max(0, age - 2.2));
-    ctx.lineWidth = 1.6; ctx.setLineDash([6, 3]);
-    ctx.beginPath(); ctx.moveTo(x0, y0);
-    const mx = (x0 + x1) / 2 + (y1 - y0) * 0.15, my = (y0 + y1) / 2 - (x1 - x0) * 0.15;
-    ctx.quadraticCurveTo(mx, my, x0 + (x1 - x0) * k, y0 + (y1 - y0) * k); ctx.stroke(); ctx.setLineDash([]);
-    ctx.beginPath(); ctx.arc(x0, y0, 3, 0, 7); ctx.fill();
-    if (k >= 1) {
-      ctx.beginPath(); ctx.arc(x1, y1, 4, 0, 7); ctx.stroke();
-      const lbl = `連鎖 ${c.g}`;
-      ctx.font = `900 ${Math.max(13, cp * 3.2)}px "Noto Serif TC", serif`; ctx.textAlign = "left";
-      ctx.lineWidth = 4; ctx.strokeStyle = "rgba(243,233,207,.95)"; ctx.strokeText(lbl, x1 + 8, y1 - 8);
-      ctx.fillStyle = "#2a1c12"; ctx.fillText(lbl, x1 + 8, y1 - 8); ctx.strokeStyle = "#2a1c12";
-    }
-    ctx.globalAlpha = 1;
-  }
-  // ---- floating aggregated text
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+function drawFloats(now) {
+  const { cp } = L;
   for (let i = fx.floats.length - 1; i >= 0; i--) {
     const f = fx.floats[i], age = (now - f.born) / 1000;
-    if (age > 1.6) { fx.floats.splice(i, 1); continue; }
-    const x = bx + f.x * cp, y = by + f.y * cp - age * 34 - cp * 3;
-    ctx.globalAlpha = age < 1.1 ? 1 : 1 - (age - 1.1) / 0.5;
-    ctx.font = `900 ${Math.max(13, cp * 3)}px "Noto Serif TC", serif`;
-    ctx.lineWidth = 4; ctx.strokeStyle = "rgba(246,238,214,.92)"; ctx.strokeText(f.text, x, y);
-    ctx.fillStyle = ELC[f.el]; ctx.fillText(f.text, x, y);
+    if (age > 1.35) { fx.floats.splice(i, 1); continue; }
+    const rise = age < 0.4 ? easeOut(age / 0.4) * 22 : 22 + (age - 0.4) * 5;
+    const x = L.bx + f.x * cp, y = L.by + f.y * cp - rise;
+    const a = age < 1.0 ? 1 : 1 - (age - 1.0) / 0.35, sc = f.big ? 1.35 : 1;
+    ctx.save(); ctx.globalAlpha = a; ctx.translate(x, y); ctx.scale(sc, sc);
+    const nw = numWidth("+" + fmt(f.val), 10);
+    ctx.fillStyle = "rgba(239,228,200,.85)"; ctx.beginPath(); ctx.ellipse(0, 0, (nw + 18) / 2 + 3, 10, 0, 0, 7); ctx.fill();
+    drawRx(ctx, f.type, -nw / 2 - 2, 0, 7); drawNum(ctx, "+" + fmt(f.val), 9, 0, 10, { color: INK, align: "c", wt: 0.85 });
+    ctx.restore();
+  }
+  // first-time discovery: the two inputs collide into the result (0.6 s)
+  for (let i = fx.disc.length - 1; i >= 0; i--) {
+    const d = fx.disc[i], age = (now - d.born) / 600;
+    if (age > 1.2) { fx.disc.splice(i, 1); continue; }
+    const x = L.bx + d.x * cp, y = L.by + d.y * cp, pair = DISCOVER[d.type] || [M.SAND, M.SAND];
+    ctx.save(); ctx.translate(x, y);
+    if (age < 0.6) {
+      const k = easeIn(age / 0.6), off = 30 * (1 - k);
+      for (const [j, m] of pair.entries()) { const px = (j ? 1 : -1) * off; ctx.beginPath(); ctx.arc(px, 0, 10, 0, 7); ctx.fillStyle = "rgba(239,228,200,.95)"; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.4; ctx.stroke(); ctx.save(); ctx.translate(px, 0); ctx.strokeStyle = INK; ctx.fillStyle = INK; ctx.lineWidth = 1.3; SYM[m](ctx, 5); ctx.restore(); }
+    } else { const k = (age - 0.6) / 0.6; ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.arc(0, 0, 14 + k * 12, 0, 7); ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.stroke(); drawRx(ctx, d.type, 0, -k * 12, 11 + (1 - k) * 4); }
+    ctx.restore();
+  }
+}
+function drawChains(now) {
+  ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
+  for (let i = fx.chains.length - 1; i >= 0; i--) {
+    const c = fx.chains[i], age = (now - c.born) / 1000;
+    if (age > 3) { fx.chains.splice(i, 1); continue; }
+    const tx = c.toRef.x / c.toRef.n, ty = c.toRef.y / c.toRef.n;
+    const x0 = L.bx + c.from[0] * L.cp, y0 = L.by + c.from[1] * L.cp, x1 = L.bx + tx * L.cp, y1 = L.by + ty * L.cp;
+    const k = Math.min(1, age / 0.35); ctx.globalAlpha = Math.max(0, 1 - Math.max(0, age - 2.1));
+    ctx.setLineDash([6, 3]); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo((x0 + x1) / 2 + (y1 - y0) * 0.15, (y0 + y1) / 2 - (x1 - x0) * 0.15, x0 + (x1 - x0) * k, y0 + (y1 - y0) * k); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(x0, y0, 2.5, 0, 7); ctx.fillStyle = INK; ctx.fill();
+    if (k >= 1) { ctx.beginPath(); ctx.arc(x1, y1, 8, 0, 7); ctx.fillStyle = "rgba(239,228,200,.9)"; ctx.fill(); ctx.stroke(); drawNum(ctx, String(c.g), x1, y1, 9, { color: INK }); }
     ctx.globalAlpha = 1;
   }
-  // ---- receiver flask: gold sand level and the gold line
-  drawReceiver(now);
 }
-function drawElement(g, e, x, y, s, on) {
-  const up = e === 0 || e === 3, bar = e >= 2;
-  g.beginPath();
-  if (up) { g.moveTo(x + s / 2, y - s / 2); g.lineTo(x + s, y + s / 2); g.lineTo(x, y + s / 2); }
-  else { g.moveTo(x, y - s / 2); g.lineTo(x + s, y - s / 2); g.lineTo(x + s / 2, y + s / 2); }
-  g.closePath();
-  if (on) { g.fillStyle = ELC[e]; g.globalAlpha = 0.85; g.fill(); g.globalAlpha = 1; }
-  g.strokeStyle = on ? "#2a1c12" : "rgba(42,28,18,.4)"; g.lineWidth = on ? 1.6 : 1; g.stroke();
-  if (bar) { const yy = up ? y + s / 8 : y - s / 8; g.beginPath(); g.moveTo(x + s * 0.2, yy); g.lineTo(x + s * 0.8, yy); g.stroke(); }
-}
-function drawPourVial(g, x, y, m, pouring) {
-  const cp = L.cp, c = VIALS[m].c;
-  g.save(); g.translate(x, y); if (pouring) g.rotate(Math.PI * 0.75);
-  g.fillStyle = c; g.strokeStyle = "#2a1c12"; g.lineWidth = 1.4;
-  g.beginPath(); g.moveTo(-cp * 0.8, -cp * 4.6); g.lineTo(cp * 0.8, -cp * 4.6); g.lineTo(cp * 0.8, -cp * 2.4); g.lineTo(cp * 2, 0); g.lineTo(-cp * 2, 0); g.lineTo(-cp * 0.8, -cp * 2.4); g.closePath();
-  g.globalAlpha *= 0.85; g.fill(); g.globalAlpha = 1; g.stroke();
-  g.restore();
-  if (!pouring) {
-    g.font = `${Math.max(12, cp * 2.8)}px "Noto Serif TC", serif`; g.textAlign = "left"; g.fillStyle = "#2a1c12";
-    g.fillText(`按住倒出${VIALS[m].nm}`, x + cp * 3, y - cp * 1.5);
+
+function drawPours(now) {
+  const { cp, bx, by } = L;
+  for (const P of R.active) {
+    const x = bx + (P.x + 0.5) * cp, col = VCOL[P.m] || "#888";
+    // tilted vial over the rim
+    const age = (now - (P.anim || now)) / 1000, tilt = Math.min(1, age / 0.18) * 2.2;
+    ctx.save(); ctx.translate(x + 18, by - 34); ctx.rotate(tilt); ctx.globalAlpha = 0.95; drawVial(ctx, P.m, -14, -24, 28, 48, {}); ctx.restore();
+    ctx.strokeStyle = col; ctx.globalAlpha = 0.8; ctx.lineWidth = 3; ctx.setLineDash([6, 4]); ctx.lineDashOffset = -now / 12;
+    ctx.beginPath(); ctx.moveTo(x + 3, by - 24); ctx.lineTo(x, by + 6 * cp); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
   }
 }
-function drawReceiver(now) {
-  const f = L.flask, cp = L.cp, cap = R.target * 1.5;
-  // gold particles in flight
-  const tube = L.tube;
+
+function drawPreview(now) {
+  G.preview = null;
+  let tip = null, kind = null, mat = 0;
+  if (D && D.moved && (D.kind === "vial" || D.kind === "match")) { const t = tipOf(); tip = { x: D.x, y: D.y - t.off }; kind = D.kind; mat = D.m; }
+  else if (ptr.inside && ptr.type === "mouse" && !ptr.down && !D) {
+    if (G.matchMode) { tip = { x: ptr.x, y: ptr.y }; kind = "match"; }
+    else if (G.sel >= 0 && G.hand[G.sel] !== undefined) { tip = { x: ptr.x, y: ptr.y }; kind = "vial"; mat = G.hand[G.sel]; }
+  }
+  if (!tip || !inBeakerTip(tip.x, tip.y)) return;
+  const { cp, bx, by } = L;
+  if (kind === "vial") {
+    const col = dropCol(tip.x), pv = previewVial(mat, col); G.preview = pv;
+    const x = cellX(col), yEnd = by + pv.cy * cp, hw = 4.5 * cp;
+    ctx.save();
+    ctx.fillStyle = "rgba(168,119,74,.16)"; ctx.fillRect(x - hw, by, hw * 2, Math.max(2, yEnd - by));
+    ctx.strokeStyle = INK; ctx.globalAlpha = 0.55; ctx.lineWidth = 1.2; ctx.setLineDash([5, 4]); ctx.lineDashOffset = -now / 40;
+    ctx.beginPath(); ctx.moveTo(x - hw, by); ctx.lineTo(x - hw, yEnd); ctx.moveTo(x + hw, by); ctx.lineTo(x + hw, yEnd); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.ellipse(x, yEnd, hw, 3.5, 0, 0, 7); ctx.stroke(); ctx.restore();
+    // carried vial (kept clear of the finger)
+    if (D && D.moved) { ctx.save(); ctx.translate(D.x, D.y - 66 + 8); ctx.rotate(clamp((D.vx || 0) * 0.03, -0.5, 0.5)); ctx.globalAlpha = 0.92; drawVial(ctx, mat, -22, -38, 44, 76, {}); ctx.restore(); }
+    // result symbols, at least 60px above the finger
+    const fingerY = D ? D.y : ptr.y;
+    const iy = Math.min(yEnd - 22, fingerY - 70), n = pv.items.length;
+    pv.items.forEach((it, i) => {
+      const ix = clamp(x + (i - (n - 1) / 2) * 44, L.bx + 24, L.bx + L.bw - 24), bob = Math.sin(now / 260 + i) * 2;
+      ctx.save(); ctx.globalAlpha = 0.92; ctx.translate(ix, Math.max(by + 12, iy) + bob);
+      ctx.beginPath(); ctx.arc(0, 0, 16, 0, 7); ctx.fillStyle = "rgba(239,228,200,.88)"; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.setLineDash([3, 2]); ctx.stroke(); ctx.setLineDash([]);
+      drawRx(ctx, it.type, 0, 0, 10);
+      if (it.est) drawNum(ctx, "+" + fmt(it.est), 0, 26, 9, { color: "rgba(42,28,18,.55)", halo: true, wt: 0.8 });
+      ctx.restore();
+    });
+  } else if (kind === "match") {
+    const [cx, cy] = pxToCell(tip.x, tip.y), pm = previewMatch(cx, cy); G.preview = { items: pm.cells.length ? [{ type: "burn" }] : [] };
+    const x = cellX(cx), y = cellY(cy), r = 3.5 * cp;
+    ctx.save(); ctx.strokeStyle = "#b8381e"; ctx.lineWidth = 1.6; ctx.setLineDash([3, 3]); ctx.lineDashOffset = -now / 50; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+    const k = (Math.sin(now / 90) + 1) / 2; ctx.fillStyle = `rgba(232,117,47,${0.35 + k * 0.4})`; ctx.strokeStyle = "#e8752f";
+    for (const [fx_, fy_] of pm.cells) { ctx.fillRect(L.bx + fx_ * cp - 0.5, L.by + fy_ * cp - 0.5, cp + 1, cp + 1); }
+    if (!pm.cells.length) { ctx.strokeStyle = "rgba(42,28,18,.7)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 6, y - 6); ctx.lineTo(x + 6, y + 6); ctx.moveTo(x + 6, y - 6); ctx.lineTo(x - 6, y + 6); ctx.stroke(); }
+    if (pm.blast) { drawRx(ctx, "blast", x, y - r - 14, 11); }
+    else if (pm.water && pm.cells.length < 3) { drawRx(ctx, "steam", x, y - r - 12, 9); }
+    ctx.restore();
+    if (D && D.moved) { drawMatch(ctx, D.x, D.y - 60, 16, true, 1); }
+  }
+}
+
+function drawFlask(now) {
+  const f = L.flask, cap = R.target * 1.5;
+  // flight of gold sand
   for (const p of fx.gold) {
     if (p.done) continue;
-    const t = (now - p.born) / p.dur;
-    if (t < 0) continue;
-    let x, y;
+    const t = (now - p.born) / p.dur; if (t < 0) continue;
     if (t >= 1) { p.done = true; G.displayGold += p.v; continue; }
-    if (t < 0.3) { const k = t / 0.3; x = L.bx + p.x0 * cp + (tube[0][0] - L.bx - p.x0 * cp) * k; y = L.by + p.y0 * cp + (tube[0][1] - L.by - p.y0 * cp) * k * k; }
-    else if (t < 0.8) { const k = (t - 0.3) / 0.5, u = 1 - k; x = u * u * u * tube[0][0] + 3 * u * u * k * tube[1][0] + 3 * u * k * k * tube[2][0] + k * k * k * tube[3][0]; y = u * u * u * tube[0][1] + 3 * u * u * k * tube[1][1] + 3 * u * k * k * tube[2][1] + k * k * k * tube[3][1]; }
-    else { const k = (t - 0.8) / 0.2; x = tube[3][0]; y = tube[3][1] + (flaskY(G.displayGold / cap) - tube[3][1]) * k; }
-    ctx.fillStyle = "#c8961e"; ctx.beginPath(); ctx.arc(x, y, cp * 0.7, 0, 7); ctx.fill();
-    ctx.fillStyle = "#f3d77a"; ctx.fillRect(x - 0.5, y - 0.5, 1, 1);
+    const P0 = [p.x0, p.y0], P1 = [p.x0 + 70 + p.spread * 30, p.y0 - 60], P2 = [f.cx - 40 + p.spread * 20, f.neckTop - 50], P3 = [f.cx + p.spread * 3, f.neckTop - 4];
+    let x, y;
+    if (t < 0.78) { const k = t / 0.78, u = 1 - k; x = u * u * u * P0[0] + 3 * u * u * k * P1[0] + 3 * u * k * k * P2[0] + k * k * k * P3[0]; y = u * u * u * P0[1] + 3 * u * u * k * P1[1] + 3 * u * k * k * P2[1] + k * k * k * P3[1]; }
+    else { const k = (t - 0.78) / 0.22; x = P3[0]; y = P3[1] + (flaskY(G.displayGold / cap) - P3[1]) * k * k; }
+    ctx.fillStyle = COL.gold; ctx.beginPath(); ctx.arc(x, y, 2.1, 0, 7); ctx.fill(); ctx.fillStyle = COL.goldHi; ctx.fillRect(x - 0.6, y - 0.9, 1.2, 1.2);
   }
   fx.gold = fx.gold.filter(p => !p.done);
-  if (!fx.gold.length) G.displayGold = R.gold; // exact once all landed
+  if (!fx.gold.length && !fx.tally && !fx.tallyQ.length) G.displayGold = R.gold;
   const lvl = flaskY(G.displayGold / cap);
   ctx.save(); flaskPath(ctx); ctx.clip();
+  ctx.fillStyle = "rgba(246,238,214,.45)"; ctx.fillRect(f.cx - f.r - 2, f.neckTop, f.r * 2 + 4, f.bottom - f.neckTop + 4);
   if (G.displayGold > 0) {
-    ctx.fillStyle = "#c8961e"; ctx.fillRect(f.cx - f.r - 2, lvl, f.r * 2 + 4, f.bottom - lvl + 2);
-    // stippled sheen
-    ctx.fillStyle = "#f0d27a";
-    for (let i = 0; i < 70; i++) { const sx = f.cx - f.r + ((i * 53) % (f.r * 2)), sy = lvl + ((i * 37) % Math.max(1, (f.bottom - lvl))); if (((i + (now >> 8)) % 5) === 0) ctx.fillRect(sx, sy, 1.5, 1.5); }
-    ctx.strokeStyle = "rgba(42,28,18,.5)"; ctx.lineWidth = 0.8;
-    for (let y = lvl + 3; y < f.bottom; y += 4) { ctx.beginPath(); ctx.moveTo(f.cx - f.r, y); ctx.lineTo(f.cx + f.r, y); ctx.stroke(); }
+    ctx.fillStyle = COL.gold; ctx.fillRect(f.cx - f.r - 2, lvl, f.r * 2 + 4, f.bottom - lvl + 2);
+    ctx.fillStyle = COL.goldHi; for (let i = 0; i < 40; i++) { const sx = f.cx - f.r + ((i * 53) % (f.r * 2)), sy = lvl + ((i * 37) % Math.max(1, f.bottom - lvl)); if (((i + (now >> 8)) % 5) === 0) ctx.fillRect(sx, sy, 1.4, 1.4); }
+    ctx.strokeStyle = "rgba(42,28,18,.5)"; ctx.lineWidth = 0.7; for (let y = lvl + 3; y < f.bottom; y += 4) { ctx.beginPath(); ctx.moveTo(f.cx - f.r, y); ctx.lineTo(f.cx + f.r, y); ctx.stroke(); }
   }
   ctx.restore();
+  ctx.strokeStyle = INK; ctx.lineWidth = 2; flaskPath(ctx); ctx.stroke();
+  ctx.save(); flaskPath(ctx); ctx.clip(); ctx.globalAlpha = 0.35; ctx.lineWidth = 0.7; for (let y = f.neckTop; y < f.bottom; y += 5) { ctx.beginPath(); ctx.moveTo(f.cx + f.r * 0.55, y); ctx.lineTo(f.cx + f.r, y + 3); ctx.stroke(); } ctx.restore();
   // gold line (target)
-  const gy = flaskY(R.target / cap);
-  const reached = G.displayGold >= R.target;
-  ctx.strokeStyle = reached ? "#a87814" : "#b8381e"; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
-  ctx.beginPath(); ctx.moveTo(f.cx - f.r - cp * 2, gy); ctx.lineTo(f.cx + f.r + cp * 2, gy); ctx.stroke(); ctx.setLineDash([]);
-  ctx.font = `900 ${Math.max(12, cp * 2.8)}px "Noto Serif TC", serif`; ctx.textAlign = "center"; ctx.fillStyle = reached ? "#a87814" : "#b8381e";
-  ctx.lineWidth = 3; ctx.strokeStyle = "rgba(243,233,207,.9)";
-  ctx.strokeText("金線", f.cx, gy - cp * 2); ctx.fillText("金線", f.cx, gy - cp * 2);
-  ctx.font = `${Math.max(11, cp * 2.4)}px "Noto Serif TC", serif`; ctx.fillStyle = "#2a1c12";
-  ctx.strokeText(fmt(R.target), f.cx, gy + cp * 2.8); ctx.fillText(fmt(R.target), f.cx, gy + cp * 2.8);
-  // current amount label
-  ctx.font = `600 ${Math.max(13, cp * 3.2)}px "Noto Serif TC", serif`; ctx.fillStyle = "#a87814";
-  if (G.displayGold > 0) {
-    const over = G.displayGold > cap;
-    const lbl = over ? `${fmt(G.displayGold)}　溢出！` : fmt(G.displayGold);
-    const ly = Math.max(f.top - cp * 2, lvl - cp * 2.4);
-    ctx.strokeText(lbl, f.cx, ly); ctx.fillText(lbl, f.cx, ly);
-  }
+  const gy = flaskY(R.target / cap), reached = G.displayGold >= R.target;
+  if (reached && !G.reachedFlag) { G.reachedFlag = true; G.lineFlash = now; tone(110, 0.4, "sine", 0.08); tone(880, 0.25, "triangle", 0.05); }
+  const fl = G.lineFlash ? (now - G.lineFlash) / 900 : 2, flash = fl < 1 ? (Math.floor(fl * 4) % 2 === 0 ? 1 : 0) : 0;
+  ctx.strokeStyle = reached ? "#a87814" : "#b8381e"; ctx.lineWidth = flash ? 4 : 2.2; ctx.setLineDash([5, 3]);
+  ctx.beginPath(); ctx.moveTo(f.cx - f.r - 5, gy); ctx.lineTo(f.cx + f.r + 5, gy); ctx.stroke(); ctx.setLineDash([]);
+  drawNum(ctx, fmt(R.target), f.cx, gy - 9, 10, { color: reached ? COL.gold : "#b8381e", halo: true, wt: 0.9 });
+  drawNum(ctx, fmt(G.displayGold), f.cx, f.bottom + 12, 11, { color: COL.gold, halo: true, wt: 0.95 });
 }
-function focusLedger() {
-  let best = null;
-  for (const Lg of R.order) if (!Lg.closed && Lg.n > 0 && (!best || Lg.lastF > best.lastF)) best = Lg;
-  if (best) return best;
-  const c = R.closedLog[R.closedLog.length - 1];
-  if (c && R.frame - c.closeF < 240) return c;
-  return null;
-}
-// lines from the pour point to its ledger card
-function drawLinks() {
-  const svg = document.getElementById("links");
-  const cr = canvas.getBoundingClientRect();
-  let out = "";
-  for (const Lg of R.order) {
-    const m = meta.get(Lg.uid); if (!m || !m.el || !m.el.isConnected) continue;
-    if (Lg.closed && performance.now() - m.closing > 1800) continue;
-    const er = m.el.getBoundingClientRect();
-    const sx = cr.left + L.bx + (m.sn ? m.sx / m.sn : Lg.x) * L.cp, sy = cr.top + L.by + (m.sn ? m.sy / m.sn : (Lg.y || 0)) * L.cp;
-    const tx = er.left, ty = er.top + 14;
-    out += `<path d="M${sx.toFixed(1)} ${sy.toFixed(1)} C ${(sx + tx) / 2} ${sy}, ${(sx + tx) / 2} ${ty}, ${tx} ${ty}" fill="none" stroke="${ledgerColor(Lg)}" stroke-width="1.3" stroke-dasharray="2 3" opacity=".8"/><circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="3" fill="${ledgerColor(Lg)}"/>`;
-  }
-  if (out !== lastLinks) { svg.innerHTML = out; lastLinks = out; }
-}
-let lastLinks = "";
 
-// ---------------- audio (optional, tiny) ----------------
-let AC = null, soundOn = false; const lastBeep = {};
-const NOTE = { burn: 196, blueflame: 233, quench: 392, solidify: 131, dissolve: 523, blast: 82, vitrify: 659, melt: 440, freeze: 784, bloom: 330, condense: 587, boil: 247, acidrain: 698, bake: 165, fume: 294, lidpop: 60, gold: 880, match: 1200, lid: 140 };
-function sfx(type, force) {
-  if (!soundOn || !AC) return;
-  const now = performance.now();
-  if (!force && now - (lastBeep[type] || 0) < 110) return;
-  lastBeep[type] = now;
-  const o = AC.createOscillator(), g = AC.createGain();
-  const big = type === "blast" || type === "lidpop";
-  o.type = big ? "sawtooth" : "triangle"; o.frequency.value = (NOTE[type] || 300) * (0.95 + Math.random() * 0.1);
-  g.gain.setValueAtTime(big ? 0.15 : 0.035, AC.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + (big ? 0.3 : 0.08));
-  o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime + 0.35);
+function drawTallyFx(now) {
+  const T = fx.tally; if (!T) return;
+  const { t, tA, tC, C } = tallyGeom(T, now);
+  const from = { x: cellX(T.cx), y: cellY(T.cy) }, B = { x: L.rcx, y: L.baseY }, Mx = { x: L.rcx, y: L.multY };
+  T.chips.forEach((c, i) => {
+    if (c.done) return;
+    const k = (t - i * T_STAGGER) / T_FLY; if (k < 0) return;
+    const e = easeIn(clamp(k, 0, 1)), x = from.x + (B.x - from.x) * e, y = from.y + (B.y - from.y) * e - Math.sin(e * Math.PI) * 24;
+    ctx.save(); ctx.translate(x, y);
+    if (c.type !== "stale") drawRx(ctx, c.type, -numWidth(fmt(c.sub), 10) / 2 - 3, 0, 6.5);
+    drawNum(ctx, fmt(c.sub), 6, 0, 10, { color: INK, halo: true, wt: 0.9 }); ctx.restore();
+  });
+  if (T.multShown && !T.goldShown) {
+    const k = clamp((t - (tC)) / 260, 0, 1), e = easeIn(k);
+    if (k > 0) {
+      const bx_ = B.x + (C.x - 24 - B.x) * e, by_ = B.y + (C.y - B.y) * e, mx_ = Mx.x + (C.x + 24 - Mx.x) * e, my_ = Mx.y + (C.y - Mx.y) * e;
+      ctx.save(); ctx.globalAlpha = 1;
+      drawNum(ctx, fmt(T.base), bx_, by_, 16, { color: INK, halo: true, wt: 0.95 }); drawNum(ctx, "×" + T.res.elem, mx_, my_, 18, { color: "#b8381e", halo: true, wt: 1 }); ctx.restore();
+    }
+  }
+  if (T.goldShown) {
+    const a = clamp((now - T.goldPop) / 200, 0, 1), sc = 1.5 - 0.5 * backOut(a), fade = T.spawned ? 1 - clamp((now - T.spawnAt) / 450, 0, 1) : 1;
+    const gs = 24 * sc * (T.res.gold >= 100000 ? 1.15 : 1);
+    ctx.save(); ctx.globalAlpha = fade; drawNum(ctx, fmt(T.res.gold), C.x, C.y, gs, { color: COL.gold, halo: "#2a1c12", wt: 1.0 }); drawNum(ctx, fmt(T.res.gold), C.x, C.y, gs, { color: COL.goldHi, wt: 0.55 });
+    ctx.restore();
+  }
 }
-function ensureAudio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } }
+
+function drawTutHand(now) {
+  if (G.tut >= 9 || D || G.ended) return;
+  if (now - G.idleSince < 4000) return;
+  const loop = 3000, t = ((now - G.idleSince - 4000) % loop) / loop;
+  let from, to, kind = "vial", mat = null;
+  if (G.tut <= 2) {
+    const want = G.tut === 0 ? M.WATER : G.tut === 1 ? M.LAVA : M.OIL, i = G.hand.indexOf(want); if (i < 0) return;
+    const s = L.slot(i); from = [s.x + s.w / 2, s.y + s.h / 2]; to = [want === M.OIL ? L.bx + L.bw * 0.2 : L.bx + L.bw * 0.5, L.by + L.bh * 0.55]; mat = want;
+  } else {
+    const b = L.btn.match; from = [b.x + b.w / 2, b.y + b.h / 2]; kind = "match";
+    to = [G.fuelX != null && G.fuelX > 0 ? cellX(G.fuelX) : L.bx + L.bw * 0.5, G.fuelY != null && G.fuelY > 0 ? cellY(G.fuelY) + 66 : L.by + L.bh * 0.7];
+  }
+  let k = t < 0.15 ? 0 : t < 0.65 ? (t - 0.15) / 0.5 : 1; k = k * k * (3 - 2 * k);
+  const x = from[0] + (to[0] - from[0]) * k, y = from[1] + (to[1] - from[1]) * k - (kind === "vial" ? 0 : 0) * 0;
+  ctx.save();
+  if (t >= 0.65 && t < 0.9 && kind === "vial") { // ghost beam where it will land
+    const hw = 4.5 * L.cp, cx = to[0], yE = L.by + colContact(dropCol(cx), 4) * L.cp; ctx.fillStyle = "rgba(168,119,74,.18)"; ctx.fillRect(cx - hw, L.by, hw * 2, yE - L.by);
+  }
+  if (t < 0.9) { ctx.globalAlpha = 0.9; if (kind === "vial") drawVial(ctx, mat, x - 22, y - 70, 44, 76, {}); else drawMatch(ctx, x, y - 66, 16, t >= 0.65, 1); }
+  drawHand(ctx, x, y, 0.85, t > 0.15 && t < 0.65);
+  ctx.restore();
+}
+
+function drawCursorHint(now) { // pressed-state ring under finger/mouse
+  if (!ptr.inside || !ptr.down) return;
+  ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 14, 0, 7); ctx.strokeStyle = "rgba(42,28,18,.3)"; ctx.lineWidth = 1.5; ctx.stroke();
+}
+
+// ---------------- screens: shop / lose / win ----------------
+function shopLayout() {
+  const oy = L.shopOY;
+  return { oy, badge: i => ({ x: 195 + (i - 2) * 56, y: 100 + oy * 0.5, r: 22 }),
+    deckY: 150 + oy * 0.5, shelf1: 292 + oy, board1: 352 + oy, shelf2: 424 + oy, board2: 486 + oy, rowY: 566 + oy,
+    item: (r, i) => ({ x: i ? 285 : 105, y: r === 0 ? 292 + oy : 424 + oy, w: 110, h: 100 }),
+    reroll: { x: 105, y: L.Hl - 110, r: 34 }, exit: { x: 285, y: L.Hl - 110, r: 34 } };
+}
+function rollShop() {
+  const vials = shuffle(SHOP_VIALS.slice()).slice(0, 2).map(m => ({ kind: "vial", m, price: 3, born: NOW() }));
+  const pool = ARCANA.filter(c => !G.arc.includes(c.id) && (!c.rare || G.round >= 2));
+  const arc = shuffle(pool.slice()).slice(0, 2).map(c => ({ kind: "arc", c, price: c.price, born: NOW() }));
+  G.shopItems = [...vials, ...arc]; G.shopT = NOW();
+}
+function enterShop(earned) {
+  mode = "shop"; G.round++; G.reroll = 1; rollShop();
+  G.shownMoney = G.money - earned; fx.coins = [];
+  for (let i = 0; i < Math.min(12, earned * 2); i++) fx.coins.push({ born: NOW() + 250 + i * 90, x0: L.flask.cx, y0: L.flask.cy, v: earned / Math.min(12, earned * 2) });
+  buildBg();
+}
+function drawShop(now) {
+  const S = shopLayout();
+  // coins flying in
+  for (const c of fx.coins) { const t = (now - c.born) / 700; if (t < 0 || c.done) continue; if (t >= 1) { c.done = true; G.shownMoney += c.v; fx.bump.coin = now; continue; } const e = easeIn(t); drawCoin(ctx, c.x0 + (352 - c.x0) * e, c.y0 + (22 - c.y0) * e - Math.sin(e * Math.PI) * 60, 8); }
+  fx.coins = fx.coins.filter(c => !c.done);
+  // owned arcana slots
+  for (let i = 0; i < MAX_ARC; i++) { const b = S.badge(i); if (i < G.arc.length) { const a = ARCANA.find(q => q.id === G.arc[i]); drawBadge(ctx, a.id, b.x, b.y, b.r, a.rare); } else { ctx.beginPath(); ctx.arc(b.x, b.y, b.r - 3, 0, 7); ctx.setLineDash([3, 4]); ctx.strokeStyle = "rgba(42,28,18,.35)"; ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]); } }
+  // deck, as a row of small vials
+  const per = 12, w = 26, x0 = 195 - (Math.min(per, G.deck.length) - 1) * w / 2;
+  G.deck.forEach((m, i) => { const r = Math.floor(i / per), c = i % per, rowN = Math.min(per, G.deck.length - r * per), xx = 195 - (rowN - 1) * w / 2 + c * w; drawVial(ctx, m, xx - 9, S.deckY + r * 42 - 14, 18, 30, {}); });
+  // shelves
+  ctx.strokeStyle = INK; ctx.lineCap = "round";
+  for (const by_ of [S.board1, S.board2]) { ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(30, by_); ctx.lineTo(360, by_); ctx.stroke(); ctx.lineWidth = 0.8; ctx.globalAlpha = 0.5; for (let x = 34; x < 356; x += 7) { ctx.beginPath(); ctx.moveTo(x, by_ + 3); ctx.lineTo(x - 4, by_ + 9); ctx.stroke(); } ctx.globalAlpha = 1; }
+  G.shopItems.forEach((it, i) => {
+    if (it.bought) return;
+    const r = it.kind === "vial" ? 0 : 1, idx = it.kind === "vial" ? i : i - 2, p = S.item(r, idx);
+    const drop = clamp((now - it.born - idx * 90) / 300, 0, 1), dy = (1 - backOut(drop)) * -40 * 0 + (1 - easeOut(drop)) * -50;
+    const hov = ptr.inside && ptr.type === "mouse" && inRect(ptr.x, ptr.y, { x: p.x - p.w / 2, y: p.y - p.h / 2, w: p.w, h: p.h });
+    const afford = G.money >= it.price, wob = wigAngle("i" + i, now) * (afford ? 1 : 0);
+    ctx.save(); ctx.globalAlpha = easeOut(drop); ctx.translate(p.x + nudgeOff("i" + i, now), p.y + dy - (hov ? 6 : 0)); ctx.rotate(wob);
+    if (it.kind === "vial") drawVial(ctx, it.m, -22, -42, 44, 76, {}); else drawBadge(ctx, it.c.id, 0, -8, 36, it.c.rare);
+    ctx.restore();
+    ctx.save(); ctx.globalAlpha = easeOut(drop);
+    drawCoin(ctx, p.x - 14, p.y + 49, 7.5); drawNum(ctx, String(it.price), p.x + 12, p.y + 49, 13, { color: afford ? INK : "#b8381e", halo: true, wt: 0.95 }); ctx.restore();
+  });
+  // reroll + exit
+  const rr = S.reroll, ex = S.exit, rAfford = G.money >= G.reroll;
+  ctx.save(); ctx.translate(rr.x + nudgeOff("reroll", now), rr.y - 8); ctx.globalAlpha = rAfford ? 1 : 0.45; drawReroll(ctx, 0, 0, 22); ctx.restore();
+  drawCoin(ctx, rr.x - 12, rr.y + 32, 7); drawNum(ctx, String(G.reroll), rr.x + 8, rr.y + 32, 12, { color: rAfford ? INK : "#b8381e", halo: true });
+  const pulse = 1 + Math.sin(now / 300) * 0.04;
+  ctx.save(); ctx.translate(ex.x, ex.y); ctx.scale(pulse, pulse); drawDoor(ctx, 0, 0, 26); ctx.restore();
+}
+function screenDown(x, y, key) {
+  if (mode === "shop") {
+    if (key) return exitShop();
+    const S = shopLayout();
+    if (inRect(x, y, L.btn.sound, 2)) { soundOn = !soundOn; return; }
+    if (Math.hypot(x - S.exit.x, y - S.exit.y) < S.exit.r + 8) return exitShop();
+    if (Math.hypot(x - S.reroll.x, y - S.reroll.y) < S.reroll.r + 8) {
+      if (G.money < G.reroll) { nudge("reroll"); fx.bump = { coin: NOW(), bad: true }; return; }
+      G.money -= G.reroll; G.shownMoney = G.money; G.reroll++; rollShop(); tone(400, 0.1); return;
+    }
+    G.shopItems.forEach((it, i) => {
+      if (it.bought) return;
+      const r = it.kind === "vial" ? 0 : 1, idx = it.kind === "vial" ? i : i - 2, p = S.item(r, idx);
+      if (!inRect(x, y, { x: p.x - p.w / 2, y: p.y - p.h / 2, w: p.w, h: p.h + 20 })) return;
+      if (G.money < it.price || (it.kind === "arc" && G.arc.length >= MAX_ARC)) { nudge("i" + i); fx.bump = { coin: NOW(), bad: true }; tone(120, 0.15, "square", 0.04); return; }
+      G.money -= it.price; G.shownMoney = G.money; it.bought = true;
+      if (it.kind === "vial") G.deck.push(it.m); else G.arc.push(it.c.id);
+      tone(660, 0.08); tone(990, 0.12); buzz(15); fx.bump = { coin: NOW() };
+    });
+    return;
+  }
+  if (mode === "lose" || mode === "win") { if (key || Math.hypot(x - 195, y - (L.Hl - 120)) < 56) { newGame(); } }
+}
+function exitShop() { startRound(); }
+function drawEndScreen(now) {
+  ctx.fillStyle = "rgba(60,44,28,.35)"; ctx.fillRect(0, 0, LW, L.Hl);
+  const win = mode === "win", cx = 195, cy = L.Hl * 0.4;
+  // a big flask showing how far the gold got
+  const k = Math.min(1, now - G.endT > 0 ? (now - G.endT) / 800 : 0), frac = win ? 1 : clamp(R.gold / R.target, 0, 1) * 2 / 3;
+  ctx.save(); ctx.translate(cx, cy);
+  ctx.beginPath(); ctx.moveTo(-18, -110); ctx.lineTo(-18, -50); ctx.arc(0, 20, 86, -Math.PI / 2 - 0.34, Math.PI * 1.5 + 0.34, true); ctx.lineTo(18, -110);
+  ctx.save(); ctx.clip(); ctx.fillStyle = "rgba(246,238,214,.55)"; ctx.fillRect(-100, -120, 200, 240);
+  const ly = 106 - (216 * frac * easeOut(k)); ctx.fillStyle = COL.gold; ctx.fillRect(-100, ly, 200, 200);
+  ctx.strokeStyle = "rgba(42,28,18,.4)"; ctx.lineWidth = 0.8; for (let y = ly + 4; y < 108; y += 5) { ctx.beginPath(); ctx.moveTo(-90, y); ctx.lineTo(90, y); ctx.stroke(); }
+  ctx.restore(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+  const gl = 106 - 216 * (2 / 3); ctx.setLineDash([7, 4]); ctx.strokeStyle = win ? COL.gold : "#b8381e"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-98, gl); ctx.lineTo(98, gl); ctx.stroke(); ctx.setLineDash([]);
+  if (!win) { ctx.strokeStyle = INK; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(-10, 40); ctx.lineTo(8, 58); ctx.lineTo(-4, 74); ctx.lineTo(14, 96); ctx.moveTo(8, 58); ctx.lineTo(30, 66); ctx.stroke(); }
+  ctx.restore();
+  drawNum(ctx, fmt(R.gold) + "/" + fmt(R.target), cx, cy + 150, 20, { color: win ? COL.gold : "#b8381e", halo: true, wt: 0.95 });
+  const pulse = 1 + Math.sin(now / 280) * 0.05;
+  ctx.save(); ctx.translate(cx, L.Hl - 120); ctx.scale(pulse, pulse); ctx.beginPath(); ctx.arc(0, 0, 40, 0, 7); ctx.fillStyle = "rgba(239,228,200,.95)"; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.4; ctx.stroke(); drawRestart(ctx, 0, 0, 20); ctx.restore();
+}
 
 // ---------------- main loop ----------------
-let lastT = performance.now(), acc = 0, cardTick = 0;
+let lastT = NOW(), acc = 0, frameN = 0;
 window.__perf = { frames: 0, simMs: 0, drawMs: 0 };
 let slowAcc = 0, slowN = 0;
 function loop(now) {
   const dt = Math.min(100, now - lastT); lastT = now;
-  // adaptive quality: machines without GPU canvas get the crisp wash only
-  if (WASH_BLUR && G && document.getElementById("overlay").hidden) { slowAcc += dt; if (++slowN === 120) { if (slowAcc / slowN > 21) WASH_BLUR = false; slowAcc = 0; slowN = 0; } }
-  if (G && R && document.getElementById("overlay").hidden && !G.ended) {
+  if (WASH_BLUR && mode === "play") { slowAcc += dt; if (++slowN === 120) { if (slowAcc / slowN > 21) WASH_BLUR = false; slowAcc = 0; slowN = 0; } }
+  if (G && R && mode === "play" && !G.ended) {
     acc += dt;
     const waiting = R.pours === 0 && R.matches === 0 && R.active.length === 0;
-    const speed = speedHeld || waiting ? 3 : 1;
-    let n = 0;
-    const t0 = performance.now();
-    while (acc >= 1000 / 60 && n < 4) { R.tick(speed); acc -= 1000 / 60; n++; }
+    const speed = waiting ? 3 : 1;
+    let n = 0; const t0 = performance.now();
+    while (acc >= 1000 / 60 && n < 4) { R.tick(speed); acc -= 1000 / 60; n++; if (R.frame % 6 === 0) { gasHist.push({ f: R.frame, g: R.S.gas }); if (gasHist.length > 12) gasHist.shift(); } }
     if (acc > 100) acc = 0;
     window.__perf.simMs += performance.now() - t0;
-    if (++cardTick % 6 === 0) for (const Lg of R.order) if (!Lg.closed) renderCard(Lg, false);
-    if (R.closedLog.length && !G.tut.done.ledger && R.closedLog.some(x => x.result.gold > 0)) G.tut.done.ledger = now;
-    if (G.tut.done.ledger && !G.tut.done.gold && now - G.tut.done.ledger > 4500) G.tut.done.gold = true;
-    checkEnd();
-  }
+    flushBuckets(now); updateTally(now);
+    checkEnd(now);
+  } else if (G && R && mode === "play") { updateTally(now); }
   if (G && R) {
     const t1 = performance.now();
-    flushBuckets(now);
-    if (!DBG.noink) renderBeaker();
-    render(now);
-    if (!DBG.nolinks && (cardTick & 3) === 0) drawLinks();
-    if (cardTick % 10 === 0) { updateTutorial(); renderSide(); }
-    window.__perf.drawMs += performance.now() - t1; window.__perf.frames++;
+    if (G.shownMoney !== G.money && mode === "play") G.shownMoney = G.money;
+    renderBeaker();
+    ctx.setTransform(DPR * L.sc, 0, 0, DPR * L.sc, 0, 0);
+    const bgUse = mode === "shop" ? bgS : bgC;
+    ctx.drawImage(bgUse, 0, 0, bgUse.width / (DPR * L.sc), bgUse.height / (DPR * L.sc));
+    if (mode === "shop") { drawTopBar(now); drawShop(now); }
+    else {
+      drawBeakerLayers(now);
+      drawLidOnBeaker(now); drawPours(now); drawFloats(now); drawChains(now);
+      drawPreview(now);
+      drawDial(now);
+      drawElements(now, fx.tally);
+      drawFlask(now); drawTallyFx(now);
+      drawHand_(now); drawButtons(now); drawTopBar(now);
+      drawTutHand(now); drawCursorHint(now);
+      if (mode === "lose" || mode === "win") drawEndScreen(now);
+    }
+    window.__perf.drawMs += performance.now() - t1; window.__perf.frames++; frameN++;
   }
   requestAnimationFrame(loop);
 }
-function checkEnd() {
+function checkEnd(now) {
   const st = R.status();
-  if (st === "win" || st === "lose") {
-    G.ended = true; G.sel = -1; G.matchMode = false; renderHand(); renderSide(); setNote(null);
-    const wait = () => { if (fx.gold.length) return setTimeout(wait, 200); setTimeout(st === "win" ? roundClear : gameOver, 700); };
+  if ((st === "win" || st === "lose") && !G.ending) {
+    G.ended = true; G.sel = -1; G.matchMode = false; D = null; G.ending = true;
+    const wait = () => {
+      if (fx.gold.length || fx.tally || fx.tallyQ.length) return setTimeout(wait, 200);
+      setTimeout(() => { G.ending = false; st === "win" ? roundClear() : (mode = "lose", G.endT = NOW(), tone(110, 0.6, "sawtooth", 0.06, 0.5)); }, 800);
+    };
     wait();
   }
 }
-
-// ---------------- overlays ----------------
-const ov = document.getElementById("overlay");
-function showOverlay(html) { ov.innerHTML = `<div class="sheet" role="dialog" aria-modal="true">${html}</div>`; ov.hidden = false; }
-function hideOverlay() { ov.hidden = true; ov.innerHTML = ""; }
 function roundClear() {
-  const target = TARGETS[G.round];
-  const over = Math.min(3, Math.floor((R.gold - target) / target * 2));
+  const target = TARGETS[G.round], over = Math.min(3, Math.floor((R.gold - target) / target * 2));
   const earned = 3 + R.pours + Math.max(0, over);
   G.money += earned;
-  if (G.round === TARGETS.length - 1) { victory(); return; }
-  const best = R.closedLog.reduce((a, b) => (b.result.gold > (a ? a.result.gold : -1) ? b : a), null);
-  G.round++; G.reroll = 1;
-  rollShop();
-  showShop(`煉出 ${fmt(R.gold)} 金（金線 ${fmt(target)}）。獲得 $${earned}：基本 3、剩餘倒料 ${R.pours}、超額 ${Math.max(0, over)}。${best ? `最肥的一本帳：${ledgerTitle(best)} +${fmt(best.result.gold)}。` : ""}`);
+  if (G.round === TARGETS.length - 1) { mode = "win"; G.endT = NOW(); return; }
+  tone(523, 0.15); tone(784, 0.3);
+  enterShop(earned);
 }
-function rollShop() {
-  const vials = shuffle(SHOP_VIALS.slice()).slice(0, 2).map(m => ({ kind: "vial", m, price: 3 }));
-  const pool = ARCANA.filter(c => !G.arc.includes(c.id) && (!c.rare || G.round >= 2));
-  const arc = shuffle(pool.slice()).slice(0, 2).map(c => ({ kind: "arc", c, price: c.price }));
-  G.shopItems = [...vials, ...arc];
-}
-function showShop(msg) {
-  const st = STAGES[Math.floor(G.round / 3)];
-  const items = G.shopItems.map((it, i) => {
-    const bought = it.bought ? " bought" : "";
-    if (it.kind === "vial") { const v = VIALS[it.m]; return `<button type="button" class="item${bought}" data-i="${i}" ${it.bought ? "disabled" : ""}><span class="tag">材料瓶・加入牌組</span><span class="nm">${v.nm}</span><span class="ds">${v.ds}</span><span class="pr">$${it.price}</span></button>`; }
-    return `<button type="button" class="item${bought}${it.c.rare ? " rare" : ""}" data-i="${i}" ${it.bought ? "disabled" : ""}><span class="tag">秘方・永久效果</span><span class="nm">${it.c.nm}</span><span class="ds">${it.c.ds}</span><span class="pr">$${it.price}</span></button>`;
-  }).join("");
-  showOverlay(`
-    <h3>藥鋪<span class="lat">Officina</span></h3>
-    <p class="muted" id="shopMsg">${msg}</p>
-    <div class="row-actions"><span class="money">$${G.money}</span><button type="button" id="reroll">換一批貨 $${G.reroll}</button></div>
-    <div class="shop">${items}</div>
-    <div class="arc">${G.arc.length ? G.arc.map(id => `<i>${ARCANA.find(a => a.id === id).nm}</i>`).join("") : '<span class="muted">秘方槽 0 / 5</span>'}</div>
-    <div class="row-actions"><span class="muted">下一回合：${st.nm} 第 ${G.round % 3 + 1} 回合 · 金線 ${fmt(TARGETS[G.round])}</span><button type="button" class="primary" id="next">開始下一回合 <kbd>Enter</kbd></button></div>`);
-  ov.querySelectorAll(".item").forEach(b => b.addEventListener("click", () => buy(+b.dataset.i)));
-  document.getElementById("reroll").addEventListener("click", () => {
-    if (G.money < G.reroll) { flashMsg("錢不夠"); return; }
-    G.money -= G.reroll; G.reroll++; rollShop(); showShop("換了一批貨。");
-  });
-  document.getElementById("next").addEventListener("click", () => { hideOverlay(); startRound(); });
-}
-function flashMsg(t) { const m = document.getElementById("shopMsg"); if (m) m.textContent = t; }
-function buy(i) {
-  const it = G.shopItems[i]; if (!it || it.bought) return;
-  if (G.money < it.price) { flashMsg("錢不夠"); return; }
-  if (it.kind === "arc" && G.arc.length >= MAX_ARC) { flashMsg("秘方最多 5 個"); return; }
-  G.money -= it.price; it.bought = true;
-  if (it.kind === "vial") G.deck.push(it.m); else G.arc.push(it.c.id);
-  showShop(it.kind === "vial" ? `已把「${VIALS[it.m].nm}」加入牌組。` : `已習得秘方「${it.c.nm}」。`);
-}
-function gameOver() {
-  const best = R.closedLog.reduce((a, b) => (b.result.gold > (a ? a.result.gold : -1) ? b : a), null);
-  showOverlay(`<h3>大業中斷<span class="lat">Opus interruptum</span></h3>
-    <p>${STAGES[Math.floor(G.round / 3)].nm}第 ${G.round % 3 + 1} 回合：煉出 ${fmt(R.gold)} 金，金線是 ${fmt(TARGETS[G.round])}。</p>
-    ${best && best.result.gold > 0 ? `<p class="muted">最好的一本帳是「${ledgerTitle(best)}」+${fmt(best.result.gold)}，點亮了 ${best.result.nLit} 個元素。</p>` : ""}
-    <p class="muted">提示：先鋪可燃物（硫磺浮在水上、油浮在最上層），再用火柴點燃；一本帳點亮越多元素，倍率越高。</p>
-    <div class="row-actions"><span></span><button type="button" class="primary" id="again">重新開始大業 <kbd>Enter</kbd></button></div>`);
-  document.getElementById("again").addEventListener("click", () => { hideOverlay(); newGame(); });
-}
-function victory() {
-  showOverlay(`<h3>大業已成<span class="lat">Opus magnum</span></h3><p>十二回合全部過關。最後一回合煉出 ${fmt(R.gold)} 金。</p>
-    <div class="row-actions"><span></span><button type="button" class="primary" id="again">再煉一次</button></div>`);
-  document.getElementById("again").addEventListener("click", () => { hideOverlay(); newGame(); });
-}
-function showHelp(first) {
-  showOverlay(`<h3>爆鍋煉金<span class="lat">Pour Decisions</span></h3>
-    ${first ? `<p class="hook">把一杯泥巴煉成黃金——用真的會燒、會凝、會爆的物質。</p>` : ""}
-    <ol class="howto">
-      <li><b>倒</b>：選一瓶材料，在燒杯上按住倒出。不用等——上一瓶還在流，就能倒下一瓶。</li>
-      <li><b>點</b>：<b>火柴</b>（<kbd>F</kbd> 或右鍵）點燃你鋪好的硫磺、油；<b>蓋子</b>（<kbd>空白鍵</kbd>）困住氣體，壓力滿了就爆蓋。</li>
-      <li><b>算</b>：每一倒、每根火柴開一本帳。金＝物質 × 元素（1＋點亮的火水土氣＋連鎖）× 秘方。</li>
-      <li><b>煉</b>：結算的金砂流進受器，滿過<b>金線</b>就過關，到藥鋪添購材料與秘方。</li>
-    </ol>
-    <p class="muted">原型 v0.2：畫面、音效、數值都是暫定。第一回合的手牌是固定的教學手牌。</p>
-    <div class="row-actions"><span></span><button type="button" class="primary" id="go">${first ? "開始大業" : "繼續"} <kbd>Enter</kbd></button></div>`);
-  document.getElementById("go").addEventListener("click", hideOverlay);
-}
-document.getElementById("btnSound").addEventListener("click", e => {
-  ensureAudio(); soundOn = !soundOn;
-  e.currentTarget.textContent = soundOn ? "音效 開" : "音效 關";
-  e.currentTarget.setAttribute("aria-pressed", String(soundOn));
-});
-document.getElementById("btnHelp").addEventListener("click", () => showHelp(false));
-document.getElementById("btnRestart").addEventListener("click", () => { hideOverlay(); newGame(); });
-window.addEventListener("resize", () => { computeLayout(); });
-window.addEventListener("scroll", () => { if (G) buildBg(); });
 
-computeLayout();
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { computeLayout(); });
-newGame(+(new URLSearchParams(location.search).get("seed")) || 0);
-if (!new URLSearchParams(location.search).has("skipintro")) showHelp(true);
+// ---------------- boot ----------------
+window.addEventListener("resize", () => { layout(); });
+buildPatterns();
+layout();
+newGame(+QS.get("seed") || 0);
+if (QS.has("icons")) { window.__iconsOnly = true; }
 requestAnimationFrame(loop);
-window.__game = { get G() { return G; }, get R() { return R; }, get L() { return L; }, M, VIALS };
+window.__game = {
+  get G() { return G; }, get R() { return R; }, get L() { return L; }, get mode() { return mode; }, get fx() { return fx; }, get D() { return D; }, M,
+  clientOf, cellClient: (cx, cy) => clientOf(cellX(cx), cellY(cy)), slotClient: i => { const s = L.slot(i); return clientOf(s.x + s.w / 2, s.y + s.h / 2); },
+  btnClient: k => { const b = L.btn[k]; return clientOf(b.x + b.w / 2, b.y + b.h / 2); }, shopPos: () => { const S = shopLayout(); return { items: G.shopItems.map((it, i) => { const r = it.kind === 'vial' ? 0 : 1, idx = it.kind === 'vial' ? i : i - 2; return S.item(r, idx); }), reroll: S.reroll, exit: S.exit }; }, setSound: v => { soundOn = v; },
+  drawIcons: () => drawIconSheet(),
+};
+function drawIconSheet() {
+  const mats = [M.SAND, M.WATER, M.OIL, M.LAVA, M.ACID, M.POWDER, M.ICE, M.SEED, M.EMBER, M.SULFUR];
+  const rxs = RXK.concat(["steam"]);
+  const cw = 720, ch = 560, c = document.createElement("canvas"); c.width = cw * 2; c.height = ch * 2; const g = c.getContext("2d"); g.scale(2, 2);
+  const draw = (gg, oy) => {
+    gg.save(); gg.translate(0, oy);
+    mats.forEach((m, i) => drawVial(gg, m, 20 + i * 70, 20, 52, 88, {}));
+    rxs.forEach((r, i) => { const x = 40 + (i % 9) * 76, y = 160 + Math.floor(i / 9) * 70; gg.beginPath(); gg.arc(x, y, 26, 0, 7); gg.fillStyle = "rgba(239,228,200,.9)"; gg.fill(); gg.strokeStyle = INK; gg.lineWidth = 1; gg.stroke(); drawRx(gg, r, x, y, 17); });
+    for (let e = 0; e < 4; e++) drawEl(gg, e, 40 + e * 60, 320, 14, true, false, 0);
+    drawMatch(gg, 300, 320, 20, false, 2); drawLid(gg, 360, 322, 22, true); drawLid(gg, 420, 322, 22, false); drawHourglass(gg, 480, 322, 18); drawCoin(gg, 530, 322, 12); drawReroll(gg, 580, 322, 18); drawDoor(gg, 640, 322, 18);
+    ARCANA.forEach((a, i) => drawBadge(gg, a.id, 40 + i * 42, 380, 18, a.rare));
+    drawNum(gg, "0123456789×+−=/%.,k", 20, 430, 22, {});
+    gg.restore();
+  };
+  g.fillStyle = "#e3d6b4"; g.fillRect(0, 0, cw, ch); draw(g, 0);
+  return c;
+}
 })();
+
 </script>
 </body>
 </html>

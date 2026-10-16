@@ -1,5 +1,9 @@
 # 交接檔（最新狀態寫在最上面）
 
+## 2026-10-17 v0.3a 直屏無文字原型完成（原型工程師）
+- `prototype/web/index.html`（`python3 build.py` 由 template＋sim.js＋src/{glyphs,core_render,game}.js 產生）：全 canvas 直屏 390×(600–880)、桌機置中；畫面零文字（自繪數字、圖示），拖曳倒料＋落點柱＋反應符號預覽、火柴／蓋子預覽、計分動畫（基礎分→×倍率→金→金砂）、無字三拍教學＋閒置示範手、無字商店與結算。sim.js 網格改 100×150、lidMax 800（bot：照教學 100%）。
+- 紀錄：`docs/design/playtest_log_v03.md`（2 輪、已知問題）；圖示表 `docs/art/icons_v03.png`。測試腳本 playtest_v03.js／playtest_v03b.js。下一步：HSU 手機試玩 → v0.3b 構築（DEPTH_v1 §6）。
+
 ## 2026-10-17 深度與無字 UI 設計（首席設計兼 UI 子代理）
 - 產出 `docs/design/DEPTH_v1.md`：8 個落沙專屬構築機制（v0.3：杯格符文、殘渣地層、瓶性；試玩版：燒杯改造、配方與等級、蒸餾台、Boss 杯；正式版：串聯杯）、一局 4 幕×4 回合約 45–60 分、7 流派、局外（圖鑑為核心＋8 燒杯×8 難度＋挑戰杯，約 50–65 小時，不 pay-to-win）、術語清理表（刪「大業」等）。
 - 產出 `docs/design/UI_NO_TEXT.md`：Mini Metro／Limbo／Balatro／Baba／Islanders 原則、材料與反應圖形語言、hover／ghost 預覽、直屏 390×844 佈局、去 AI 感清單（4 類各 5–6 條）。
