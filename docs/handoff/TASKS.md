@@ -15,6 +15,10 @@
 - [x] v0.2 瀏覽器原型（GDD §8 八項，含刻線渲染）→ prototype/web/，自主試玩紀錄 docs/design/playtest_log_v02.md
 - [ ] v0.2 發布 artifact 給 HSU 試玩（4 題見 docs/design/playtests/2026-10-16_v02.md）
 - [ ] 整局 bot（含商店）調第 2 回合後金線與硫磺強度
+- [x] 構築深度與局外設計 → docs/design/DEPTH_v1.md
+- [x] 無文字 UI 規範 → docs/design/UI_NO_TEXT.md
+- [ ] v0.3a 直屏無文字原型（UI_NO_TEXT §8，8 項）
+- [ ] v0.3b 構築版（DEPTH_v1 §6：地層、符文、瓶性、一局 16 回合）
 - [ ] 範圍與排程（里程碑、上架時間表、Next Fest 目標）
 
 ## 階段 1：Unity 基礎建設
