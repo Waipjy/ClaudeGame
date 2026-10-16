@@ -13,24 +13,25 @@
 
   // Elements: 0 fire 1 water 2 earth 3 air
   const EL = ["fire", "water", "earth", "air"];
-  // reaction types — pts = base 物質 per event, el = elements lit (GDD §4)
+  // reaction table (V04_SPEC §3.2, single source). trig = trigger pts (once per ledger when n >= 3; burst: per event), vol = pts per 10 cells, el = elements lit
+  // trait: burst 爆發 / sustain 持續 / chain 連鎖 / break 破壞 / residue 殘渣 / catalyst 觸媒
   const RX = {
-    burn:      { pts: 2,  el: [0] },     // 燃燒
-    blueflame: { pts: 3,  el: [0] },     // 藍焰（硫磺）
-    blast:     { pts: 12, el: [0, 3] },  // 爆炸
-    quench:    { pts: 3,  el: [1, 3] },  // 淬熄
-    condense:  { pts: 1,  el: [1] },     // 凝結
-    melt:      { pts: 3,  el: [1] },     // 融冰
-    freeze:    { pts: 2,  el: [1] },     // 結凍
-    acidrain:  { pts: 2,  el: [1] },     // 酸雨（硫煙＋水/蒸氣）
-    solidify:  { pts: 8,  el: [2] },     // 凝岩
-    vitrify:   { pts: 6,  el: [2] },     // 熔玻
-    dissolve:  { pts: 3,  el: [2] },     // 溶蝕
-    bake:      { pts: 4,  el: [2] },     // 燒陶（泥＋熔岩）
-    bloom:     { pts: 3,  el: [2] },     // 萌芽
-    boil:      { pts: 2,  el: [3] },     // 沸騰
-    fume:      { pts: 1,  el: [3] },     // 硫煙
-    lidpop:    { pts: 30, el: [3] },     // 爆蓋
+    burn:      { label: '燃燒', trait: 'sustain',  trig: 0,   vol: 4, el: [0] },
+    blueflame: { label: '藍焰', trait: 'sustain',  trig: 0,   vol: 6, el: [0] },
+    blast:     { label: '爆炸', trait: 'burst',    trig: 40,  vol: 0, el: [0, 3] },
+    quench:    { label: '淬熄', trait: 'chain',    trig: 5,   vol: 2, el: [1, 3] },
+    condense:  { label: '凝結', trait: 'catalyst', trig: 0,   vol: 1, el: [1] },
+    melt:      { label: '融冰', trait: 'catalyst', trig: 0,   vol: 2, el: [1] },
+    freeze:    { label: '結凍', trait: 'residue',  trig: 5,   vol: 2, el: [1] },
+    acidrain:  { label: '酸雨', trait: 'chain',    trig: 10,  vol: 3, el: [1] },
+    solidify:  { label: '凝岩', trait: 'residue',  trig: 20,  vol: 4, el: [2] },
+    vitrify:   { label: '熔玻', trait: 'residue',  trig: 15,  vol: 5, el: [2] },
+    dissolve:  { label: '溶蝕', trait: 'break',    trig: 5,   vol: 2, el: [2] },
+    bake:      { label: '燒陶', trait: 'residue',  trig: 10,  vol: 3, el: [2] },
+    bloom:     { label: '萌芽', trait: 'catalyst', trig: 5,   vol: 2, el: [2] },
+    boil:      { label: '沸騰', trait: 'sustain',  trig: 0,   vol: 2, el: [3] },
+    fume:      { label: '硫煙', trait: 'catalyst', trig: 0,   vol: 1, el: [3] },
+    lidpop:    { label: '爆蓋', trait: 'burst',    trig: 150, vol: 1, el: [3] },
   };
   const RXK = Object.keys(RX);            // index+1 is stored per cell as "produced by"
   const RXI = {}; RXK.forEach((k, i) => RXI[k] = i + 1);
@@ -50,13 +51,13 @@
     const N = W * H;
     const t = new Uint8Array(N), life = new Uint8Array(N), shade = new Uint8Array(N),
           stamp = new Uint16Array(N), flash = new Uint8Array(N),
-          src = new Uint8Array(N), gen = new Uint8Array(N), rk = new Uint8Array(N);
+          src = new Uint8Array(N), gen = new Uint8Array(N), rk = new Uint8Array(N), res = new Uint8Array(N); // res: 1 = residue cell (solidify/vitrify/bake/freeze product)
     const rnd = mulberry32(seed >>> 0);
-    const S = { W, H, t, life, shade, flash, src, gen, rk, frame: 0, gas: 0, lid: false, lidMax: 640,
+    const S = { W, H, t, life, shade, flash, src, gen, rk, res, frame: 0, gas: 0, lid: false, lidMax: 640,
                 mods: mods || {}, onEvent: null, onLidPop: null, lastEventFrame: 0 };
 
     function reset() {
-      t.fill(0); life.fill(0); flash.fill(0); src.fill(0); gen.fill(0); rk.fill(0);
+      t.fill(0); life.fill(0); flash.fill(0); src.fill(0); gen.fill(0); rk.fill(0); res.fill(0);
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const p = y * W + x;
         if (x === 0 || x === W - 1 || y === H - 1) t[p] = M.WALL;
@@ -68,21 +69,19 @@
 
     // ---- attribution context (GDD §3.2) ----
     let cS = 0, cG = 0, cK = 0;
-    function ev(type, p, q) {
+    function ev(type, p, q, resHit, w) {
       const sp = src[p], sq = q >= 0 ? src[q] : sp;
       const s = sp > sq ? sp : sq;
-      const other = sp > sq ? sq : sp;
       const k = RXI[type];
       let g = rk[p] ? gen[p] + (rk[p] !== k ? 1 : 0) : 0;
       if (q >= 0) { const g2 = rk[q] ? gen[q] + (rk[q] !== k ? 1 : 0) : 0; if (g2 > g) g = g2; }
       if (g < 1) g = 1; if (g > 7) g = 7;
       cS = s; cG = g; cK = k;
-      const stale = q >= 0 && other > 0 && s - other >= 2 ? 1 : 0;
       S.lastEventFrame = S.frame;
       flash[p] = 255;
-      if (S.onEvent) S.onEvent(type, q >= 0 ? q : p, s, g, stale);
+      if (S.onEvent) S.onEvent(type, q >= 0 ? q : p, s, g, resHit ? 1 : 0, w || 1);
     }
-    function setP(p, m, l) { t[p] = m; life[p] = l || 0; src[p] = cS; gen[p] = cG; rk[p] = cK; stamp[p] = S.frame & 0xffff; }
+    function setP(p, m, l, r) { t[p] = m; life[p] = l || 0; src[p] = cS; gen[p] = cG; rk[p] = cK; res[p] = r ? 1 : 0; stamp[p] = S.frame & 0xffff; }
     function swap(p, q) {
       let a = t[p]; t[p] = t[q]; t[q] = a;
       a = life[p]; life[p] = life[q]; life[q] = a;
@@ -90,9 +89,10 @@
       a = src[p]; src[p] = src[q]; src[q] = a;
       a = gen[p]; gen[p] = gen[q]; gen[q] = a;
       a = rk[p]; rk[p] = rk[q]; rk[q] = a;
+      a = res[p]; res[p] = res[q]; res[q] = a;
       stamp[q] = S.frame & 0xffff; stamp[p] = S.frame & 0xffff;
     }
-    function clearCell(p) { t[p] = M.E; life[p] = 0; src[p] = 0; gen[p] = 0; rk[p] = 0; }
+    function clearCell(p) { t[p] = M.E; life[p] = 0; src[p] = 0; gen[p] = 0; rk[p] = 0; res[p] = 0; }
     function gasLife(m) {
       if (m === M.FIRE) return 12 + ((rnd() * 18) | 0);
       if (m === M.STEAM) return 90 + ((rnd() * 90) | 0);
@@ -165,14 +165,14 @@
       if (c === M.LAVA) {
         for (let i = 0; i < 4; i++) {
           const q = i === 0 ? nb0 : i === 1 ? nb1 : i === 2 ? nb2 : nb3, m = t[q];
-          if (m === M.WATER) { ev('solidify', p, q); setP(p, M.STONE); setP(q, M.STEAM, gasLife(M.STEAM)); return true; }
-          if (m === M.ICE && rnd() < 0.3) { ev('melt', p, q); setP(q, M.WATER); if (rnd() < 0.15) { ev('solidify', p, q); setP(p, M.STONE); return true; } }
-          else if (m === M.SAND && rnd() < 0.04) { ev('vitrify', p, q); setP(q, M.GLASS); }
-          else if (m === M.MUD && rnd() < 0.03) { ev('bake', p, q); setP(q, M.STONE); }
+          if (m === M.WATER) { ev('solidify', p, q); setP(p, M.STONE, 0, 1); setP(q, M.STEAM, gasLife(M.STEAM)); return true; }
+          if (m === M.ICE && rnd() < 0.3) { ev('melt', p, q); setP(q, M.WATER); if (rnd() < 0.15) { ev('solidify', p, q); setP(p, M.STONE, 0, 1); return true; } }
+          else if (m === M.SAND && rnd() < 0.04) { ev('vitrify', p, q); setP(q, M.GLASS, 0, 1); }
+          else if (m === M.MUD && rnd() < 0.03) { ev('bake', p, q); setP(q, M.STONE, 0, 1); }
           else if (m === M.OIL || m === M.PLANT || m === M.SEED) { ev('burn', p, q); setP(q, M.FIRE, gasLife(M.FIRE) + 20); }
           else if (m === M.SULFUR && life[q] === 0) igniteSulfur(q, p);
           else if (m === M.POWDER) { blastAt(q, p); }
-          else if (m === M.E && i === 0 && rnd() < 0.003) { t[q] = M.FIRE; life[q] = gasLife(M.FIRE); src[q] = src[p]; gen[q] = gen[p]; rk[q] = rk[p]; }
+          else if (m === M.E && i === 0 && rnd() < 0.003) { t[q] = M.FIRE; life[q] = gasLife(M.FIRE); src[q] = src[p]; gen[q] = gen[p]; rk[q] = rk[p]; res[q] = 0; }
         }
         return false;
       }
@@ -180,7 +180,7 @@
         for (let i = 0; i < 4; i++) {
           const q = i === 0 ? nb0 : i === 1 ? nb1 : i === 2 ? nb2 : nb3, m = t[q];
           if ((m === M.SAND || m === M.STONE || m === M.GLASS || m === M.ICE || m === M.PLANT || m === M.SEED || m === M.POWDER || m === M.MUD) && rnd() < 0.2) {
-            ev('dissolve', p, q);
+            ev('dissolve', p, q, res[q]);
             if (rnd() < 0.3) setP(q, M.SMOKE, gasLife(M.SMOKE)); else clearCell(q);
             if (!(S.mods.alkahest && rnd() < 0.7) && rnd() < 0.5) { clearCell(p); return true; }
           }
@@ -191,7 +191,7 @@
         if (S.mods.hotplate && t[p + W] === M.MUD && rnd() < 0.01) { ev('boil', p, -1); setP(p, M.STEAM, gasLife(M.STEAM)); return true; }
         for (let i = 0; i < 4; i++) {
           const q = i === 0 ? nb0 : i === 1 ? nb1 : i === 2 ? nb2 : nb3, m = t[q];
-          if (m === M.ICE && rnd() < (S.mods.freezer ? 0.03 : 0.003)) { ev('freeze', q, p); setP(p, M.ICE); return true; }
+          if (m === M.ICE && rnd() < (S.mods.freezer ? 0.03 : 0.003)) { ev('freeze', q, p); setP(p, M.ICE, 0, 1); return true; }
           if (m === M.SEED) { ev('bloom', p, q); setP(q, M.PLANT); if (rnd() < 0.5) { clearCell(p); return true; } }
           if (m === M.PLANT && rnd() < (S.mods.greenhouse ? 0.06 : 0.02)) { ev('bloom', q, p); setP(p, M.PLANT); return true; }
         }
@@ -283,14 +283,10 @@
       let best = 0, bn = -1; for (const [s, n] of tally) if (n > bn || (n === bn && s > best)) { best = s; bn = n; }
       S.lid = false;
       const gasN = S.gas;
-      const pops = Math.max(1, Math.round(gasN / 40));
-      // give the pop a dedicated context
+      // one burst event (trigger 150), volume = gas cells at the moment of the pop
       cS = best; cG = 2; cK = RXI.lidpop;
-      for (let i = 0; i < pops; i++) {
-        S.lastEventFrame = S.frame;
-        const x = 4 + ((i * 37) % (W - 8));
-        if (S.onEvent) S.onEvent('lidpop', 3 * W + x, best, 2, 0);
-      }
+      S.lastEventFrame = S.frame;
+      if (S.onEvent) S.onEvent('lidpop', 3 * W + (W >> 1), best, 2, 0, Math.max(1, gasN));
       for (let i = 0; i < 6; i++) explode(10 + ((i * (W - 20) / 5) | 0), 4, 6);
       for (let p = W; p < 20 * W; p++) if (KIND[t[p]] === 3 && t[p] !== M.FIRE) clearCell(p);
       if (S.onLidPop) S.onLidPop(gasN, best);
@@ -306,7 +302,7 @@
         const p = py * W + px;
         if (t[p] === M.E || KIND[t[p]] === 3) {
           t[p] = m; life[p] = m === M.EMBER ? 70 + ((rnd() * 60) | 0) : 0;
-          src[p] = s || 0; gen[p] = 0; rk[p] = 0; stamp[p] = S.frame & 0xffff;
+          src[p] = s || 0; gen[p] = 0; rk[p] = 0; res[p] = 0; stamp[p] = S.frame & 0xffff;
           placed++;
         }
       }
@@ -323,7 +319,7 @@
         if (m === M.E || KIND[m] === 3 || m === M.OIL || m === M.PLANT || m === M.SEED || m === M.SULFUR) {
           if (m === M.SULFUR) { t[p] = M.SULFUR; life[p] = 100; }
           else { t[p] = M.FIRE; life[p] = 20 + ((rnd() * 15) | 0); }
-          src[p] = s; gen[p] = 0; rk[p] = 0; flash[p] = 255;
+          src[p] = s; gen[p] = 0; rk[p] = 0; res[p] = 0; flash[p] = 255;
         }
       }
     };
@@ -336,55 +332,60 @@
   // =================== round rules: pours, matches, lid, ledgers (GDD §3) ===================
   const RULES = {
     POUR_AMOUNT: 1600, POUR_RATE: 26, STEPS: 3,
-    LEDGER_QUIET: 60, LEDGER_MAX: 300, MAX_OPEN: 3,
-    DIMINISH_AT: 240, STALE_PTS: 1,
+    LEDGER_QUIET: 60, LEDGER_MAX: 300, LEDGER_MAX_SUSTAIN: 600, MAX_OPEN: 3,
+    DIMINISH_AT: 240, TRIG_MIN: 3,
   };
 
-  function ptsOf(type, mods) {
-    let p = RX[type].pts;
+  // per-reaction trigger / volume values after charms (V04_SPEC §4.4)
+  function rxVals(type, mods) {
     mods = mods || {};
-    if ((type === 'burn' || type === 'blueflame') && mods.pyro) p += 3;
-    if (type === 'blast' && mods.demolition) p += 12;
-    if (type === 'bloom' && mods.greenhouse) p += 2;
-    if (type === 'solidify' && mods.magma) p += 8;
-    if (type === 'freeze' && mods.freezer) p += 3;
-    if ((type === 'quench' || type === 'condense' || type === 'boil') && mods.tower) p *= 3;
-    if (type === 'lidpop' && mods.thickglass) p *= 2;
-    return p;
+    let trig = RX[type].trig, vol = RX[type].vol;
+    if ((type === 'burn' || type === 'blueflame') && mods.pyro) vol += 3;
+    if (type === 'blast' && mods.demolition) trig += 40;
+    if (type === 'bloom' && mods.greenhouse) vol += 2;
+    if (type === 'solidify' && mods.magma) trig += 20;
+    if (type === 'freeze' && mods.freezer) vol += 3;
+    if ((type === 'quench' || type === 'condense' || type === 'boil') && mods.tower) vol *= 3;
+    if (type === 'lidpop' && mods.thickglass) { trig *= 2; vol *= 2; }
+    return { trig, vol };
   }
+  const effCells = n => n <= RULES.DIMINISH_AT ? n : RULES.DIMINISH_AT + (n - RULES.DIMINISH_AT) / 2;
 
-  // 一本帳的金 = 物質 × 元素 × 秘方 (GDD §4). Returns a breakdown in display order.
+  // One ledger's gold (V04_SPEC §4.2). L = { counts: cells per type, evs: events per type, resN: destroyed residue cells per type, maxGen }.
+  // base = sum_k [ trigger_k + vol_k * eff(n_k) / 10 + vol_k * 2 * resN_k / 10 ]   (trigger: burst = per event; others once when n_k >= 3)
+  // mult = 1 + lit elements + (all four ? 2 : 0) + chain bonus (min(3, maxGen-1) if any chain-trait reaction) + glass charm
   function scoreLedger(L, mods) {
     mods = mods || {};
     const rows = [];
-    let matter = 0;
+    let matter = 0, trigSum = 0, volSum = 0, hasChain = false;
     const lit = [0, 0, 0, 0];
     const keys = Object.keys(L.counts).sort((a, b) => RXI[a] - RXI[b]);
     for (const k of keys) {
       const n = L.counts[k];
       if (!n) continue;
-      const pts = ptsOf(k, mods);
-      const eff = n <= RULES.DIMINISH_AT ? n : RULES.DIMINISH_AT + (n - RULES.DIMINISH_AT) / 2;
-      const sub = Math.round(eff * pts);
-      rows.push({ type: k, n, pts, sub, halved: n > RULES.DIMINISH_AT });
-      matter += sub;
+      const v = rxVals(k, mods), trait = RX[k].trait;
+      const evs = (L.evs && L.evs[k]) || n, resN = (L.resN && L.resN[k]) || 0;
+      const trig = trait === 'burst' ? v.trig * evs : (n >= RULES.TRIG_MIN ? v.trig : 0);
+      const volRaw = v.vol * (effCells(n) + 2 * resN) / 10;
+      const vol = Math.round(volRaw);
+      rows.push({ type: k, trait, n, evs, resN, trig, volRaw, vol, sub: trig + vol, halved: n > RULES.DIMINISH_AT });
+      matter += trig + vol; trigSum += trig; volSum += vol;
+      if (trait === 'chain') hasChain = true;
       for (const e of RX[k].el) lit[e] = 1;
     }
-    const stale = L.stale * RULES.STALE_PTS;
-    matter += stale;
     let nLit = lit[0] + lit[1] + lit[2] + lit[3];
     if (mods.ashes && lit[0] && !lit[2] && L.counts.burn) { lit[2] = 1; nLit++; }
-    const chain = Math.floor(L.maxGen / 2);
+    const chain = hasChain ? Math.max(0, Math.min(3, (L.maxGen || 1) - 1)) : 0;
     const four = nLit === 4 ? 2 : 0;
     let elemMods = 0;
     if (mods.glass && L.counts.vitrify) elemMods += Math.floor(L.counts.vitrify / 40);
     const elem = matter > 0 ? 1 + nLit + chain + four + elemMods : 1;
     const arcana = [];
-    if (mods.scorched && (L.counts.burn || 0) + (L.counts.blueflame || 0) >= 800) arcana.push({ id: 'scorched', x: 2 });
+    if (mods.scorched && (L.counts.burn || 0) >= 800) arcana.push({ id: 'scorched', x: 2 });
     if (mods.popritual && L.counts.lidpop) arcana.push({ id: 'popritual', x: 3 });
     let arc = 1; for (const a of arcana) arc *= a.x;
     const gold = Math.round(matter * elem * arc);
-    return { rows, stale, matter, lit, nLit, chain, four, elemMods, elem, arcana, arc, gold };
+    return { rows, matter, trigSum, volSum, lit, nLit, chain, four, elemMods, elem, arcana, arc, gold };
   }
 
   function createRound(opt) {
@@ -403,7 +404,7 @@
       const open = R.order.filter(L => !L.closed && L.kind !== 'after');
       if (kind !== 'after' && open.length >= RULES.MAX_OPEN) close(open[0], 'forced');
       const L = { id: kind === 'after' ? 0 : R.nextId++, kind, m, x, y, openF: R.frame, lastF: R.frame, counts: {},
-                  stale: 0, maxGen: 0, n: 0, closed: false, result: null, uid: R.order.length + 1 };
+                  evs: {}, resN: {}, maxGen: 0, n: 0, closed: false, result: null, uid: R.order.length + 1 };
       if (kind !== 'after') R.ledgers.set(L.id, L);
       R.order.push(L);
       if (R.onOpen) R.onOpen(L);
@@ -418,14 +419,16 @@
       if (L === after) after = null;
       if (R.onClose) R.onClose(L);
     }
-    S.onEvent = function (type, p, s, g, stale) {
+    S.onEvent = function (type, p, s, g, resHit, w) {
       let L = R.ledgers.get(s);
       if (!L || L.closed) {
         if (!after) after = openLedger('after', -1, p % W, (p / W) | 0);
         L = after;
       }
-      L.counts[type] = (L.counts[type] || 0) + 1;
-      L.n++; L.lastF = R.frame; if (stale) L.stale++;
+      L.counts[type] = (L.counts[type] || 0) + w;
+      L.evs[type] = (L.evs[type] || 0) + 1;
+      if (resHit) L.resN[type] = (L.resN[type] || 0) + 1;
+      L.n += w; L.lastF = R.frame;
       if (g > L.maxGen) L.maxGen = g;
       if (R.onRx) R.onRx(L, type, p, g);
     };
@@ -461,7 +464,8 @@
           if (L.closed) continue;
           const pouring = R.active.some(P => P.L === L);
           if (pouring) continue;
-          if (R.frame - L.lastF >= RULES.LEDGER_QUIET || R.frame - L.openF >= RULES.LEDGER_MAX) close(L, 'quiet');
+          const cap = (L.counts.burn || L.counts.blueflame) ? RULES.LEDGER_MAX_SUSTAIN : RULES.LEDGER_MAX;
+          if (R.frame - L.lastF >= RULES.LEDGER_QUIET || R.frame - L.openF >= cap) close(L, 'quiet');
         }
       }
     };
@@ -479,6 +483,8 @@
     return R;
   }
 
-  const api = { W, H, M, KIND, DEN, RX, RXK, EL, RULES, createSim, createRound, scoreLedger, ptsOf, mulberry32, MUD_ROWS };
+  // round targets (V04_SPEC §4.3): calibrated by `node bot.js 200 --rounds`; T1 = 0.6 x smart tutorial median, x1.4 per round, x1.6 into boss rounds
+  const TARGETS = [2400, 3400, 5400, 7600, 10600, 17000, 24000, 33000, 53000];
+  const api = { TARGETS, W, H, M, KIND, DEN, RX, RXK, EL, RULES, createSim, createRound, scoreLedger, rxVals, effCells, mulberry32, MUD_ROWS };
   if (typeof module !== 'undefined') module.exports = api; else root.PDSim = api;
 })(this);

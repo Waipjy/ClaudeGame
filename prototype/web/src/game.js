@@ -1,7 +1,7 @@
 (function () {
 "use strict";
 /*STRINGS*/
-const { W, H, M, KIND, RX, RXK, RULES, createRound, scoreLedger, ptsOf, mulberry32 } = window.PDSim;
+const { W, H, M, KIND, RX, RXK, RULES, createRound, scoreLedger, rxVals, mulberry32 } = window.PDSim;
 const ICP = 3;           // ink-layer pixels per cell (fixed); on screen it is scaled to L.cp
 const LW = 390;          // logical width; logical height follows the window (600..880)
 
@@ -21,7 +21,7 @@ const ARCANA = [
 ];
 const ACT_COL = ["#3b3228", "#efe9d8", "#d4a62a", "#b8381e"];
 const ACT_TINT = [[0.96, 0.95, 0.93], [1, 1, 1], [1, 0.97, 0.88], [1, 0.93, 0.90]];
-const TARGETS = [20000, 30000, 45000, 65000, 90000, 120000, 160000, 210000, 270000, 350000, 450000, 600000];
+const TARGETS = window.PDSim.TARGETS;
 const START_DECK = [M.SAND, M.SAND, M.WATER, M.WATER, M.OIL, M.EMBER, M.SULFUR, M.LAVA];
 const FIRST_HAND = [M.WATER, M.LAVA, M.OIL, M.SULFUR];
 const FIRST_DRAW = [M.SAND, M.EMBER, M.SAND, M.WATER];
@@ -118,9 +118,11 @@ function layout() {
   const bx = 8, rightW = 56;
   const availTop = 84, availBot = Hl - 214;
   const cp = Math.min((LW - bx - 12 - rightW) / W, (availBot - availTop) / H);
-  const bw = W * cp, bh = H * cp, by = availTop + (availBot - availTop - bh) * 0.55;
+  // cells may be taller than wide (<=1.45x) so the beaker fills the free height; sim grid itself is untouched
+  const cpy = Math.min(cp * 1.45, (availBot - availTop) / H);
+  const bw = W * cp, bh = H * cpy, by = availTop + (availBot - availTop - bh) * 0.5;
   const rx0 = bx + bw + 8, rcx = rx0 + (LW - 8 - rx0) / 2;
-  L = { sc, Hl, cssW, cssH, cp, bx, by, bw, bh, rx0, rcx, rw: LW - 8 - rx0,
+  L = { sc, Hl, cssW, cssH, cp, cpy, bx, by, bw, bh, rx0, rcx, rw: LW - 8 - rx0,
         handY: Hl - 186, handH: 106, actY: Hl - 72, actH: 60, pipY: Hl - 208 };
   L.slot = i => { const w = (LW - 16 - 18) / 4; return { x: 8 + i * (w + 6), y: L.handY, w, h: L.handH }; };
   L.btn = { match: { x: 8, y: L.actY, w: 118, h: L.actH }, lid: { x: 136, y: L.actY, w: 118, h: L.actH }, seal: { x: 264, y: L.actY, w: 118, h: L.actH } };
@@ -131,14 +133,14 @@ function layout() {
   L.elX = rx0 + 11;
   L.elY = i => by + 34 + i * 25;
   L.baseY = by + 146; L.multY = by + 166;
-  L.charmLabelY = by + 196;
-  L.charmY = i => by + 220 + i * 27;
+  L.charmLabelY = by + 208;
+  L.charmY = i => by + 232 + i * 27;
   L.shopOY = Math.max(0, (Hl - 693) * 0.4);
   buildBg();
 }
 const toLogical = (e) => { const r = canvas.getBoundingClientRect(); return [(e.clientX - r.left) / L.sc, (e.clientY - r.top) / L.sc]; };
-const cellX = cx => L.bx + (cx + 0.5) * L.cp, cellY = cy => L.by + (cy + 0.5) * L.cp;
-const pxToCell = (x, y) => [Math.floor((x - L.bx) / L.cp), Math.floor((y - L.by) / L.cp)];
+const cellX = cx => L.bx + (cx + 0.5) * L.cp, cellY = cy => L.by + (cy + 0.5) * L.cpy;
+const pxToCell = (x, y) => [Math.floor((x - L.bx) / L.cp), Math.floor((y - L.by) / L.cpy)];
 const inRect = (x, y, r, pad) => { pad = pad || 0; return x >= r.x - pad && x <= r.x + r.w + pad && y >= r.y - pad && y <= r.y + r.h + pad; };
 function clientOf(lx, ly) { const r = canvas.getBoundingClientRect(); return [r.left + lx * L.sc, r.top + ly * L.sc]; }
 
@@ -158,9 +160,9 @@ function buildBg() {
   for (let i = 0; i < 12; i++) { g.fillStyle = `rgba(140,96,48,${0.03 + r0() * 0.05})`; g.beginPath(); g.arc(r0() * LW, r0() * L.Hl, 2 + r0() * 8, 0, 7); g.fill(); }
   bgS = document.createElement("canvas"); bgS.width = bgC.width; bgS.height = bgC.height; bgS.getContext("2d").drawImage(bgC, 0, 0);
   g.strokeStyle = INK; g.fillStyle = INK; g.lineCap = "round"; g.lineJoin = "round";
-  const { bx, by, bw, bh, cp } = L;
+  const { bx, by, bw, bh, cp, cpy } = L;
   // beaker glass: double wall with hatching, thick base, little spout
-  const ix = bx + cp, iw = bw - 2 * cp, iy = by, ih = bh - cp;
+  const ix = bx + cp, iw = bw - 2 * cp, iy = by, ih = bh - cpy;
   g.lineWidth = 2.2; g.beginPath(); g.moveTo(ix - 3, iy - 6); g.lineTo(ix - 3, iy + ih + 3); g.lineTo(ix + iw + 3, iy + ih + 3); g.lineTo(ix + iw + 3, iy - 6); g.stroke();
   g.lineWidth = 0.8; g.beginPath(); g.moveTo(ix - 7, iy - 4); g.lineTo(ix - 7, iy + ih + 7); g.lineTo(ix + iw + 7, iy + ih + 7); g.lineTo(ix + iw + 7, iy - 4); g.stroke();
   g.save(); g.globalAlpha = 0.5; g.lineWidth = 0.7;
@@ -255,22 +257,24 @@ function onRx(Lg, type, p, g) {
   if (type === "blast" || type === "lidpop") fx.shake = Math.min(7, fx.shake + (type === "lidpop" ? 1.2 : 0.5));
   sfx(type);
 }
+// float number for a bucket of n events: burst types show their trigger, others the volume points (V04_SPEC §4.5)
+function floatVal(type, n) { const v = rxVals(type, R.mods); return Math.max(1, Math.round(RX[type].trait === "burst" ? v.trig * n + v.vol * n / 10 : v.vol * n / 10)); }
 function flushBuckets(now) {
   for (const [k, b] of fx.buckets) {
     if (now - b.t0 < 450) continue;
     fx.buckets.delete(k);
     if (b.n < 3 && fx.floats.length >= 4 && b.type !== "lidpop") continue;
-    const val = b.n * ptsOf(b.type, R.mods);
+    const val = floatVal(b.type, b.n);
     const fw = 16 + numWidth("+" + fmt(val), 10) / L.cp * 1.0; // cells
     let fx0 = b.x / b.n, fy0 = b.y / b.n, placed = false;
     for (let tries = 0; tries < 8; tries++) {
       let hit = false;
-      for (const o of fx.floats) { const oy = o.y - (now - o.born) / 1000 * 30 / L.cp; if (Math.abs(o.x - fx0) < (fw + o.w) / 2 && Math.abs(oy - fy0) < 6) { hit = true; break; } }
+      for (const o of fx.floats) { const oy = o.y - (now - o.born) / 1000 * 30 / L.cpy; if (Math.abs(o.x - fx0) < (fw + o.w) / 2 && Math.abs(oy - fy0) < 6) { hit = true; break; } }
       if (!hit) { placed = true; break; } fy0 -= 6;
     }
     if (!placed && b.type !== "lidpop" && b.type !== "blast") continue;
     const first = !seen.has(b.type); seen.add(b.type);
-    fx.floats.push({ type: b.type, val, w: fw, x: clamp(fx0, fw / 2, W - fw / 2), y: Math.max(8, fy0), born: now, big: b.type === "lidpop" || b.type === "blast" });
+    fx.floats.push({ type: b.type, trait: RX[b.type].trait, val, w: fw, x: clamp(fx0, fw / 2, W - fw / 2), y: Math.max(8, fy0), born: now, big: b.type === "lidpop" || b.type === "blast" });
     if (first) fx.disc.push({ type: b.type, x: clamp(fx0, 14, W - 14), y: Math.max(14, fy0 - 10), born: now });
   }
   while (fx.floats.length > 12) fx.floats.shift();
@@ -286,13 +290,16 @@ function onLidPop() { fx.lidFly = { born: NOW(), vx: (R.S.rnd() - 0.5) * 6 }; fx
 // ---- scoring animation, in calculation order (Balatro): base numbers fly to the element column, x multiplier lands, they collide into gold, gold sand flows into the receiver ----
 function startTally(now) {
   const q = fx.tallyQ.shift(); if (!q) return;
-  const res = q.res, rows = res.rows.slice();
-  if (res.stale) rows.push({ type: "stale", sub: res.stale });
-  const chips = rows.slice(0, 6); if (rows.length > 6) chips[5] = { type: rows[5].type, sub: rows.slice(5).reduce((a, r) => a + r.sub, 0) };
+  const res = q.res;
+  // two stages (V04_SPEC §4.5): trigger points first (big, trait mark), then volume points (small)
+  const cap = (arr, n) => { if (arr.length <= n) return arr; const out = arr.slice(0, n - 1); const rest = arr.slice(n - 1); out.push({ type: rest[rest.length - 1].type, kind: rest[0].kind, sub: rest.reduce((a, r) => a + r.sub, 0) }); return out; };
+  const trigC = cap(res.rows.filter(r => r.trig > 0).map(r => ({ type: r.type, kind: "trig", sub: r.trig })), 4);
+  const volC = cap(res.rows.filter(r => r.vol > 0).map(r => ({ type: r.type, kind: "vol", sub: r.vol })), 4);
+  const chips = trigC.concat(volC);
   const elOf = r => (RX[r.type] ? RX[r.type].el : []);
-  fx.tally = { t0: now, res, cx: q.cx, cy: q.cy, chips, elOf, k: (fx.tallyQ.length > 1 ? 1.7 : 1) * SET.anim, base: 0, shown: 0, landed: 0, phase: 0, lit: [0, 0, 0, 0], pop: [0, 0, 0, 0], multPop: 0, goldPop: 0, spawned: false };
+  fx.tally = { t0: now, res, cx: q.cx, cy: q.cy, chips, elOf, k: (fx.tallyQ.length > 1 ? 1.7 : 1) * SET.anim, base: 0, multVal: 1, chainAt: 0, shown: 0, landed: 0, phase: 0, lit: [0, 0, 0, 0], pop: [0, 0, 0, 0], multPop: 0, goldPop: 0, spawned: false };
 }
-const T_STAGGER = 110, T_FLY = 350;
+const T_STAGGER = 100, T_FLY = 350, T_CHAIN = 450;
 function updateTally(now) {
   if (!fx.tally && fx.tallyQ.length) startTally(now);
   const T = fx.tally; if (!T) return;
@@ -306,8 +313,10 @@ function updateTally(now) {
     }
   });
   const tA = (T.chips.length - 1) * T_STAGGER + T_FLY;
-  if (t >= tA + 150 && !T.multShown) { T.multShown = true; T.multPop = now; for (let e = 0; e < 4; e++) if (T.res.lit[e]) { T.lit[e] = 1; T.pop[e] = now; } tone(180, 0.18, "square", 0.04); }
-  const tC = tA + 150 + 520;
+  const chainT = T.res.chain > 0 ? T_CHAIN : 0;
+  if (t >= tA + 150 && !T.multShown) { T.multShown = true; T.multPop = now; T.multVal = T.res.elem - T.res.chain; if (T.res.chain > 0) T.chainAt = now; for (let e = 0; e < 4; e++) if (T.res.lit[e]) { T.lit[e] = 1; T.pop[e] = now; } tone(180, 0.18, "square", 0.04); }
+  if (T.multShown && T.chainAt && !T.chainMerged && t >= tA + 150 + chainT) { T.chainMerged = true; T.multVal = T.res.elem; T.multPop = now; tone(260, 0.14, "square", 0.04); }
+  const tC = tA + 150 + chainT + 520;
   if (t >= tC + 260 && !T.goldShown) {
     T.goldShown = true; T.goldPop = now;
     fx.shake = Math.max(fx.shake, Math.min(7, 1.2 + Math.log10(Math.max(10, T.res.gold) / 100) * 1.4));
@@ -318,7 +327,7 @@ function updateTally(now) {
 }
 function tallyGeom(T, now) { // positions of everything at time now
   const t = (now - T.t0) * T.k;
-  const tA = (T.chips.length - 1) * T_STAGGER + T_FLY, tC = tA + 150 + 520;
+  const tA = (T.chips.length - 1) * T_STAGGER + T_FLY, tC = tA + 150 + (T.res.chain > 0 ? T_CHAIN : 0) + 520;
   const C = { x: L.bx + L.bw * 0.5, y: L.by + L.bh * 0.3 };
   return { t, tA, tC, C };
 }
@@ -449,7 +458,7 @@ function tipTargets() {
 function arcRows(id) { const [ic, tag] = ARC_ICON[id]; return [[{ t: "arc." + id }], [ic === "vial" ? "m:" + M.WATER : ic === "match" ? "match" : "rx:" + ic, { n: tag }]]; }
 function tipRows(id) {
   if (id === "match") return [["match", "arrow", "m:" + M.OIL, "m:" + M.SULFUR, "m:" + M.POWDER, "m:" + M.SEED], [{ t: "ui.each" }, { n: BASE_MATCHES + (R.mods.matchbox ? 1 : 0) }]];
-  if (id === "lid") return [["lid", "arrow", "gas", { t: "ui.full" }, "arrow", "rx:lidpop"], [{ t: "ui.lidOn" }, "m:" + M.WATER, "x"]];
+  if (id === "lid") return [["lid", "arrow", "gas", { t: "ui.full" }, "arrow", "rx:lidpop", { n: "150" }], [{ t: "ui.lidOn" }, "m:" + M.WATER, "x"]];
   if (id === "seal") { const rows = [[{ t: "ui.left" }, "pip", { n: "×" + R.pours }, "arrow", { n: "+" + R.pours }, "coin"]]; if (R.gold < R.target) rows.push([{ t: "ui.miss", c: RED }, "arrow", { t: "ui.fail", c: RED }]); return rows; }
   if (id.startsWith("el")) {
     const e = +id.slice(2), row = ["el:" + e];
@@ -583,7 +592,7 @@ function previewVial(m, col) {
   }
   const items = [], table = PRE[m] || {};
   for (const k of Object.keys(tally)) { const rxs = table[k]; if (!rxs) continue; for (const r of rxs) if (!items.find(i => i.type === r)) items.push({ type: r, n: tally[k] }); }
-  for (const it of items) it.est = RX[it.type] ? ptsOf(it.type, R.mods) * clamp(it.n * 3, 3, 120) : 0;
+  for (const it of items) it.est = RX[it.type] ? Math.round(rxVals(it.type, R.mods).vol * clamp(it.n * 3, 3, 120) / 10 + rxVals(it.type, R.mods).trig) : 0;
   return { col, cy, half, items: items.slice(0, 3) };
 }
 function previewMatch(cx, cy) {
@@ -606,16 +615,16 @@ function renderBeakerLayers() {
   renderBeaker();
 }
 function drawBeakerLayers(now) {
-  const { cp, bx, by, bw, bh } = L;
+  const { cp, cpy, bx, by, bw, bh } = L;
   const sk = fx.shake > 0.3 ? fx.shake : 0; fx.shake *= 0.86;
   ctx.save();
   if (sk) ctx.translate((Math.random() - 0.5) * sk, (Math.random() - 0.5) * sk);
   ctx.imageSmoothingEnabled = true; ctx.globalCompositeOperation = "multiply";
   if (WASH_BLUR) {
     sctx.clearRect(0, 0, W / 2, H / 2); sctx.imageSmoothingEnabled = true; sctx.drawImage(tintC, 0, 0, W / 2, H / 2);
-    ctx.globalAlpha = 0.8; ctx.drawImage(softC, 0.5, 0, W / 2 - 1, H / 2 - 0.5, bx + cp + 0.8, by + 1, bw - 2 * cp, bh - cp); ctx.globalAlpha = 0.55;
+    ctx.globalAlpha = 0.8; ctx.drawImage(softC, 0.5, 0, W / 2 - 1, H / 2 - 0.5, bx + cp + 0.8, by + 1, bw - 2 * cp, bh - cpy); ctx.globalAlpha = 0.55;
   }
-  ctx.drawImage(tintC, 1, 0, W - 2, H - 1, bx + cp + 0.6, by + 0.6, bw - 2 * cp, bh - cp);
+  ctx.drawImage(tintC, 1, 0, W - 2, H - 1, bx + cp + 0.6, by + 0.6, bw - 2 * cp, bh - cpy);
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
   ctx.imageSmoothingEnabled = false; ctx.drawImage(inkC, 0, 0, W * ICP, H * ICP, bx, by, bw, bh);
   ctx.imageSmoothingEnabled = true;
@@ -801,7 +810,11 @@ function drawElements(now, T) {
   if (T) {
     const bp = T.basePop ? clamp(1 - (now - T.basePop) / 200, 0, 1) : 0;
     if (T.landed) drawNum(ctx, fmt(T.base), L.rcx, L.baseY, 12 + bp * 3, { color: INK, halo: true, wt: 0.9 });
-    if (T.multShown) { const mp = clamp(1 - (now - T.multPop) / 260, 0, 1); drawNum(ctx, "×" + T.res.elem, L.rcx, L.multY, 13 + mp * 6, { color: "#b8381e", halo: true, wt: 1 }); }
+    if (T.multShown) { const mp = clamp(1 - (now - T.multPop) / 260, 0, 1); drawNum(ctx, "×" + T.multVal, L.rcx, L.multY, 13 + mp * 6, { color: "#b8381e", halo: true, wt: 1 }); }
+    if (T.chainAt && !T.goldShown) { // chain bonus pops next to the multiplier, then merges into it
+      const ca = clamp(1 - (now - T.chainAt) * SET.anim / (T_CHAIN + 250), 0, 1) * (T.chainMerged ? 0.0 : 1);
+      if (ca > 0) { ctx.save(); ctx.globalAlpha = Math.min(1, ca * 2); drawLabel(ctx, "ui.chain", L.rcx - 12, L.multY + 17, 11, { align: "c", color: "#b8381e" }); drawNum(ctx, "+" + T.res.chain, L.rcx + 16, L.multY + 17, 12, { color: "#b8381e", halo: true, wt: 1, align: "c" }); ctx.restore(); }
+    }
   } else if (fr && fr.matter > 0) {
     drawNum(ctx, fmt(fr.matter), L.rcx, L.baseY, 12, { color: INK, halo: true, wt: 0.9 });
     drawNum(ctx, "×" + fr.elem, L.rcx, L.multY, 13, { color: "#b8381e", halo: true, wt: 1 });
@@ -840,19 +853,19 @@ function drawFloats(now) {
     const f = fx.floats[i], age = (now - f.born) / 1000 * SET.anim;
     if (age > 1.35) { fx.floats.splice(i, 1); continue; }
     const rise = age < 0.4 ? easeOut(age / 0.4) * 22 : 22 + (age - 0.4) * 5;
-    const x = L.bx + f.x * cp, y = L.by + f.y * cp - rise;
+    const x = L.bx + f.x * cp, y = L.by + f.y * L.cpy - rise;
     const a = age < 1.0 ? 1 : 1 - (age - 1.0) / 0.35, sc = f.big ? 1.35 : 1;
     ctx.save(); ctx.globalAlpha = a; ctx.translate(x, y); ctx.scale(sc, sc);
     const nw = numWidth("+" + fmt(f.val), 10);
-    ctx.fillStyle = "rgba(239,228,200,.85)"; ctx.beginPath(); ctx.ellipse(0, 0, (nw + 18) / 2 + 3, 10, 0, 0, 7); ctx.fill();
-    drawRx(ctx, f.type, -nw / 2 - 2, 0, 7); drawNum(ctx, "+" + fmt(f.val), 9, 0, 10, { color: INK, align: "c", wt: 0.85 });
+    ctx.fillStyle = "rgba(239,228,200,.85)"; ctx.beginPath(); ctx.ellipse(3, 0, (nw + 18) / 2 + 9, 10, 0, 0, 7); ctx.fill();
+    drawRx(ctx, f.type, -nw / 2 - 2, 0, 7); drawNum(ctx, "+" + fmt(f.val), 9, 0, 10, { color: INK, align: "c", wt: 0.85 }); drawTrait(ctx, f.trait, nw / 2 + 13, 0, 4.5);
     ctx.restore();
   }
   // first-time discovery: the two inputs collide into the result (0.6 s)
   for (let i = fx.disc.length - 1; i >= 0; i--) {
     const d = fx.disc[i], age = (now - d.born) / 600 * SET.anim;
     if (age > 1.2) { fx.disc.splice(i, 1); continue; }
-    const x = L.bx + d.x * cp, y = L.by + d.y * cp, pair = DISCOVER[d.type] || [M.SAND, M.SAND];
+    const x = L.bx + d.x * cp, y = L.by + d.y * L.cpy, pair = DISCOVER[d.type] || [M.SAND, M.SAND];
     ctx.save(); ctx.translate(x, y);
     if (age < 0.6) {
       const k = easeIn(age / 0.6), off = 30 * (1 - k);
@@ -867,7 +880,7 @@ function drawChains(now) {
     const c = fx.chains[i], age = (now - c.born) / 1000;
     if (age > 3) { fx.chains.splice(i, 1); continue; }
     const tx = c.toRef.x / c.toRef.n, ty = c.toRef.y / c.toRef.n;
-    const x0 = L.bx + c.from[0] * L.cp, y0 = L.by + c.from[1] * L.cp, x1 = L.bx + tx * L.cp, y1 = L.by + ty * L.cp;
+    const x0 = L.bx + c.from[0] * L.cp, y0 = L.by + c.from[1] * L.cpy, x1 = L.bx + tx * L.cp, y1 = L.by + ty * L.cpy;
     const k = Math.min(1, age / 0.35); ctx.globalAlpha = Math.max(0, 1 - Math.max(0, age - 2.1));
     ctx.setLineDash([6, 3]); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo((x0 + x1) / 2 + (y1 - y0) * 0.15, (y0 + y1) / 2 - (x1 - x0) * 0.15, x0 + (x1 - x0) * k, y0 + (y1 - y0) * k); ctx.stroke(); ctx.setLineDash([]);
     ctx.beginPath(); ctx.arc(x0, y0, 2.5, 0, 7); ctx.fillStyle = INK; ctx.fill();
@@ -884,7 +897,7 @@ function drawPours(now) {
     const age = (now - (P.anim || now)) / 1000, tilt = Math.min(1, age / 0.18) * 2.2;
     ctx.save(); ctx.translate(x + 18, by - 34); ctx.rotate(tilt); ctx.globalAlpha = 0.95; drawVial(ctx, P.m, -14, -24, 28, 48, {}); ctx.restore();
     ctx.strokeStyle = col; ctx.globalAlpha = 0.8; ctx.lineWidth = 3; ctx.setLineDash([6, 4]); ctx.lineDashOffset = -now / 12;
-    ctx.beginPath(); ctx.moveTo(x + 3, by - 24); ctx.lineTo(x, by + 6 * cp); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.moveTo(x + 3, by - 24); ctx.lineTo(x, by + 6 * L.cpy); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
   }
 }
 
@@ -900,7 +913,7 @@ function drawPreview(now) {
   const { cp, bx, by } = L;
   if (kind === "vial") {
     const col = dropCol(tip.x), pv = previewVial(mat, col); G.preview = pv;
-    const x = cellX(col), yEnd = by + pv.cy * cp, hw = 4.5 * cp;
+    const x = cellX(col), yEnd = by + pv.cy * L.cpy, hw = 4.5 * cp;
     ctx.save();
     ctx.fillStyle = "rgba(168,119,74,.16)"; ctx.fillRect(x - hw, by, hw * 2, Math.max(2, yEnd - by));
     ctx.strokeStyle = INK; ctx.globalAlpha = 0.55; ctx.lineWidth = 1.2; ctx.setLineDash([5, 4]); ctx.lineDashOffset = -now / 40;
@@ -924,7 +937,7 @@ function drawPreview(now) {
     const x = cellX(cx), y = cellY(cy), r = 3.5 * cp;
     ctx.save(); ctx.strokeStyle = "#b8381e"; ctx.lineWidth = 1.6; ctx.setLineDash([3, 3]); ctx.lineDashOffset = -now / 50; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke(); ctx.setLineDash([]);
     const k = (Math.sin(now / 90) + 1) / 2; ctx.fillStyle = `rgba(232,117,47,${0.35 + k * 0.4})`; ctx.strokeStyle = "#e8752f";
-    for (const [fx_, fy_] of pm.cells) { ctx.fillRect(L.bx + fx_ * cp - 0.5, L.by + fy_ * cp - 0.5, cp + 1, cp + 1); }
+    for (const [fx_, fy_] of pm.cells) { ctx.fillRect(L.bx + fx_ * cp - 0.5, L.by + fy_ * L.cpy - 0.5, cp + 1, L.cpy + 1); }
     if (!pm.cells.length) { ctx.strokeStyle = "rgba(42,28,18,.7)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 6, y - 6); ctx.lineTo(x + 6, y + 6); ctx.moveTo(x + 6, y - 6); ctx.lineTo(x - 6, y + 6); ctx.stroke(); }
     if (pm.blast) { drawRx(ctx, "blast", x, y - r - 14, 11); }
     else if (pm.water && pm.cells.length < 3) { drawRx(ctx, "steam", x, y - r - 12, 9); }
@@ -942,8 +955,11 @@ function drawTallyFx(now) {
     const k = (t - i * T_STAGGER) / T_FLY; if (k < 0) return;
     const e = easeIn(clamp(k, 0, 1)), x = from.x + (B.x - from.x) * e, y = from.y + (B.y - from.y) * e - Math.sin(e * Math.PI) * 24;
     ctx.save(); ctx.translate(x, y);
-    if (c.type !== "stale") drawRx(ctx, c.type, -numWidth(fmt(c.sub), 10) / 2 - 3, 0, 6.5);
-    drawNum(ctx, fmt(c.sub), 6, 0, 10, { color: INK, halo: true, wt: 0.9 }); ctx.restore();
+    const big = c.kind === "trig", fs = big ? 13 : 10, nw = numWidth(fmt(c.sub), fs);
+    drawRx(ctx, c.type, -nw / 2 - 5, 0, big ? 8 : 6.5);
+    drawNum(ctx, fmt(c.sub), 6, 0, fs, { color: big ? "#b8381e" : INK, halo: true, wt: big ? 1 : 0.9 });
+    if (big) drawTrait(ctx, RX[c.type].trait, nw / 2 + 16, 0, 5);
+    ctx.restore();
   });
   if (T.multShown && !T.goldShown) {
     const k = clamp((t - (tC)) / 260, 0, 1), e = easeIn(k);
@@ -977,7 +993,7 @@ function drawTutHand(now) {
   const x = from[0] + (to[0] - from[0]) * k, y = from[1] + (to[1] - from[1]) * k - (kind === "vial" ? 0 : 0) * 0;
   ctx.save();
   if (t >= 0.65 && t < 0.9 && kind === "vial") { // ghost beam where it will land
-    const hw = 4.5 * L.cp, cx = to[0], yE = L.by + colContact(dropCol(cx), 4) * L.cp; ctx.fillStyle = "rgba(168,119,74,.18)"; ctx.fillRect(cx - hw, L.by, hw * 2, yE - L.by);
+    const hw = 4.5 * L.cp, cx = to[0], yE = L.by + colContact(dropCol(cx), 4) * L.cpy; ctx.fillStyle = "rgba(168,119,74,.18)"; ctx.fillRect(cx - hw, L.by, hw * 2, yE - L.by);
   }
   if (t < 0.9) { ctx.globalAlpha = 0.9; if (kind === "vial") drawVial(ctx, mat, x - 22, y - 70, 44, 76, {}); else drawMatch(ctx, x, y - 66, 16, t >= 0.65, 1); }
   drawHand(ctx, x, y, 0.85, t > 0.15 && t < 0.65);

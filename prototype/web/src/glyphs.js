@@ -295,8 +295,8 @@ function drawTrait(g, name, x, y, s) { // fixed shape marks, readable at 16px wi
 }
 // ---- arcana badges: a reaction icon + a modifier number ----
 const ARC_ICON = {
-  pyro: ["burn", "+3"], tower: ["quench", "×3"], glass: ["vitrify", "+1"], demolition: ["blast", "+12"], greenhouse: ["bloom", "×3"],
-  alkahest: ["dissolve", "%"], nozzle: ["vial", "×1"], hotplate: ["boil", "+1"], spare: ["vial", "+1"], magma: ["solidify", "+8"],
+  pyro: ["burn", "+3"], tower: ["quench", "×3"], glass: ["vitrify", "+1"], demolition: ["blast", "+40"], greenhouse: ["bloom", "×3"],
+  alkahest: ["dissolve", "%"], nozzle: ["vial", "×1.5"], hotplate: ["boil", "+1"], spare: ["vial", "+1"], magma: ["solidify", "+20"],
   freezer: ["freeze", "×10"], matchbox: ["match", "+1"], thickglass: ["lidpop", "×2"], ashes: ["burn", "="], scorched: ["burn", "×2"], popritual: ["lidpop", "×3"],
 };
 function drawBadge(g, id, x, y, r, rare, dim) {

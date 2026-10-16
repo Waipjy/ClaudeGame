@@ -1,6 +1,6 @@
 // Balance bots for v0.2 rules (continuous flow + ledgers + matches + lid). Run: node bot.js [rounds]
 const P = require('./sim.js');
-const { M, createRound, mulberry32, W, H } = P;
+const { M, createRound, mulberry32, W, H, TARGETS } = P;
 
 const START_DECK = [M.SAND, M.SAND, M.WATER, M.WATER, M.OIL, M.EMBER, M.SULFUR, M.LAVA];
 const FIRST_HAND = [M.WATER, M.SULFUR, M.OIL, M.LAVA]; // round-1 tutorial opening (template.html uses the same)
@@ -22,7 +22,7 @@ function playRound(seed, policy, opt) {
   let deck = START_DECK.slice();
   let hand, draw;
   if (opt.tutorial) { hand = FIRST_HAND.slice(); draw = [M.SAND, M.EMBER, M.SAND, M.WATER]; }
-  else { draw = deck.sort(() => r() - 0.5); hand = draw.splice(0, 4); }
+  else { draw = (opt.deck || deck).slice().sort(() => r() - 0.5); hand = draw.splice(0, 4); }
   const order = [M.WATER, M.SULFUR, M.OIL, M.SEED, M.POWDER, M.SAND, M.ICE, M.ACID, M.LAVA, M.EMBER];
   let nextAt = 0, f = 0, locked = 0, idle = 0, matchPlan = [];
   let lastPour = null;
@@ -67,11 +67,33 @@ function playRound(seed, policy, opt) {
     R.tick(); f++;
   }
   R.closeAll();
-  return { gold: R.gold, frames: f, locked, idle, ledgers: R.closedLog.length, firstAct: R.firstActionFrame };
+  return { R, gold: R.gold, frames: f, locked, idle, ledgers: R.closedLog.length, firstAct: R.firstActionFrame };
 }
+
+const POOL = [M.WATER, M.SULFUR, M.OIL, M.SEED, M.POWDER, M.SAND, M.ICE, M.ACID, M.LAVA, M.EMBER];
+const CHARMS = ['pyro', 'tower', 'glass', 'demolition', 'greenhouse', 'alkahest', 'nozzle', 'hotplate', 'spare', 'magma', 'freezer', 'matchbox', 'thickglass', 'ashes'];
+// a round-k round with a plausible shop-grown deck (+1 vial per round) and charms (1 per round from round 2, max 5)
+function playRoundK(seed, policy, k) {
+  const r = mulberry32(seed * 31 + k * 977 + 5);
+  const deck = START_DECK.slice(); for (let i = 0; i < k; i++) deck.push(POOL[(r() * POOL.length) | 0]);
+  const mods = {}; for (let i = 0; i < Math.min(5, Math.max(0, k)); i++) mods[CHARMS[(r() * CHARMS.length) | 0]] = true;
+  return playRound(seed + k * 1000, policy, { tutorial: k === 0, deck, mods }).gold;
+}
+const median = a => { const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
+const qtile = (a, q) => { const b = a.slice().sort((x, y) => x - y); return b[Math.floor(q * (b.length - 1))]; };
 
 if (require.main === module) {
   const n = +process.argv[2] || 30;
+  const mode = process.argv[3] || '';
+  if (mode === '--rounds') { // per-round medians (smart / random) against the shared TARGETS
+    for (let k = 0; k < TARGETS.length; k++) {
+      const sm = [], rd = [];
+      for (let s = 1; s <= n; s++) { sm.push(playRoundK(s, 'smart', k)); rd.push(playRoundK(s, 'random', k)); }
+      const pass = (a) => (a.filter(g => g >= TARGETS[k]).length / n * 100).toFixed(0) + '%';
+      console.log('回合' + (k + 1), '目標', String(TARGETS[k]).padEnd(6), '| smart 中位', String(median(sm)).padEnd(6), 'p25', String(qtile(sm, .25)).padEnd(6), '過', pass(sm).padEnd(5), '| random 中位', String(median(rd)).padEnd(6), '過', pass(rd));
+    }
+    process.exit(0);
+  }
   const t0 = Date.now();
   for (const tut of [true, false]) for (const pol of ['random', 'naive', 'smart']) {
     const res = [], idles = []; let fr = 0;
@@ -81,8 +103,8 @@ if (require.main === module) {
     const q = x => res[Math.floor(x * (res.length - 1))];
     console.log((tut ? '第1回合(教學手牌) ' : '隨機手牌         ') + pol.padEnd(7), 'p10', q(.1), 'p25', q(.25), 'med', q(.5), 'p75', q(.75), 'p90', q(.9),
       '| 平均回合秒數', (fr / n / 60).toFixed(1), '| 無事可做(×3快轉後) 中位', idles[idles.length >> 1].toFixed(1) + 's 最多', idles[idles.length - 1].toFixed(1) + 's',
-      '| 過第1回合金線 20000：', (res.filter(g => g >= 20000).length / n * 100).toFixed(0) + '%');
+      '| 過第1回合金線 ' + TARGETS[0] + '：', (res.filter(g => g >= TARGETS[0]).length / n * 100).toFixed(0) + '%');
   }
   console.log('ms', Date.now() - t0);
 }
-module.exports = { playRound, START_DECK, FIRST_HAND };
+module.exports = { playRound, playRoundK, START_DECK, FIRST_HAND };

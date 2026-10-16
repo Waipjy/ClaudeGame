@@ -3,7 +3,7 @@ const STR = {
   zh: {
     "ui.settings": "設定", "ui.codex": "圖鑑", "ui.act": "第{0}幕", "ui.round": "回合", "ui.money": "錢", "ui.goal": "目標", "ui.refine": "煉金", "ui.fill": "填滿目標",
     "ui.mult": "倍率", "ui.charms": "護符", "ui.pours": "倒料", "ui.deck": "牌堆", "ui.each": "每回合", "ui.full": "滿", "ui.lidOn": "蓋著", "ui.left": "剩", "ui.miss": "未達標", "ui.fail": "失敗",
-    "ui.perLamp": "每亮一盞", "ui.allLamp": "全亮", "ui.blast": "爆蓋",
+    "ui.perLamp": "每亮一盞", "ui.allLamp": "全亮", "ui.blast": "爆蓋", "ui.chain": "連鎖",
     "btn.match": "點火", "btn.lid": "加蓋", "btn.lidOff": "開蓋", "btn.end": "結束回合",
     "el.0": "火", "el.1": "水", "el.2": "土", "el.3": "氣",
     "tut.pour": "倒料",
@@ -18,7 +18,7 @@ const STR = {
   en: {
     "ui.settings": "Settings", "ui.codex": "Codex", "ui.act": "Act {0}", "ui.round": "Round", "ui.money": "Coins", "ui.goal": "Goal", "ui.refine": "Make gold", "ui.fill": "Fill the goal",
     "ui.mult": "Multiplier", "ui.charms": "Charms", "ui.pours": "Pours", "ui.deck": "Deck", "ui.each": "Per round", "ui.full": "Full", "ui.lidOn": "Lid on", "ui.left": "Left", "ui.miss": "Short", "ui.fail": "Fail",
-    "ui.perLamp": "Per lit", "ui.allLamp": "All lit", "ui.blast": "Lid pop",
+    "ui.perLamp": "Per lit", "ui.allLamp": "All lit", "ui.blast": "Lid pop", "ui.chain": "Chain",
     "btn.match": "Ignite", "btn.lid": "Lid on", "btn.lidOff": "Lid off", "btn.end": "End round",
     "el.0": "Fire", "el.1": "Water", "el.2": "Earth", "el.3": "Air",
     "tut.pour": "Pour",

@@ -11,7 +11,7 @@
 - **Unity**：專案已設定好 PC Steam（`docs/tech/PROJECT_SETUP.md`），尚無玩法。透過 Unity MCP 操作，電腦端 git 用 eval（規則 `docs/tech/PC_BRIDGE.md`）。
 
 ## v0.4 進度
-- B1 完成（標籤、目標條、字卡、提示卡、設定、護符右欄、H=120）。紀錄 `docs/design/playtest_log_v04.md`。下一步 B2：計分改造（見 V04_SPEC §9）。
+- B1 完成（標籤、目標條、字卡、提示卡、設定、護符右欄、H=120）。紀錄 `docs/design/playtest_log_v04.md`。B2 完成（新計分公式、目標 2400 起、結算兩段數字與連鎖加成、杯高留白修正；分數量級比規格高 20–40 倍，見 DECISIONS）。下一步 B3：預測 UI 與圖鑑。
 
 ## 等待中
 - **HSU 正在試玩 v0.3a，會給回饋**。新 session 第一步：收回饋 → 寫進下方「HSU 回饋」→ 依回饋規劃。
