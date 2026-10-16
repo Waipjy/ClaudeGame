@@ -62,7 +62,7 @@ function playRound(seed, policy, opt) {
       const c = findCell(R.S, [M.SULFUR, M.OIL, M.PLANT], r); if (c) R.strike(c[0], c[1]);
     }
     for (let k = matchPlan.length - 1; k >= 0; k--) if (matchPlan[k] === f) {
-      matchPlan.splice(k, 1); R.strike(15 + ((r() * (W - 30)) | 0), 40 + ((r() * 70) | 0));
+      matchPlan.splice(k, 1); R.strike(15 + ((r() * (W - 30)) | 0), 30 + ((r() * 65) | 0));
     }
     R.tick(); f++;
   }

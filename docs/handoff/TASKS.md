@@ -19,7 +19,7 @@
 - [x] 無文字 UI 規範 → docs/design/UI_NO_TEXT.md
 - [x] v0.3a 直屏無文字原型（UI_NO_TEXT §8，8 項）
 - [x] v0.4 設計規格 → docs/design/V04_SPEC.md（取代 v0.3b 範圍，5 批 B1–B5）
-- [ ] v0.4 B1 標籤與畫面骨架
+- [x] v0.4 B1 標籤與畫面骨架（2026-10-17，截圖 docs/design/playtests/v04_b1/；未達：圖示灰階盲測由他人執行、色盲色票屬 §8.3 未做）
 - [ ] v0.4 B2 計分改造
 - [ ] v0.4 B3 預測 UI 與圖鑑
 - [ ] v0.4 B4 一局結構

@@ -1,13 +1,15 @@
 (function () {
 "use strict";
+/*STRINGS*/
 const { W, H, M, KIND, RX, RXK, RULES, createRound, scoreLedger, ptsOf, mulberry32 } = window.PDSim;
 const ICP = 3;           // ink-layer pixels per cell (fixed); on screen it is scaled to L.cp
 const LW = 390;          // logical width; logical height follows the window (600..880)
 
-// ---- text guard: nothing in this game draws text. Any fillText / strokeText is a violation (digits go through drawNum). ----
+// ---- text guard: canvas text is only legal through drawLabel (sets __labelOK). Any other fillText / strokeText is a violation. Digits go through drawNum. ----
+window.__labelOK = false;
 for (const k of ["fillText", "strokeText"]) {
   const o = CanvasRenderingContext2D.prototype[k];
-  CanvasRenderingContext2D.prototype[k] = function (t) { window.__textViolations.push(String(t)); console.error("text-violation: " + t); return o.apply(this, arguments); };
+  CanvasRenderingContext2D.prototype[k] = function (t) { if (!window.__labelOK) { window.__textViolations.push(String(t)); console.error("text-violation: " + t); } return o.apply(this, arguments); };
 }
 
 // ---------------- content ----------------
@@ -69,6 +71,37 @@ const easeIn = t => t * t * t, easeOut = t => 1 - Math.pow(1 - t, 3);
 const backOut = t => { const c = 1.9; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
 const NOW = () => performance.now();
 
+// ---------------- settings, strings, labels ----------------
+const SET = { lang: /^zh/i.test(navigator.language || "") ? "zh" : "en", anim: 1, sound: true, vib: true };
+try { const o = JSON.parse(localStorage.getItem("pd.settings") || "null"); if (o) { if (o.lang === "zh" || o.lang === "en") SET.lang = o.lang; if ([1, 1.5, 2].includes(o.anim)) SET.anim = o.anim; if (typeof o.sound === "boolean") SET.sound = o.sound; if (typeof o.vib === "boolean") SET.vib = o.vib; } } catch (e) {}
+soundOn = SET.sound;
+function saveSet() { try { localStorage.setItem("pd.settings", JSON.stringify(SET)); } catch (e) {} }
+function T(key) { const a = arguments; const t = (STR[SET.lang] && STR[SET.lang][key]) || STR.zh[key] || key; return t.replace(/\{(\d)\}/g, (m, i) => a[+i + 1]); }
+const FONT = "'Noto Serif TC','Songti TC','PMingLiU','Noto Serif CJK TC',serif";
+const MATKEY = { [M.SAND]: "mat.sand", [M.WATER]: "mat.water", [M.OIL]: "mat.oil", [M.LAVA]: "mat.lava", [M.ACID]: "mat.acid", [M.POWDER]: "mat.powder", [M.ICE]: "mat.ice", [M.SEED]: "mat.seed", [M.EMBER]: "mat.ember", [M.SULFUR]: "mat.sulfur" };
+function tplParts(key, args) { const src = (STR[SET.lang] && STR[SET.lang][key]) || STR.zh[key] || key; return src.split(/(\{\d\})/).filter(x => x !== "").map(x => /^\{\d\}$/.test(x) ? { n: String((args || [])[+x[1]]) } : { t: x }); }
+// label = a short word or phrase from the string table; the only legal way to put text on the canvas
+function drawLabel(g, key, x, y, size, opt) {
+  opt = opt || {}; size = Math.max(11, size || 12);
+  const parts = tplParts(key, opt.args), ns = size * 0.92;
+  g.save(); g.font = "600 " + size + "px " + FONT; g.textBaseline = "middle"; g.textAlign = "left"; g.lineJoin = "round";
+  let w = 0; for (const p of parts) w += p.t != null ? g.measureText(p.t).width : numWidth(p.n, ns) + 2;
+  let cx = opt.align === "r" ? x - w : opt.align === "l" ? x : x - w / 2;
+  if (opt.alpha != null) g.globalAlpha = opt.alpha;
+  window.__labelOK = true;
+  try {
+    for (const p of parts) {
+      if (p.t != null) {
+        if (opt.halo !== false) { g.lineWidth = 3.4; g.strokeStyle = "rgba(239,228,200,.9)"; g.strokeText(p.t, cx, y + 0.5); }
+        g.fillStyle = opt.color || INK; g.fillText(p.t, cx, y + 0.5); cx += g.measureText(p.t).width;
+      } else { const nw = numWidth(p.n, ns); drawNum(g, p.n, cx + 1, y, ns, { align: "l", color: opt.color || INK, halo: opt.halo !== false, wt: 0.9 }); cx += nw + 2; }
+    }
+  } finally { window.__labelOK = false; }
+  g.restore();
+  return w;
+}
+function labelW(key, size, args) { ctx.save(); ctx.font = "600 " + Math.max(11, size || 12) + "px " + FONT; let w = 0; for (const p of tplParts(key, args)) w += p.t != null ? ctx.measureText(p.t).width : numWidth(p.n, Math.max(11, size || 12) * 0.92) + 2; ctx.restore(); return w; }
+
 /*GLYPHS*/
 /*CORE*/
 
@@ -82,22 +115,24 @@ function layout() {
   const cssW = LW * sc, cssH = Hl * sc;
   canvas.style.width = cssW + "px"; canvas.style.height = cssH + "px";
   canvas.width = Math.round(cssW * DPR); canvas.height = Math.round(cssH * DPR);
-  const bx = 8, rightW = 60;
-  const availTop = 72, availBot = Hl - 214;
+  const bx = 8, rightW = 56;
+  const availTop = 84, availBot = Hl - 214;
   const cp = Math.min((LW - bx - 12 - rightW) / W, (availBot - availTop) / H);
-  const bw = W * cp, bh = H * cp, by = availTop + (availBot - availTop - bh) / 2;
+  const bw = W * cp, bh = H * cp, by = availTop + (availBot - availTop - bh) * 0.55;
   const rx0 = bx + bw + 8, rcx = rx0 + (LW - 8 - rx0) / 2;
   L = { sc, Hl, cssW, cssH, cp, bx, by, bw, bh, rx0, rcx, rw: LW - 8 - rx0,
         handY: Hl - 186, handH: 106, actY: Hl - 72, actH: 60, pipY: Hl - 208 };
   L.slot = i => { const w = (LW - 16 - 18) / 4; return { x: 8 + i * (w + 6), y: L.handY, w, h: L.handH }; };
-  L.btn = { match: { x: 8, y: L.actY, w: 118, h: L.actH }, lid: { x: 136, y: L.actY, w: 118, h: L.actH }, seal: { x: 264, y: L.actY, w: 118, h: L.actH }, sound: { x: 236, y: 0, w: 44, h: 44 } };
-  // right column
-  L.dial = { cx: rcx, cy: by + 40, r: Math.min(26, L.rw / 2 + 2) };
-  L.elY = i => by + 78 + i * 25;
-  L.baseY = by + 188; L.multY = by + 207;
-  const fTop = by + 226, fBot = by + bh;
-  const fr = Math.min(L.rw / 2 + 1, (fBot - fTop) * 0.34);
-  L.flask = { cx: rcx, r: fr, neckW: fr * 0.28, neckTop: fTop, cy: fBot - fr - 2, bottom: fBot - 2 };
+  L.btn = { match: { x: 8, y: L.actY, w: 118, h: L.actH }, lid: { x: 136, y: L.actY, w: 118, h: L.actH }, seal: { x: 264, y: L.actY, w: 118, h: L.actH } };
+  // top bar (76 high): row 1 gear / book / act / round / money, row 2 goal bar
+  L.top = { gear: { x: 8, y: 0, w: 52, h: 40 }, book: { x: 60, y: 0, w: 52, h: 40 } };
+  L.goal = { x: 90, y: 57, w: 150, h: 14, ext: 66, numX: 384, midY: 64 };
+  // right column: multiplier lamps, then charms
+  L.elX = rx0 + 11;
+  L.elY = i => by + 34 + i * 25;
+  L.baseY = by + 146; L.multY = by + 166;
+  L.charmLabelY = by + 196;
+  L.charmY = i => by + 220 + i * 27;
   L.shopOY = Math.max(0, (Hl - 693) * 0.4);
   buildBg();
 }
@@ -137,19 +172,8 @@ function buildBg() {
   g.strokeStyle = "rgba(42,28,18,.75)";
   for (let i = 0; i < HAND; i++) { const s = L.slot(i); wobbleRect(g, s.x, s.y, s.w, s.h, 10 + i, 1.2); }
   for (const k of ["match", "lid", "seal"]) { const b = L.btn[k]; wobbleRect(g, b.x, b.y, b.w, b.h, 30 + k.length, 1.5); }
-  // dial frame
-  const d = L.dial; g.strokeStyle = INK; g.lineWidth = 1.6; g.beginPath(); g.arc(d.cx, d.cy, d.r, Math.PI, 0); g.lineTo(d.cx + d.r, d.cy + 4); g.lineTo(d.cx - d.r, d.cy + 4); g.closePath(); g.stroke();
-  for (let i = 0; i <= 8; i++) { const a = Math.PI + i * Math.PI / 8; g.lineWidth = i % 2 ? 0.8 : 1.3; g.beginPath(); g.moveTo(d.cx + Math.cos(a) * d.r * 0.78, d.cy + Math.sin(a) * d.r * 0.78); g.lineTo(d.cx + Math.cos(a) * d.r * 0.95, d.cy + Math.sin(a) * d.r * 0.95); g.stroke(); }
-  g.fillStyle = "rgba(184,56,30,.35)"; g.beginPath(); g.arc(d.cx, d.cy, d.r * 0.74, Math.PI * 1.8, Math.PI * 2); g.lineTo(d.cx, d.cy); g.closePath(); g.fill();
   // hatch shading in flask drawn dynamically
 }
-function flaskPath(g) {
-  const f = L.flask; g.beginPath();
-  g.moveTo(f.cx - f.neckW, f.neckTop); g.lineTo(f.cx - f.neckW, f.cy - f.r * 0.88);
-  g.arc(f.cx, f.cy, f.r, -Math.PI / 2 - 0.34, Math.PI * 1.5 + 0.34, true); g.lineTo(f.cx + f.neckW, f.neckTop);
-}
-function flaskY(frac) { const f = L.flask; return f.bottom - Math.min(1.02, frac) * (f.bottom - f.neckTop - 10); }
-
 // ---------------- audio ----------------
 const NOTE = { burn: 196, blueflame: 233, quench: 392, solidify: 131, dissolve: 523, blast: 82, vitrify: 659, melt: 440, freeze: 784, bloom: 330, condense: 587, boil: 247, acidrain: 698, bake: 165, fume: 294, lidpop: 60 };
 function ensureAudio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (AC && AC.state === "suspended") AC.resume().catch(() => {}); }
@@ -166,7 +190,7 @@ function sfx(type, force) {
   const big = type === "blast" || type === "lidpop";
   tone((NOTE[type] || 300) * (0.95 + Math.random() * 0.1), big ? 0.3 : 0.08, big ? "sawtooth" : "triangle", big ? 0.15 : 0.035);
 }
-const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+const buzz = ms => { try { SET.vib && navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
 
 // ---------------- game flow ----------------
 function newGame(seed) {
@@ -180,13 +204,13 @@ function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = (G.rng(
 function startRound() {
   mode = "play";
   const md = mods();
-  R = createRound({ seed: G.seed + G.round * 101, mods: md, pours: BASE_POURS + (md.spare ? 1 : 0), matches: BASE_MATCHES + (md.matchbox ? 1 : 0), target: TARGETS[G.round], lidMax: md.thickglass ? 1120 : 800 });
+  R = createRound({ seed: G.seed + G.round * 101, mods: md, pours: BASE_POURS + (md.spare ? 1 : 0), matches: BASE_MATCHES + (md.matchbox ? 1 : 0), target: TARGETS[G.round], lidMax: md.thickglass ? 896 : 640 });
   R.onOpen = onOpen; R.onClose = onClose; R.onRx = onRx; R.S.onLidPop = onLidPop;
   if (G.round === 0) { G.hand = FIRST_HAND.slice(); G.draw = FIRST_DRAW.slice().reverse(); G.disc = []; G.tut = 0; }
   else { G.tut = 9; G.draw = shuffle(G.deck.slice()); G.hand = []; G.disc = []; while (G.hand.length < HAND && G.draw.length) G.hand.push(G.draw.pop()); }
   G.sel = -1; G.matchMode = false; G.pourP = null; G.holding = false; G.displayGold = 0; G.ended = false; G.reachedFlag = false; G.lidUsed = false; G.pourN = 0; G.idleSince = NOW();
   fx.floats = []; fx.buckets.clear(); fx.chains = []; fx.gold = []; fx.tallyQ = []; fx.tally = null; fx.lidFly = null; fx.disc = []; fx.coins = [];
-  meta.clear(); gasHist.length = 0; D = null;
+  meta.clear(); gasHist.length = 0; D = null; TIP = null; LP = null; G.card = { t0: null }; G.fillHint = 0;
   for (let i = 0; i < HAND; i++) G.slideIn[i] = NOW() + i * 70;
   buildBg();
 }
@@ -266,7 +290,7 @@ function startTally(now) {
   if (res.stale) rows.push({ type: "stale", sub: res.stale });
   const chips = rows.slice(0, 6); if (rows.length > 6) chips[5] = { type: rows[5].type, sub: rows.slice(5).reduce((a, r) => a + r.sub, 0) };
   const elOf = r => (RX[r.type] ? RX[r.type].el : []);
-  fx.tally = { t0: now, res, cx: q.cx, cy: q.cy, chips, elOf, k: fx.tallyQ.length > 1 ? 1.7 : 1, base: 0, shown: 0, landed: 0, phase: 0, lit: [0, 0, 0, 0], pop: [0, 0, 0, 0], multPop: 0, goldPop: 0, spawned: false };
+  fx.tally = { t0: now, res, cx: q.cx, cy: q.cy, chips, elOf, k: (fx.tallyQ.length > 1 ? 1.7 : 1) * SET.anim, base: 0, shown: 0, landed: 0, phase: 0, lit: [0, 0, 0, 0], pop: [0, 0, 0, 0], multPop: 0, goldPop: 0, spawned: false };
 }
 const T_STAGGER = 110, T_FLY = 350;
 function updateTally(now) {
@@ -290,7 +314,7 @@ function updateTally(now) {
     tone(220, 0.35, "sawtooth", 0.06, 2.2); tone(440, 0.4, "triangle", 0.05); buzz(25);
   }
   if (T.goldShown && !T.spawned && t >= tC + 260 + 450) { T.spawned = true; T.spawnAt = now; spawnGold(T); }
-  if (T.spawned && now - T.spawnAt > 450) fx.tally = null;
+  if (T.spawned && (now - T.spawnAt) * SET.anim > 450) fx.tally = null;
 }
 function tallyGeom(T, now) { // positions of everything at time now
   const t = (now - T.t0) * T.k;
@@ -316,6 +340,7 @@ function nudge(key) { G.shake[key] = NOW(); }
 canvas.addEventListener("contextmenu", e => e.preventDefault());
 canvas.addEventListener("pointermove", e => {
   const [x, y] = toLogical(e); ptr.x = x; ptr.y = y; ptr.type = e.pointerType || "mouse"; ptr.inside = true;
+  if (LP && !LP.fired && Math.hypot(x - LP.x, y - LP.y) > 9) LP = null;
   if (D) { D.x = x; D.y = y; if (Math.hypot(x - D.sx, y - D.sy) > 9) D.moved = true; D.vx = (D.vx || 0) * 0.7 + (e.movementX || 0) * 0.3; }
   if (G && G.pourP && G.holding && mode === "play") { const [cx] = pxToCell(x, y); R.aim(G.pourP, clamp(cx, 5, W - 6)); }
 });
@@ -325,9 +350,14 @@ canvas.addEventListener("pointerdown", e => {
   const [x, y] = toLogical(e); ptr.x = x; ptr.y = y; ptr.down = true; ptr.type = e.pointerType || "mouse"; ptr.inside = true;
   try { canvas.setPointerCapture(e.pointerId); } catch (er) {}
   G.idleSince = NOW();
-  if (mode !== "play") return screenDown(x, y);
+  if (SETUI.open) return settingsDown(x, y);
+  if (inRect(x, y, L.top.gear)) { openSettings(true); tone(500, 0.06); return; }
+  if (inRect(x, y, L.top.book)) { nudge("book"); tone(420, 0.06); return; }
+  if (G.card && G.card.t0 != null && mode === "play") G.card.t0 = Math.min(G.card.t0, NOW() - (1200 / SET.anim - 320));
+  const tg = tipTargets().find(t => inRect(x, y, t.rect));
+  LP = tg ? { x, y, t0: NOW(), target: tg, fired: false } : null; TIP = null;
+  if (mode !== "play") { PENDING = { x, y }; return; }
   if (G.ended) return;
-  if (inRect(x, y, L.btn.sound, 2)) { soundOn = !soundOn; ensureAudio(); tone(660, 0.1); return; }
   // right click = quick match strike (desktop)
   if (e.button === 2) { const [cx, cy] = pxToCell(x, y); if (matchAllowed() && cx > 0 && cx < W - 1) strikeAt(cx, clamp(cy, 1, H - 3)); return; }
   const i = hitSlot(x, y);
@@ -347,6 +377,10 @@ canvas.addEventListener("pointerdown", e => {
 });
 function finishDrag(e) {
   ptr.down = false; G.holding = false;
+  const lpf = LP && LP.fired, pend = PENDING; PENDING = null;
+  if (lpf) { if (TIP) { TIP.until = NOW() + 1600; TIP.hover = false; } LP = null; D = null; return; }
+  LP = null;
+  if (pend && mode !== "play") { screenDown(pend.x, pend.y); return; }
   if (!D) return;
   const d = D; D = null;
   if (mode !== "play") return;
@@ -361,14 +395,15 @@ function finishDrag(e) {
   } else if (d.kind === "lid") { if (!d.moved || Math.hypot(d.x - d.sx, d.y - d.sy) < 14) toggleLid(); }
   else if (d.kind === "seal") { if (Math.hypot(d.x - d.sx, d.y - d.sy) < 14) seal(); }
 }
-canvas.addEventListener("pointerup", finishDrag); canvas.addEventListener("pointercancel", () => { D = null; ptr.down = false; G.holding = false; });
+canvas.addEventListener("pointerup", finishDrag); canvas.addEventListener("pointercancel", () => { D = null; LP = null; PENDING = null; ptr.down = false; G.holding = false; });
 window.addEventListener("keydown", e => {
+  if (e.key === "Escape") { if (SETUI.open) openSettings(false); else if (G && mode === "play" && (G.sel >= 0 || G.matchMode)) { G.sel = -1; G.matchMode = false; } else openSettings(true); return; }
+  if (SETUI.open) return;
   if (!G || mode !== "play") { if (e.key === "Enter") screenDown(-1, -1, true); return; }
   if (e.key >= "1" && e.key <= "4") { const i = +e.key - 1; if (G.hand[i] !== undefined && slotAllowed(i)) { G.sel = G.sel === i ? -1 : i; G.matchMode = false; } }
   else if (e.key === "f" || e.key === "F") { if (matchAllowed()) { G.matchMode = !G.matchMode; G.sel = -1; } }
-  else if (e.key === " ") { e.preventDefault(); if (lidAllowed()) toggleLid(); }
+  else if (e.key === " " || e.key === "l" || e.key === "L") { e.preventDefault(); if (lidAllowed()) toggleLid(); }
   else if (e.key === "Enter") { e.preventDefault(); if (sealAllowed()) seal(); }
-  else if (e.key === "Escape") { G.sel = -1; G.matchMode = false; }
 });
 function pourFromSlot(i, col, hold) {
   const mat = G.hand[i];
@@ -389,6 +424,146 @@ function strikeAt(x, y) {
 }
 function toggleLid() { if (G.ended) return; R.toggleLid(); G.lidUsed = true; tone(R.S.lid ? 140 : 220, 0.15, "square", 0.05); G.lidAnim = NOW(); }
 function seal() { if (G.ended) return; R.closeAll(); tone(300, 0.2, "sine", 0.05, 0.5); }
+
+// ---------------- tip cards (hover 300 ms / long-press 400 ms) ----------------
+let TIP = null, LP = null, PENDING = null;
+const SETUI = { open: false, rects: [] };
+const RED = "#b8381e";
+function openSettings(v) { SETUI.open = !!v; if (v) { TIP = null; LP = null; D = null; G.sel = -1; G.matchMode = false; } }
+function itemRC(i) { return G.shopItems[i].kind === "vial" ? [0, i] : [1, i - 2]; }
+function tipTargets() {
+  const out = [];
+  if (!G || SETUI.open) return out;
+  if (mode === "play") {
+    out.push({ id: "match", rect: L.btn.match }, { id: "lid", rect: L.btn.lid }, { id: "seal", rect: L.btn.seal });
+    for (let e = 0; e < 4; e++) out.push({ id: "el" + e, rect: { x: L.rx0, y: L.elY(e) - 12, w: L.rw, h: 24 } });
+    G.arc.forEach((c, i) => out.push({ id: "ch" + i, rect: { x: L.rcx - 13, y: L.charmY(i) - 13, w: 26, h: 26 } }));
+  } else if (mode === "shop") {
+    const S = shopLayout();
+    G.shopItems.forEach((it, i) => { if (it.bought) return; const [r, idx] = itemRC(i), p = S.item(r, idx); out.push({ id: "si" + i, rect: { x: p.x - p.w / 2, y: p.y - p.h / 2 - 6, w: p.w, h: p.h + 20 } }); });
+    G.arc.forEach((c, i) => { const b = S.badge(i); out.push({ id: "ch" + i, rect: { x: b.x - b.r, y: b.y - b.r, w: b.r * 2, h: b.r * 2 } }); });
+  }
+  return out;
+}
+// a row is a list of tokens: "icon-id" strings, {t:key,args,c} labels, {n:text,c} numbers
+function arcRows(id) { const [ic, tag] = ARC_ICON[id]; return [[{ t: "arc." + id }], [ic === "vial" ? "m:" + M.WATER : ic === "match" ? "match" : "rx:" + ic, { n: tag }]]; }
+function tipRows(id) {
+  if (id === "match") return [["match", "arrow", "m:" + M.OIL, "m:" + M.SULFUR, "m:" + M.POWDER, "m:" + M.SEED], [{ t: "ui.each" }, { n: BASE_MATCHES + (R.mods.matchbox ? 1 : 0) }]];
+  if (id === "lid") return [["lid", "arrow", "gas", { t: "ui.full" }, "arrow", "rx:lidpop"], [{ t: "ui.lidOn" }, "m:" + M.WATER, "x"]];
+  if (id === "seal") { const rows = [[{ t: "ui.left" }, "pip", { n: "×" + R.pours }, "arrow", { n: "+" + R.pours }, "coin"]]; if (R.gold < R.target) rows.push([{ t: "ui.miss", c: RED }, "arrow", { t: "ui.fail", c: RED }]); return rows; }
+  if (id.startsWith("el")) {
+    const e = +id.slice(2), row = ["el:" + e];
+    for (const k of RXK) if (RX[k].el.includes(e) && row.length < 6) row.push(seen.has(k) ? "rx:" + k : "q");
+    return [row, [{ t: "ui.perLamp" }, { n: "+1" }, { t: "ui.allLamp" }, { n: "+2" }]];
+  }
+  if (id.startsWith("ch")) return arcRows(G.arc[+id.slice(2)]);
+  if (id.startsWith("si")) { const it = G.shopItems[+id.slice(2)]; if (!it) return []; return it.kind === "vial" ? [[{ t: MATKEY[it.m] }], ["m:" + it.m]] : arcRows(it.c.id); }
+  return [];
+}
+function tokW(t) {
+  if (typeof t === "string") return t === "arrow" ? 22 : t === "x" ? 14 : t.startsWith("m:") || t === "pip" ? 14 : 20;
+  if (t.t != null) return labelW(t.t, 12, t.args) + 4;
+  return numWidth(String(t.n), 12) + 4;
+}
+function drawTok(t, x, cy) {
+  const w = tokW(t), cx = x + w / 2;
+  if (typeof t === "string") {
+    if (t === "arrow") drawArrow(ctx, cx, cy, 7); else if (t === "x") drawCross(ctx, cx, cy, 5);
+    else if (t === "match") drawMatch(ctx, cx - 2, cy + 1, 10, false, 1); else if (t === "lid") drawLid(ctx, cx, cy, 9, false);
+    else if (t === "coin") drawCoin(ctx, cx, cy, 6.5); else if (t === "pip") drawPip(ctx, cx - 5, cy - 8, 10, 15, false);
+    else if (t === "gas") drawRx(ctx, "steam", cx, cy, 8);
+    else if (t === "q") { ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, 8, 0, 7); ctx.setLineDash([2, 2]); ctx.strokeStyle = "rgba(42,28,18,.5)"; ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]); ctx.beginPath(); ctx.arc(cx, cy - 1.5, 2.6, Math.PI, Math.PI * 2.6); ctx.lineTo(cx, cy + 1.5); ctx.strokeStyle = "rgba(42,28,18,.6)"; ctx.stroke(); ctx.beginPath(); ctx.arc(cx, cy + 4, 0.8, 0, 7); ctx.fillStyle = "rgba(42,28,18,.6)"; ctx.fill(); ctx.restore(); }
+    else if (t.startsWith("m:")) drawVial(ctx, +t.slice(2), cx - 6, cy - 9, 12, 18, {});
+    else if (t.startsWith("rx:")) drawRx(ctx, t.slice(3), cx, cy, 8);
+    else if (t.startsWith("el:")) drawEl(ctx, +t.slice(3), cx, cy, 8, true, false, 0);
+  } else if (t.t != null) drawLabel(ctx, t.t, x, cy, 12, { align: "l", args: t.args, color: t.c || INK, halo: false });
+  else drawNum(ctx, String(t.n), x + 1, cy, 12, { align: "l", color: t.c || INK, wt: 0.9 });
+  return w;
+}
+function drawTip(now) {
+  if (!TIP) return;
+  const rows = tipRows(TIP.id); if (!rows.length) { TIP = null; return; }
+  const rw = rows.map(r => r.reduce((a, t) => a + tokW(t), 0));
+  const w = Math.min(220, Math.max(60, Math.max(...rw) + 16)), rh = 24, h = rows.length * rh + 10, a = TIP.rect;
+  let x = clamp(a.x + a.w / 2 - w / 2, 4, LW - 4 - w), y = a.y - h - 6;
+  if (y < 4) y = a.y + a.h + 6;
+  TIP.box = { x, y, w, h };
+  ctx.save(); ctx.fillStyle = "rgba(244,236,212,.98)"; ctx.fillRect(x, y, w, h); wob(ctx, x, y, w, h, 91, 1.5);
+  rows.forEach((r, i) => { let tx = x + (w - rw[i]) / 2; const cy = y + 5 + rh * i + rh / 2; for (const t of r) tx += drawTok(t, tx, cy); });
+  ctx.restore();
+}
+let tipHold = { id: null, since: 0 };
+function updateTip(now) {
+  if (TIP && TIP.until && now > TIP.until) TIP = null;
+  if (LP && !LP.fired && now - LP.t0 >= 400 && ptr.down) { LP.fired = true; TIP = { id: LP.target.id, rect: LP.target.rect, hover: false, until: 0 }; D = null; G.holding = false; buzz(8); }
+  if (ptr.inside && ptr.type === "mouse" && !ptr.down && !D && !SETUI.open) {
+    const t = tipTargets().find(q => inRect(ptr.x, ptr.y, q.rect));
+    if (!t) { tipHold.id = null; if (TIP && TIP.hover) TIP = null; }
+    else { if (tipHold.id !== t.id) { tipHold = { id: t.id, since: now }; if (TIP && TIP.hover) TIP = null; } if (now - tipHold.since >= 300 && !TIP) TIP = { id: t.id, rect: t.rect, hover: true, until: 0 }; }
+  } else if (TIP && TIP.hover) TIP = null;
+}
+
+// ---------------- settings overlay ----------------
+function settingsRows() {
+  const seg = (keyOrNum, on, act, isNum) => ({ k: keyOrNum, on, act, num: isNum });
+  return [
+    { label: "set.sound", segs: [seg("set.on", SET.sound, () => { SET.sound = true; soundOn = true; ensureAudio(); tone(660, 0.1); }), seg("set.off", !SET.sound, () => { SET.sound = false; soundOn = false; })] },
+    { label: "set.anim", segs: [[1, "1×"], [1.5, "1.5×"], [2, "2×"]].map(([v, t]) => seg(t, SET.anim === v, () => { SET.anim = v; }, true)) },
+    { label: "set.lang", segs: [seg("lang.zh", SET.lang === "zh", () => { SET.lang = "zh"; }), seg("lang.en", SET.lang === "en", () => { SET.lang = "en"; })] },
+    { label: "set.vib", segs: [seg("set.on", SET.vib, () => { SET.vib = true; buzz(20); }), seg("set.off", !SET.vib, () => { SET.vib = false; })] },
+    { label: "set.tut", button: () => { openSettings(false); newGame(); tone(660, 0.1); } },
+  ];
+}
+function drawSettings(now) {
+  if (!SETUI.open) return;
+  SETUI.rects = [];
+  ctx.drawImage(bgS, 0, 0, bgS.width / (DPR * L.sc), bgS.height / (DPR * L.sc));
+  drawLabel(ctx, "set.title", 195, 40, 24);
+  const cr = { x: LW - 58, y: 6, w: 52, h: 56 };
+  drawCross(ctx, cr.x + 26, 26, 9, INK); drawLabel(ctx, "set.close", cr.x + 26, 50, 11);
+  SETUI.rects.push({ rect: cr, act: () => openSettings(false) });
+  settingsRows().forEach((row, i) => {
+    const y = 130 + i * 74;
+    if (row.button) {
+      const r = { x: 28, y: y - 22, w: LW - 56, h: 44 }; ctx.fillStyle = "rgba(168,119,74,.22)"; ctx.fillRect(r.x, r.y, r.w, r.h); wob(ctx, r.x, r.y, r.w, r.h, 120 + i, 1.8);
+      drawLabel(ctx, row.label, LW / 2, y, 16, { halo: false }); SETUI.rects.push({ rect: r, act: row.button }); return;
+    }
+    drawLabel(ctx, row.label, 24, y, 16, { align: "l" });
+    const n = row.segs.length, sw = n === 3 ? 62 : 88, x0 = LW - 24 - sw * n;
+    row.segs.forEach((sg, j) => {
+      const r = { x: x0 + j * sw, y: y - 20, w: sw, h: 40 };
+      if (sg.on) { ctx.fillStyle = "rgba(168,119,74,.38)"; ctx.fillRect(r.x, r.y, r.w, r.h); }
+      wob(ctx, r.x, r.y, r.w, r.h, 130 + i * 4 + j, sg.on ? 2.2 : 1.1);
+      if (sg.num) drawNum(ctx, sg.k, r.x + r.w / 2, y, 14, { color: INK, wt: 0.95 }); else drawLabel(ctx, sg.k, r.x + r.w / 2, y, 14, { halo: false });
+      SETUI.rects.push({ rect: r, act: sg.act });
+    });
+  });
+}
+function settingsDown(x, y) { for (const r of SETUI.rects) if (inRect(x, y, r.rect)) { r.act(); saveSet(); if (!SETUI.open) tone(500, 0.05); else tone(440, 0.04); return; } }
+
+// ---------------- round-start card ----------------
+function drawRoundCard(now) {
+  const c = G.card; if (!c || mode !== "play") return;
+  if (c.t0 == null) c.t0 = now;
+  const dur = 1200 / SET.anim, age = now - c.t0;
+  if (age >= dur) { G.card = null; return; }
+  const fin = easeOut(clamp(age / 140, 0, 1)), fly = clamp((age - (dur - 340)) / 340, 0, 1);
+  const w = 240, h = 78, cx = L.bx + L.bw / 2, cy = L.by + L.bh * 0.27 - (1 - fin) * 14;
+  const rr = G.round % 3, act = Math.floor(G.round / 3) + 1;
+  ctx.save(); ctx.globalAlpha = fin * (1 - fly);
+  ctx.fillStyle = "rgba(244,236,212,.98)"; ctx.fillRect(cx - w / 2, cy - h / 2, w, h); wob(ctx, cx - w / 2, cy - h / 2, w, h, 55, 1.8);
+  const rt = (rr + 1) + "/3", w1 = labelW("ui.act", 15, [act]) + 14 + labelW("ui.round", 15) + 6 + numWidth(rt, 14);
+  let x = cx - w1 / 2; x += drawLabel(ctx, "ui.act", x, cy - 20, 15, { align: "l", args: [act], halo: false }) + 14;
+  x += drawLabel(ctx, "ui.round", x, cy - 20, 15, { align: "l", halo: false }) + 6;
+  drawNum(ctx, rt, x, cy - 20, 14, { align: "l", wt: 0.95 });
+  drawMud(ctx, cx - 88, cy + 15, 7); drawArrow(ctx, cx - 72, cy + 15, 5); drawGoldPile(ctx, cx - 55, cy + 15, 7);
+  drawLabel(ctx, "ui.goal", cx - 32, cy + 15, 15, { align: "l", halo: false });
+  ctx.restore();
+  // the target number leaves the card and lands on the goal bar
+  const g = L.goalNum, nx0 = cx + 52, ny0 = cy + 15, e = easeIn(fly);
+  const nx = g ? nx0 + (g.tx - nx0) * e : nx0, ny = g ? ny0 + (g.ty - ny0) * e : ny0, sz = 18 - 7 * e;
+  ctx.save(); ctx.globalAlpha = fin * (fly >= 1 ? 0 : 1); drawNum(ctx, fmt(R.target), nx, ny, sz, { color: RED, halo: true, wt: 1 }); ctx.restore();
+}
 
 // ---------------- previews (ghost) ----------------
 function colContact(col, half) {
@@ -453,25 +628,77 @@ function focusLedger() {
   return best;
 }
 
+function wob(g, x, y, w, h, seed, lw, col) { g.save(); g.strokeStyle = col || INK; g.lineCap = "round"; g.lineJoin = "round"; wobbleRect(g, x, y, w, h, seed, lw); g.restore(); }
 function drawTopBar(now) {
-  const act = Math.min(3, Math.floor(G.round / 3));
-  for (let i = 0; i < 4; i++) {
-    const cur = i === act, x = 20 + i * 22, y = 22, r = cur ? 8.5 : 5.5;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.globalAlpha = i > act ? 0.45 : 1; ctx.fillStyle = ACT_COL[i]; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = cur ? 2 : 1.2; ctx.stroke(); ctx.globalAlpha = 1;
-  }
-  const rr = G.round % 3;
-  for (let i = 0; i < 3; i++) { const x = 118 + i * 17; ctx.beginPath(); ctx.arc(x, 22, 4.5, 0, 7); ctx.strokeStyle = INK; ctx.lineWidth = 1.4; ctx.stroke(); if (i <= rr) { ctx.fillStyle = i === rr ? "#b8381e" : INK; ctx.fill(); } }
-  // sound + coins
-  const sb = L.btn.sound; drawSpeaker(ctx, sb.x + 22, 22, 9, soundOn);
+  const T0 = L.top;
+  // gear + book, 44px touch area, 11px labels
+  ctx.save(); ctx.translate(nudgeOff("gear", now), 0); drawGear(ctx, 34, 14, 10); ctx.restore();
+  drawLabel(ctx, "ui.settings", 34, 31, 11);
+  ctx.save(); ctx.translate(nudgeOff("book", now), 0); drawBook(ctx, 86, 14, 10); ctx.restore();
+  drawLabel(ctx, "ui.codex", 86, 31, 11);
+  // act + round
+  const rr = G.round % 3, act = Math.floor(G.round / 3) + 1;
+  const aw = drawLabel(ctx, "ui.act", 122, 15, 13, { align: "l", args: [act] });
+  for (let i = 0; i < 3; i++) { const x = 122 + aw + 12 + i * 15; ctx.beginPath(); ctx.arc(x, 15, 4.5, 0, 7); ctx.strokeStyle = INK; ctx.lineWidth = 1.4; ctx.stroke(); if (i <= rr) { ctx.fillStyle = i === rr ? "#b8381e" : INK; ctx.fill(); } }
+  const rx = 122 + aw + 12 + 45 + 10;
+  const rw_ = drawLabel(ctx, "ui.round", rx, 15, 12, { align: "l" });
+  drawNum(ctx, (rr + 1) + "/3", rx + rw_ + 4, 15, 12, { align: "l", color: INK, halo: true, wt: 0.9 });
+  // money
   const mny = Math.round(G.shownMoney); const bump = fx.bump.coin ? clamp(1 - (now - fx.bump.coin) / 400, 0, 1) : 0;
-  drawCoin(ctx, 380 - numWidth(String(mny), 14) - 14, 22, 9 + bump * 2);
-  drawNum(ctx, String(mny), 380, 22, 14, { align: "r", color: bump && fx.bump.bad ? "#b8381e" : COL.gold, halo: true, wt: 0.9 });
-  // arcana badges row (above the beaker)
-  for (let i = 0; i < MAX_ARC; i++) {
-    const x = L.bx + 14 + i * 30, y = 52;
-    if (i < G.arc.length) { const a = ARCANA.find(q => q.id === G.arc[i]); drawBadge(ctx, a.id, x, y, 12, a.rare); }
-    else { ctx.beginPath(); ctx.arc(x, y, 9, 0, 7); ctx.setLineDash([2, 3]); ctx.strokeStyle = "rgba(42,28,18,.3)"; ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]); }
+  drawCoin(ctx, 380 - numWidth(String(mny), 14) - 14, 14, 9 + bump * 2);
+  drawNum(ctx, String(mny), 380, 14, 14, { align: "r", color: bump && fx.bump.bad ? "#b8381e" : COL.gold, halo: true, wt: 0.9 });
+  drawLabel(ctx, "ui.money", 360, 31, 11);
+  if (mode === "shop") { drawLabel(ctx, "shop.title", 195, 58, 20); }
+}
+function drawGoalBar(now) {
+  const gl = L.goal, target = R.target, cap = target * 1.5, cur = G.displayGold;
+  // [mud] -> [gold] 'refine'
+  drawLabel(ctx, "ui.refine", 8, 47, 12, { align: "l" });
+  drawMud(ctx, 16, 66, 7); drawArrow(ctx, 32, 66, 5); drawGoldPile(ctx, 49, 66, 7);
+  // gold flight into the bar
+  const frac = cur / target, tipX = gl.x + gl.w * Math.min(1, frac) + (frac > 1 ? gl.ext * Math.min(0.5, frac - 1) / 0.5 : 0);
+  L.goalTip = { x: Math.max(gl.x + 2, tipX), y: gl.midY };
+  for (const p of fx.gold) {
+    if (p.done) continue;
+    const t = (now - p.born) / (p.dur / SET.anim); if (t < 0) continue;
+    if (t >= 1) {
+      p.done = true; G.displayGold += p.v;
+      if (G.round === 0 && !G.fillShown) { G.fillShown = true; G.fillHint = now; }
+      continue;
+    }
+    const e = easeIn(t), P0 = [p.x0, p.y0], P3 = [L.goalTip.x, L.goalTip.y], P1 = [p.x0 + 40 + p.spread * 30, p.y0 - 80], P2 = [P3[0] - 30 + p.spread * 20, P3[1] + 70];
+    const u = 1 - e, x = u * u * u * P0[0] + 3 * u * u * e * P1[0] + 3 * u * e * e * P2[0] + e * e * e * P3[0], y = u * u * u * P0[1] + 3 * u * u * e * P1[1] + 3 * u * e * e * P2[1] + e * e * e * P3[1];
+    ctx.fillStyle = COL.gold; ctx.beginPath(); ctx.arc(x, y, 2.1, 0, 7); ctx.fill(); ctx.fillStyle = COL.goldHi; ctx.fillRect(x - 0.6, y - 0.9, 1.2, 1.2);
   }
+  fx.gold = fx.gold.filter(p => !p.done);
+  if (!fx.gold.length && !fx.tally && !fx.tallyQ.length) G.displayGold = R.gold;
+  // bar body
+  const reached = G.displayGold >= target;
+  if (reached && !G.reachedFlag) { G.reachedFlag = true; G.lineFlash = now; tone(110, 0.4, "sine", 0.08); tone(880, 0.25, "triangle", 0.05); }
+  const fl = G.lineFlash ? (now - G.lineFlash) * SET.anim / 900 : 2, flash = fl < 1 ? (Math.floor(fl * 4) % 2 === 0 ? 1 : 0) : 0;
+  const hint = G.fillHint ? (now - G.fillHint) * SET.anim / 1500 : 2, hintFlash = hint < 0.5 && Math.floor(hint * 8) % 2 === 0;
+  ctx.fillStyle = "rgba(246,238,214,.6)"; ctx.fillRect(gl.x, gl.y, gl.w, gl.h);
+  ctx.save(); ctx.globalAlpha = 0.35; ctx.setLineDash([2, 3]); ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.strokeRect(gl.x + gl.w, gl.y + 1, gl.ext, gl.h - 2); ctx.restore();
+  const f1 = Math.min(1, frac);
+  if (f1 > 0) {
+    ctx.fillStyle = COL.gold; ctx.fillRect(gl.x, gl.y, gl.w * f1, gl.h);
+    ctx.fillStyle = COL.goldHi; for (let i = 0; i < 18; i++) { const sx = gl.x + ((i * 37) % Math.max(1, gl.w * f1 - 2)), sy = gl.y + 1 + ((i * 11) % (gl.h - 3)); if (((i + (now >> 8)) % 4) === 0) ctx.fillRect(sx, sy, 1.4, 1.4); }
+    ctx.strokeStyle = "rgba(42,28,18,.4)"; ctx.lineWidth = 0.7; for (let x = gl.x + 4; x < gl.x + gl.w * f1; x += 5) { ctx.beginPath(); ctx.moveTo(x, gl.y + gl.h); ctx.lineTo(x + 3, gl.y); ctx.stroke(); }
+  }
+  if (frac > 1) { ctx.fillStyle = "rgba(240,210,122,.75)"; ctx.fillRect(gl.x + gl.w, gl.y + 1, gl.ext * Math.min(0.5, frac - 1) / 0.5, gl.h - 2); }
+  wob(ctx, gl.x, gl.y, gl.w, gl.h, 71, 1.5);
+  // target line + label
+  const lx = gl.x + gl.w;
+  ctx.strokeStyle = reached ? "#a87814" : "#b8381e"; ctx.lineWidth = flash || hintFlash ? 4 : 2.4; ctx.beginPath(); ctx.moveTo(lx, gl.y - 5); ctx.lineTo(lx, gl.y + gl.h + 5); ctx.stroke();
+  drawLabel(ctx, "ui.goal", lx, 47, 12, { color: reached ? "#a87814" : "#b8381e" });
+  // numbers: current / target
+  const tw = numWidth(fmt(target), 11), cw = numWidth(fmt(Math.round(cur)), 11), sl = numWidth("/", 11);
+  const nx = gl.numX; L.goalNum = { x: nx - tw - sl - cw - 4, y: gl.midY - 8, w: tw + sl + cw + 4, h: 16, tx: nx - tw / 2, ty: gl.midY };
+  drawNum(ctx, fmt(target), nx, gl.midY, 11, { align: "r", color: reached ? COL.gold : "#b8381e", halo: true, wt: flash ? 1.2 : 0.95 });
+  drawNum(ctx, "/", nx - tw - 1, gl.midY, 11, { align: "r", color: INK, halo: true });
+  drawNum(ctx, fmt(Math.round(cur)), nx - tw - sl - 3, gl.midY, 11, { align: "r", color: COL.gold === "" ? INK : "#8a6410", halo: true, wt: 0.95 });
+  // first-gold hint label
+  if (G.round === 0 && hint < 1) { ctx.save(); ctx.globalAlpha = hint > 0.8 ? 1 - (hint - 0.8) / 0.2 : 1; drawLabel(ctx, "ui.fill", gl.x + gl.w / 2, gl.y + gl.h + 17, 13, { color: "#b8381e" }); ctx.restore(); }
 }
 
 function wigAngle(key, now) { // occasional staggered wiggle for interactive things
@@ -502,51 +729,73 @@ function drawHand_(now) {
       ctx.beginPath(); ctx.ellipse(0, 6, 38 + k * 4, 50 + k * 4, 0, 0, 7); ctx.strokeStyle = `rgba(184,56,30,${0.25 + k * 0.4})`; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.stroke(); ctx.setLineDash([]);
     }
     if (sel) { ctx.beginPath(); ctx.ellipse(0, 6, 40, 52, 0, 0, 7); ctx.strokeStyle = INK; ctx.lineWidth = 2.2; ctx.stroke(); }
-    drawVial(ctx, m, -26, -44, 52, 90, { dim: !allowed });
+    drawVial(ctx, m, -23, -49, 46, 78, { dim: !allowed });
+    drawLabel(ctx, MATKEY[m], 0, 41, 13, { alpha: allowed ? 1 : 0.55 });
+    const nSame = G.hand.filter(q => q === m).length;
+    if (nSame > 1 && G.hand.indexOf(m) !== i) { const tw = numWidth("×" + nSame, 9) + 6; ctx.beginPath(); ctx.rect(30 - tw, -52, tw, 14); ctx.fillStyle = "rgba(246,238,214,.95)"; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.stroke(); drawNum(ctx, "×" + nSame, 30 - tw / 2, -45, 9, { color: "#b8381e", wt: 0.9 }); }
     ctx.restore();
   }
+}
+function btnGauge(bx_, cy, frac, pred, on) { // pressure gauge built into the lid button
+  const x = bx_, y0 = cy - 20, h = 40, w = 7;
+  ctx.save(); ctx.globalAlpha = on ? 1 : 0.5;
+  ctx.fillStyle = "rgba(246,238,214,.8)"; ctx.fillRect(x, y0, w, h);
+  ctx.fillStyle = frac > 0.8 ? "#b8381e" : "#a8774a"; ctx.fillRect(x, y0 + h * (1 - frac), w, h * frac);
+  ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.strokeRect(x, y0, w, h);
+  for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(x + w, y0 + h * i / 4); ctx.lineTo(x + w + 3, y0 + h * i / 4); ctx.stroke(); }
+  if (pred != null) { ctx.setLineDash([2, 2]); ctx.strokeStyle = "#b8381e"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x - 3, y0 + h * (1 - pred)); ctx.lineTo(x + w + 3, y0 + h * (1 - pred)); ctx.stroke(); ctx.setLineDash([]); }
+  ctx.restore();
 }
 function drawButtons(now) {
   const bm = L.btn.match, bl = L.btn.lid, bs = L.btn.seal;
   // match
   const ma = matchAllowed(), mOn = G.matchMode || (D && D.kind === "match");
-  ctx.save(); ctx.translate(bm.x + bm.w / 2 + nudgeOff("match", now), bm.y + bm.h / 2 - hoverLift(bm) * 4);
+  ctx.save(); ctx.translate(bm.x + bm.w / 2 - 34 + nudgeOff("match", now), bm.y + bm.h / 2 - hoverLift(bm) * 4);
   ctx.rotate(wigAngle("match", now) * (ma ? 1 : 0)); ctx.globalAlpha = ma ? 1 : 0.35;
-  if (mOn) { ctx.beginPath(); ctx.arc(0, 0, 28, 0, 7); ctx.strokeStyle = INK; ctx.lineWidth = 2.2; ctx.stroke(); }
-  if (G.tut === 3 && ma && !mOn) { const k = (Math.sin(now / 240) + 1) / 2; ctx.beginPath(); ctx.arc(0, 0, 30 + k * 4, 0, 7); ctx.strokeStyle = `rgba(184,56,30,${0.3 + k * 0.5})`; ctx.setLineDash([5, 4]); ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]); }
+  if (mOn) { ctx.beginPath(); ctx.arc(0, 0, 26, 0, 7); ctx.strokeStyle = INK; ctx.lineWidth = 2.2; ctx.stroke(); }
+  if (G.tut === 3 && ma && !mOn) { const k = (Math.sin(now / 240) + 1) / 2; ctx.beginPath(); ctx.arc(0, 0, 28 + k * 4, 0, 7); ctx.strokeStyle = `rgba(184,56,30,${0.3 + k * 0.5})`; ctx.setLineDash([5, 4]); ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]); }
   const dragging = D && D.kind === "match" && D.moved;
   if (R.matches > 0) { ctx.globalAlpha *= dragging ? 0.3 : 1; drawMatch(ctx, -6, 2, 19, false, R.matches); }
   ctx.restore();
-  drawNum(ctx, String(R.matches), bm.x + bm.w - 18, bm.y + bm.h - 14, 13, { align: "c", color: INK, halo: true });
+  drawLabel(ctx, "btn.match", bm.x + bm.w / 2 + 16, bm.y + bm.h / 2 - 9, 14, { alpha: ma ? 1 : 0.5 });
+  drawNum(ctx, "×" + R.matches, bm.x + bm.w / 2 + 16, bm.y + bm.h / 2 + 12, 13, { align: "c", color: R.matches > 0 ? INK : "#b8381e", halo: true });
   // lid
   const la = lidAllowed(), lOn = R.S.lid;
-  ctx.save(); ctx.translate(bl.x + bl.w / 2 + nudgeOff("lid", now), bl.y + bl.h / 2 - hoverLift(bl) * 4); ctx.rotate(wigAngle("lid", now) * (la ? 1 : 0)); ctx.globalAlpha = la ? 1 : 0.35;
-  if (lOn) { ctx.beginPath(); ctx.arc(0, 0, 28, 0, 7); ctx.strokeStyle = INK; ctx.lineWidth = 2.2; ctx.stroke(); }
+  ctx.save(); ctx.translate(bl.x + bl.w / 2 - 34 + nudgeOff("lid", now), bl.y + bl.h / 2 - hoverLift(bl) * 4); ctx.rotate(wigAngle("lid", now) * (la ? 1 : 0)); ctx.globalAlpha = la ? 1 : 0.35;
+  if (lOn) { ctx.beginPath(); ctx.arc(0, 0, 26, 0, 7); ctx.strokeStyle = INK; ctx.lineWidth = 2.2; ctx.stroke(); }
   drawLid(ctx, 0, -2, 22, lOn); ctx.restore();
-  // seal
+  drawLabel(ctx, lOn ? "btn.lidOff" : "btn.lid", bl.x + bl.w / 2 + 12, bl.y + bl.h / 2, 14, { alpha: la ? 1 : 0.5 });
+  const hov = D && D.kind === "lid" || (ptr.inside && ptr.type === "mouse" && inRect(ptr.x, ptr.y, bl));
+  btnGauge(bl.x + bl.w - 20, bl.y + bl.h / 2, clamp(R.S.gas / R.S.lidMax, 0, 1), hov ? predictFrac() : null, lOn);
+  // seal = end round
   const sa = sealAllowed(), pulse = R.status() === "wait";
-  ctx.save(); ctx.translate(bs.x + bs.w / 2 + nudgeOff("seal", now), bs.y + bs.h / 2 - hoverLift(bs) * 4); ctx.globalAlpha = sa ? 1 : 0.35;
-  if (pulse) { const k = (Math.sin(now / 220) + 1) / 2; ctx.beginPath(); ctx.arc(0, 0, 29 + k * 3, 0, 7); ctx.strokeStyle = `rgba(184,56,30,${0.3 + k * 0.5})`; ctx.lineWidth = 2.4; ctx.stroke(); }
+  ctx.save(); ctx.translate(bs.x + bs.w / 2 - 36 + nudgeOff("seal", now), bs.y + bs.h / 2 - hoverLift(bs) * 4); ctx.globalAlpha = sa ? 1 : 0.35;
+  if (pulse) { const k = (Math.sin(now / 220) + 1) / 2; ctx.beginPath(); ctx.arc(0, 0, 27 + k * 3, 0, 7); ctx.strokeStyle = `rgba(184,56,30,${0.3 + k * 0.5})`; ctx.lineWidth = 2.4; ctx.stroke(); }
   drawHourglass(ctx, 0, 0, 17); ctx.restore();
+  drawLabel(ctx, "btn.end", bs.x + bs.w / 2 + 16, bs.y + bs.h / 2, 13, { alpha: sa ? 1 : 0.5 });
   // pips (remaining pours) + draw pile
   const total = BASE_POURS + (R.mods.spare ? 1 : 0);
-  for (let i = 0; i < total; i++) drawPip(ctx, 12 + i * 20, L.pipY, 14, 20, i >= R.pours);
-  drawPip(ctx, 312, L.pipY, 11, 16, false);
-  drawNum(ctx, String(G.draw.length), 350, L.pipY + 10, 12, { align: "c", color: "#5a4532" });
+  drawLabel(ctx, "ui.pours", 8, L.pipY + 10, 12, { align: "l" });
+  for (let i = 0; i < total; i++) drawPip(ctx, 46 + i * 20, L.pipY, 14, 20, i >= R.pours);
+  drawLabel(ctx, "ui.deck", 266, L.pipY + 10, 12, { align: "l" });
+  drawPip(ctx, 316, L.pipY, 11, 16, false);
+  drawNum(ctx, String(G.draw.length), 352, L.pipY + 10, 12, { align: "c", color: "#5a4532" });
 }
 
 function drawElements(now, T) {
   const focus = focusLedger();
   const fr = T ? null : (focus ? scoreLedger(focus, R.mods) : null);
+  drawLabel(ctx, "ui.mult", L.rcx, L.by + 10, 12);
   for (let e = 0; e < 4; e++) {
     const on = T ? T.lit[e] : (fr && fr.lit[e]);
     const pop = T && T.pop[e] ? clamp(1 - (now - T.pop[e]) / 300, 0, 1) : 0;
-    drawEl(ctx, e, L.rcx, L.elY(e), 9, !!on, false, pop);
+    drawEl(ctx, e, L.elX, L.elY(e), 9, !!on, false, pop);
+    drawLabel(ctx, "el." + e, L.elX + 14, L.elY(e), 12, { align: "l", alpha: on ? 1 : 0.7 });
   }
   // ghost preview: elements this pour would newly light
   if (G.preview) {
     const lit = fr ? fr.lit : [0, 0, 0, 0], pulseK = (Math.sin(now / 160) + 1) / 2;
-    for (const it of G.preview.items) if (RX[it.type]) for (const e of RX[it.type].el) if (!lit[e]) { ctx.save(); ctx.globalAlpha = 0.5 + pulseK * 0.5; drawEl(ctx, e, L.rcx, L.elY(e), 11, false, true, 0); ctx.restore(); }
+    for (const it of G.preview.items) if (RX[it.type]) for (const e of RX[it.type].el) if (!lit[e]) { ctx.save(); ctx.globalAlpha = 0.5 + pulseK * 0.5; drawEl(ctx, e, L.elX, L.elY(e), 11, false, true, 0); ctx.restore(); }
   }
   // base and multiplier numbers
   if (T) {
@@ -556,19 +805,13 @@ function drawElements(now, T) {
   } else if (fr && fr.matter > 0) {
     drawNum(ctx, fmt(fr.matter), L.rcx, L.baseY, 12, { color: INK, halo: true, wt: 0.9 });
     drawNum(ctx, "×" + fr.elem, L.rcx, L.multY, 13, { color: "#b8381e", halo: true, wt: 1 });
-  }
-}
-
-function drawDial(now) {
-  const d = L.dial, S = R.S, frac = clamp(S.gas / S.lidMax, 0, 1);
-  ctx.save(); ctx.globalAlpha = S.lid ? 1 : 0.5;
-  const a = Math.PI + frac * Math.PI + (S.lid && frac > 0.85 ? Math.sin(now / 40) * 0.04 : 0);
-  ctx.beginPath(); ctx.moveTo(d.cx, d.cy); ctx.lineTo(d.cx + Math.cos(a) * d.r * 0.85, d.cy + Math.sin(a) * d.r * 0.85); ctx.strokeStyle = frac > 0.8 && S.lid ? "#b8381e" : INK; ctx.lineWidth = 2.2; ctx.lineCap = "round"; ctx.stroke();
-  ctx.beginPath(); ctx.arc(d.cx, d.cy, 3, 0, 7); ctx.fillStyle = INK; ctx.fill();
-  ctx.restore();
-  if (G.lidHover || (D && D.kind === "lid") || (ptr.inside && ptr.type === "mouse" && inRect(ptr.x, ptr.y, L.btn.lid))) {
-    const pf = predictFrac(), pa = Math.PI + pf * Math.PI;
-    ctx.save(); ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(d.cx, d.cy); ctx.lineTo(d.cx + Math.cos(pa) * d.r * 0.9, d.cy + Math.sin(pa) * d.r * 0.9); ctx.strokeStyle = "#b8381e"; ctx.lineWidth = 1.6; ctx.stroke(); ctx.restore();
+  } else { drawNum(ctx, "×1", L.rcx, L.multY, 13, { color: "rgba(184,56,30,.45)", halo: true, wt: 1 }); }
+  // charms (were above the beaker): vertical list, up to five
+  drawLabel(ctx, "ui.charms", L.rcx, L.charmLabelY, 12);
+  for (let i = 0; i < MAX_ARC; i++) {
+    const x = L.rcx, y = L.charmY(i);
+    if (i < G.arc.length) { const a = ARCANA.find(q => q.id === G.arc[i]); drawBadge(ctx, a.id, x, y, 12, a.rare); }
+    else { ctx.beginPath(); ctx.arc(x, y, 9, 0, 7); ctx.setLineDash([2, 3]); ctx.strokeStyle = "rgba(42,28,18,.3)"; ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]); }
   }
 }
 
@@ -576,6 +819,7 @@ function drawLidOnBeaker(now) {
   const { bx, by, bw, cp } = L, S = R.S;
   const lidY = by - 7;
   if (S.lid) {
+    const pf = clamp(S.gas / S.lidMax, 0, 1); ctx.fillStyle = "rgba(246,238,214,.8)"; ctx.fillRect(bx + 10, lidY - 17, bw - 20, 4); ctx.fillStyle = pf > 0.8 ? "#b8381e" : "#a8774a"; ctx.fillRect(bx + 10, lidY - 17, (bw - 20) * pf, 4); ctx.strokeStyle = INK; ctx.lineWidth = 0.9; ctx.strokeRect(bx + 10, lidY - 17, bw - 20, 4);
     const drop = G.lidAnim ? clamp((now - G.lidAnim) / 220, 0, 1) : 1, yy = lidY - (1 - backOut(drop)) * 24;
     ctx.save(); ctx.translate(bx + bw / 2, yy);
     ctx.fillStyle = "#a8774a"; ctx.strokeStyle = INK; ctx.lineWidth = 1.6;
@@ -593,7 +837,7 @@ function drawLidOnBeaker(now) {
 function drawFloats(now) {
   const { cp } = L;
   for (let i = fx.floats.length - 1; i >= 0; i--) {
-    const f = fx.floats[i], age = (now - f.born) / 1000;
+    const f = fx.floats[i], age = (now - f.born) / 1000 * SET.anim;
     if (age > 1.35) { fx.floats.splice(i, 1); continue; }
     const rise = age < 0.4 ? easeOut(age / 0.4) * 22 : 22 + (age - 0.4) * 5;
     const x = L.bx + f.x * cp, y = L.by + f.y * cp - rise;
@@ -606,7 +850,7 @@ function drawFloats(now) {
   }
   // first-time discovery: the two inputs collide into the result (0.6 s)
   for (let i = fx.disc.length - 1; i >= 0; i--) {
-    const d = fx.disc[i], age = (now - d.born) / 600;
+    const d = fx.disc[i], age = (now - d.born) / 600 * SET.anim;
     if (age > 1.2) { fx.disc.splice(i, 1); continue; }
     const x = L.bx + d.x * cp, y = L.by + d.y * cp, pair = DISCOVER[d.type] || [M.SAND, M.SAND];
     ctx.save(); ctx.translate(x, y);
@@ -689,42 +933,6 @@ function drawPreview(now) {
   }
 }
 
-function drawFlask(now) {
-  const f = L.flask, cap = R.target * 1.5;
-  // flight of gold sand
-  for (const p of fx.gold) {
-    if (p.done) continue;
-    const t = (now - p.born) / p.dur; if (t < 0) continue;
-    if (t >= 1) { p.done = true; G.displayGold += p.v; continue; }
-    const P0 = [p.x0, p.y0], P1 = [p.x0 + 70 + p.spread * 30, p.y0 - 60], P2 = [f.cx - 40 + p.spread * 20, f.neckTop - 50], P3 = [f.cx + p.spread * 3, f.neckTop - 4];
-    let x, y;
-    if (t < 0.78) { const k = t / 0.78, u = 1 - k; x = u * u * u * P0[0] + 3 * u * u * k * P1[0] + 3 * u * k * k * P2[0] + k * k * k * P3[0]; y = u * u * u * P0[1] + 3 * u * u * k * P1[1] + 3 * u * k * k * P2[1] + k * k * k * P3[1]; }
-    else { const k = (t - 0.78) / 0.22; x = P3[0]; y = P3[1] + (flaskY(G.displayGold / cap) - P3[1]) * k * k; }
-    ctx.fillStyle = COL.gold; ctx.beginPath(); ctx.arc(x, y, 2.1, 0, 7); ctx.fill(); ctx.fillStyle = COL.goldHi; ctx.fillRect(x - 0.6, y - 0.9, 1.2, 1.2);
-  }
-  fx.gold = fx.gold.filter(p => !p.done);
-  if (!fx.gold.length && !fx.tally && !fx.tallyQ.length) G.displayGold = R.gold;
-  const lvl = flaskY(G.displayGold / cap);
-  ctx.save(); flaskPath(ctx); ctx.clip();
-  ctx.fillStyle = "rgba(246,238,214,.45)"; ctx.fillRect(f.cx - f.r - 2, f.neckTop, f.r * 2 + 4, f.bottom - f.neckTop + 4);
-  if (G.displayGold > 0) {
-    ctx.fillStyle = COL.gold; ctx.fillRect(f.cx - f.r - 2, lvl, f.r * 2 + 4, f.bottom - lvl + 2);
-    ctx.fillStyle = COL.goldHi; for (let i = 0; i < 40; i++) { const sx = f.cx - f.r + ((i * 53) % (f.r * 2)), sy = lvl + ((i * 37) % Math.max(1, f.bottom - lvl)); if (((i + (now >> 8)) % 5) === 0) ctx.fillRect(sx, sy, 1.4, 1.4); }
-    ctx.strokeStyle = "rgba(42,28,18,.5)"; ctx.lineWidth = 0.7; for (let y = lvl + 3; y < f.bottom; y += 4) { ctx.beginPath(); ctx.moveTo(f.cx - f.r, y); ctx.lineTo(f.cx + f.r, y); ctx.stroke(); }
-  }
-  ctx.restore();
-  ctx.strokeStyle = INK; ctx.lineWidth = 2; flaskPath(ctx); ctx.stroke();
-  ctx.save(); flaskPath(ctx); ctx.clip(); ctx.globalAlpha = 0.35; ctx.lineWidth = 0.7; for (let y = f.neckTop; y < f.bottom; y += 5) { ctx.beginPath(); ctx.moveTo(f.cx + f.r * 0.55, y); ctx.lineTo(f.cx + f.r, y + 3); ctx.stroke(); } ctx.restore();
-  // gold line (target)
-  const gy = flaskY(R.target / cap), reached = G.displayGold >= R.target;
-  if (reached && !G.reachedFlag) { G.reachedFlag = true; G.lineFlash = now; tone(110, 0.4, "sine", 0.08); tone(880, 0.25, "triangle", 0.05); }
-  const fl = G.lineFlash ? (now - G.lineFlash) / 900 : 2, flash = fl < 1 ? (Math.floor(fl * 4) % 2 === 0 ? 1 : 0) : 0;
-  ctx.strokeStyle = reached ? "#a87814" : "#b8381e"; ctx.lineWidth = flash ? 4 : 2.2; ctx.setLineDash([5, 3]);
-  ctx.beginPath(); ctx.moveTo(f.cx - f.r - 5, gy); ctx.lineTo(f.cx + f.r + 5, gy); ctx.stroke(); ctx.setLineDash([]);
-  drawNum(ctx, fmt(R.target), f.cx, gy - 9, 10, { color: reached ? COL.gold : "#b8381e", halo: true, wt: 0.9 });
-  drawNum(ctx, fmt(G.displayGold), f.cx, f.bottom + 12, 11, { color: COL.gold, halo: true, wt: 0.95 });
-}
-
 function drawTallyFx(now) {
   const T = fx.tally; if (!T) return;
   const { t, tA, tC, C } = tallyGeom(T, now);
@@ -773,6 +981,7 @@ function drawTutHand(now) {
   }
   if (t < 0.9) { ctx.globalAlpha = 0.9; if (kind === "vial") drawVial(ctx, mat, x - 22, y - 70, 44, 76, {}); else drawMatch(ctx, x, y - 66, 16, t >= 0.65, 1); }
   drawHand(ctx, x, y, 0.85, t > 0.15 && t < 0.65);
+  if (t < 0.9) drawLabel(ctx, G.tut <= 2 ? "tut.pour" : "btn.match", x + 24, y + 30, 14, { align: "l", color: RED });
   ctx.restore();
 }
 
@@ -784,9 +993,9 @@ function drawCursorHint(now) { // pressed-state ring under finger/mouse
 // ---------------- screens: shop / lose / win ----------------
 function shopLayout() {
   const oy = L.shopOY;
-  return { oy, badge: i => ({ x: 195 + (i - 2) * 56, y: 100 + oy * 0.5, r: 22 }),
-    deckY: 150 + oy * 0.5, shelf1: 292 + oy, board1: 352 + oy, shelf2: 424 + oy, board2: 486 + oy, rowY: 566 + oy,
-    item: (r, i) => ({ x: i ? 285 : 105, y: r === 0 ? 292 + oy : 424 + oy, w: 110, h: 100 }),
+  return { oy, badge: i => ({ x: 195 + (i - 2) * 50, y: 112 + oy * 0.4, r: 20 }),
+    deckLabelY: 154 + oy * 0.5, deckY: 176 + oy * 0.5, shelf1: 300 + oy, board1: 366 + oy, shelf2: 438 + oy, board2: 504 + oy,
+    item: (r, i) => ({ x: i ? 285 : 105, y: r === 0 ? 300 + oy : 438 + oy, w: 110, h: 100 }),
     reroll: { x: 105, y: L.Hl - 110, r: 34 }, exit: { x: 285, y: L.Hl - 110, r: 34 } };
 }
 function rollShop() {
@@ -796,70 +1005,81 @@ function rollShop() {
   G.shopItems = [...vials, ...arc]; G.shopT = NOW();
 }
 function enterShop(earned) {
-  mode = "shop"; G.round++; G.reroll = 1; rollShop();
+  mode = "shop"; G.round++; G.reroll = 1; rollShop(); TIP = null; LP = null;
   G.shownMoney = G.money - earned; fx.coins = [];
-  for (let i = 0; i < Math.min(12, earned * 2); i++) fx.coins.push({ born: NOW() + 250 + i * 90, x0: L.flask.cx, y0: L.flask.cy, v: earned / Math.min(12, earned * 2) });
+  for (let i = 0; i < Math.min(12, earned * 2); i++) fx.coins.push({ born: NOW() + 250 + i * 90, x0: L.goal.x + L.goal.w, y0: L.goal.midY, v: earned / Math.min(12, earned * 2) });
   buildBg();
 }
 function drawShop(now) {
   const S = shopLayout();
   // coins flying in
-  for (const c of fx.coins) { const t = (now - c.born) / 700; if (t < 0 || c.done) continue; if (t >= 1) { c.done = true; G.shownMoney += c.v; fx.bump.coin = now; continue; } const e = easeIn(t); drawCoin(ctx, c.x0 + (352 - c.x0) * e, c.y0 + (22 - c.y0) * e - Math.sin(e * Math.PI) * 60, 8); }
+  for (const c of fx.coins) { const t = (now - c.born) / 700; if (t < 0 || c.done) continue; if (t >= 1) { c.done = true; G.shownMoney += c.v; fx.bump.coin = now; continue; } const e = easeIn(t); drawCoin(ctx, c.x0 + (352 - c.x0) * e, c.y0 + (14 - c.y0) * e - Math.sin(e * Math.PI) * 60, 8); }
   fx.coins = fx.coins.filter(c => !c.done);
-  // owned arcana slots
-  for (let i = 0; i < MAX_ARC; i++) { const b = S.badge(i); if (i < G.arc.length) { const a = ARCANA.find(q => q.id === G.arc[i]); drawBadge(ctx, a.id, b.x, b.y, b.r, a.rare); } else { ctx.beginPath(); ctx.arc(b.x, b.y, b.r - 3, 0, 7); ctx.setLineDash([3, 4]); ctx.strokeStyle = "rgba(42,28,18,.35)"; ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]); } }
-  // deck, as a row of small vials
-  const per = 12, w = 26, x0 = 195 - (Math.min(per, G.deck.length) - 1) * w / 2;
-  G.deck.forEach((m, i) => { const r = Math.floor(i / per), c = i % per, rowN = Math.min(per, G.deck.length - r * per), xx = 195 - (rowN - 1) * w / 2 + c * w; drawVial(ctx, m, xx - 9, S.deckY + r * 42 - 14, 18, 30, {}); });
+  // owned charms
+  const full = G.arcFull ? clamp(1 - (now - G.arcFull) / 1200, 0, 1) : 0;
+  for (let i = 0; i < MAX_ARC; i++) { const b = S.badge(i); if (i < G.arc.length) { const a = ARCANA.find(q => q.id === G.arc[i]); drawBadge(ctx, a.id, b.x, b.y, b.r, a.rare); } else { ctx.beginPath(); ctx.arc(b.x, b.y, b.r - 3, 0, 7); ctx.setLineDash([3, 4]); ctx.strokeStyle = full ? RED : "rgba(42,28,18,.35)"; ctx.lineWidth = full ? 2.4 : 1.2; ctx.stroke(); ctx.setLineDash([]); } }
+  if (full) { ctx.save(); ctx.globalAlpha = Math.min(1, full * 2); drawLabel(ctx, "shop.charms", 195 - 18, S.badge(0).y + 36, 13, { color: RED }); drawNum(ctx, G.arc.length + "/" + MAX_ARC, 195 + 18, S.badge(0).y + 36, 12, { color: RED, halo: true, wt: 1 }); ctx.restore(); }
+  // deck: same material stacks into one vial with a count
+  drawLabel(ctx, "shop.deck", 195, S.deckLabelY, 13);
+  const groups = []; for (const m of G.deck) { const q = groups.find(g => g.m === m); if (q) q.n++; else groups.push({ m, n: 1 }); }
+  const per = 10, w = 32;
+  groups.forEach((g, i) => { const r = Math.floor(i / per), c = i % per, rowN = Math.min(per, groups.length - r * per), xx = 195 - (rowN - 1) * w / 2 + c * w, yy = S.deckY + r * 44;
+    drawVial(ctx, g.m, xx - 9, yy - 14, 18, 30, {});
+    if (g.n > 1) drawNum(ctx, "×" + g.n, xx + 12, yy + 14, 10, { align: "c", color: RED, halo: true, wt: 0.95 }); });
   // shelves
   ctx.strokeStyle = INK; ctx.lineCap = "round";
-  for (const by_ of [S.board1, S.board2]) { ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(30, by_); ctx.lineTo(360, by_); ctx.stroke(); ctx.lineWidth = 0.8; ctx.globalAlpha = 0.5; for (let x = 34; x < 356; x += 7) { ctx.beginPath(); ctx.moveTo(x, by_ + 3); ctx.lineTo(x - 4, by_ + 9); ctx.stroke(); } ctx.globalAlpha = 1; }
+  for (const by_ of [S.board1, S.board2]) { ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(48, by_); ctx.lineTo(360, by_); ctx.stroke(); ctx.lineWidth = 0.8; ctx.globalAlpha = 0.5; for (let x = 52; x < 356; x += 7) { ctx.beginPath(); ctx.moveTo(x, by_ + 3); ctx.lineTo(x - 4, by_ + 9); ctx.stroke(); } ctx.globalAlpha = 1; }
+  drawLabel(ctx, "shop.vials", 26, S.shelf1, 14); drawLabel(ctx, "shop.charms", 26, S.shelf2, 14);
   G.shopItems.forEach((it, i) => {
     if (it.bought) return;
-    const r = it.kind === "vial" ? 0 : 1, idx = it.kind === "vial" ? i : i - 2, p = S.item(r, idx);
-    const drop = clamp((now - it.born - idx * 90) / 300, 0, 1), dy = (1 - backOut(drop)) * -40 * 0 + (1 - easeOut(drop)) * -50;
+    const [r, idx] = itemRC(i), p = S.item(r, idx);
+    const drop = clamp((now - it.born - idx * 90) / 300, 0, 1), dy = (1 - easeOut(drop)) * -50;
     const hov = ptr.inside && ptr.type === "mouse" && inRect(ptr.x, ptr.y, { x: p.x - p.w / 2, y: p.y - p.h / 2, w: p.w, h: p.h });
-    const afford = G.money >= it.price, wob = wigAngle("i" + i, now) * (afford ? 1 : 0);
-    ctx.save(); ctx.globalAlpha = easeOut(drop); ctx.translate(p.x + nudgeOff("i" + i, now), p.y + dy - (hov ? 6 : 0)); ctx.rotate(wob);
-    if (it.kind === "vial") drawVial(ctx, it.m, -22, -42, 44, 76, {}); else drawBadge(ctx, it.c.id, 0, -8, 36, it.c.rare);
+    const afford = G.money >= it.price, wb = wigAngle("i" + i, now) * (afford ? 1 : 0);
+    ctx.save(); ctx.globalAlpha = easeOut(drop); ctx.translate(p.x + nudgeOff("i" + i, now), p.y + dy - (hov ? 6 : 0)); ctx.rotate(wb);
+    if (it.kind === "vial") drawVial(ctx, it.m, -23, -50, 46, 76, {}); else drawBadge(ctx, it.c.id, 0, -14, 33, it.c.rare);
     ctx.restore();
     ctx.save(); ctx.globalAlpha = easeOut(drop);
-    drawCoin(ctx, p.x - 14, p.y + 49, 7.5); drawNum(ctx, String(it.price), p.x + 12, p.y + 49, 13, { color: afford ? INK : "#b8381e", halo: true, wt: 0.95 }); ctx.restore();
+    drawLabel(ctx, it.kind === "vial" ? MATKEY[it.m] : "arc." + it.c.id, p.x, p.y + 38, 13);
+    drawCoin(ctx, p.x - 14, p.y + 56, 7.5); drawNum(ctx, String(it.price), p.x + 12, p.y + 56, 13, { color: afford ? INK : RED, halo: true, wt: 0.95 }); ctx.restore();
   });
-  // reroll + exit
+  // reroll (dice) + exit (door)
   const rr = S.reroll, ex = S.exit, rAfford = G.money >= G.reroll;
-  ctx.save(); ctx.translate(rr.x + nudgeOff("reroll", now), rr.y - 8); ctx.globalAlpha = rAfford ? 1 : 0.45; drawReroll(ctx, 0, 0, 22); ctx.restore();
-  drawCoin(ctx, rr.x - 12, rr.y + 32, 7); drawNum(ctx, String(G.reroll), rr.x + 8, rr.y + 32, 12, { color: rAfford ? INK : "#b8381e", halo: true });
+  ctx.save(); ctx.translate(rr.x + nudgeOff("reroll", now), rr.y - 10); ctx.globalAlpha = rAfford ? 1 : 0.45; drawDice(ctx, 0, 0, 20); ctx.restore();
+  drawCoin(ctx, rr.x - 12, rr.y + 28, 7); drawNum(ctx, String(G.reroll), rr.x + 8, rr.y + 28, 12, { color: rAfford ? INK : RED, halo: true });
+  drawLabel(ctx, "shop.reroll", rr.x, rr.y + 50, 14);
   const pulse = 1 + Math.sin(now / 300) * 0.04;
-  ctx.save(); ctx.translate(ex.x, ex.y); ctx.scale(pulse, pulse); drawDoor(ctx, 0, 0, 26); ctx.restore();
+  ctx.save(); ctx.translate(ex.x, ex.y - 8); ctx.scale(pulse, pulse); drawDoor(ctx, 0, 0, 24); ctx.restore();
+  drawLabel(ctx, "shop.exit", ex.x, ex.y + 50, 14);
 }
 function screenDown(x, y, key) {
   if (mode === "shop") {
     if (key) return exitShop();
     const S = shopLayout();
-    if (inRect(x, y, L.btn.sound, 2)) { soundOn = !soundOn; return; }
-    if (Math.hypot(x - S.exit.x, y - S.exit.y) < S.exit.r + 8) return exitShop();
-    if (Math.hypot(x - S.reroll.x, y - S.reroll.y) < S.reroll.r + 8) {
+    if (Math.hypot(x - S.exit.x, y - (S.exit.y - 8)) < S.exit.r + 8) return exitShop();
+    if (Math.hypot(x - S.reroll.x, y - (S.reroll.y - 8)) < S.reroll.r + 8) {
       if (G.money < G.reroll) { nudge("reroll"); fx.bump = { coin: NOW(), bad: true }; return; }
       G.money -= G.reroll; G.shownMoney = G.money; G.reroll++; rollShop(); tone(400, 0.1); return;
     }
     G.shopItems.forEach((it, i) => {
       if (it.bought) return;
-      const r = it.kind === "vial" ? 0 : 1, idx = it.kind === "vial" ? i : i - 2, p = S.item(r, idx);
+      const [r, idx] = itemRC(i), p = S.item(r, idx);
       if (!inRect(x, y, { x: p.x - p.w / 2, y: p.y - p.h / 2, w: p.w, h: p.h + 20 })) return;
-      if (G.money < it.price || (it.kind === "arc" && G.arc.length >= MAX_ARC)) { nudge("i" + i); fx.bump = { coin: NOW(), bad: true }; tone(120, 0.15, "square", 0.04); return; }
+      if (it.kind === "arc" && G.arc.length >= MAX_ARC) { nudge("i" + i); G.arcFull = NOW(); tone(120, 0.15, "square", 0.04); return; }
+      if (G.money < it.price) { nudge("i" + i); fx.bump = { coin: NOW(), bad: true }; tone(120, 0.15, "square", 0.04); return; }
       G.money -= it.price; G.shownMoney = G.money; it.bought = true;
       if (it.kind === "vial") G.deck.push(it.m); else G.arc.push(it.c.id);
       tone(660, 0.08); tone(990, 0.12); buzz(15); fx.bump = { coin: NOW() };
     });
     return;
   }
-  if (mode === "lose" || mode === "win") { if (key || Math.hypot(x - 195, y - (L.Hl - 120)) < 56) { newGame(); } }
+  if (mode === "lose" || mode === "win") { if (key || Math.hypot(x - 195, y - (endCY() + 200)) < 56) { newGame(); } }
 }
 function exitShop() { startRound(); }
+const endCY = () => L.Hl * 0.325;
 function drawEndScreen(now) {
   ctx.fillStyle = "rgba(60,44,28,.35)"; ctx.fillRect(0, 0, LW, L.Hl);
-  const win = mode === "win", cx = 195, cy = L.Hl * 0.4;
+  const win = mode === "win", cx = 195, cy = endCY();
   // a big flask showing how far the gold got
   const k = Math.min(1, now - G.endT > 0 ? (now - G.endT) / 800 : 0), frac = win ? 1 : clamp(R.gold / R.target, 0, 1) * 2 / 3;
   ctx.save(); ctx.translate(cx, cy);
@@ -872,8 +1092,10 @@ function drawEndScreen(now) {
   if (!win) { ctx.strokeStyle = INK; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(-10, 40); ctx.lineTo(8, 58); ctx.lineTo(-4, 74); ctx.lineTo(14, 96); ctx.moveTo(8, 58); ctx.lineTo(30, 66); ctx.stroke(); }
   ctx.restore();
   drawNum(ctx, fmt(R.gold) + "/" + fmt(R.target), cx, cy + 150, 20, { color: win ? COL.gold : "#b8381e", halo: true, wt: 0.95 });
+  drawLabel(ctx, win ? "end.win" : "end.fail", cx, cy - 134, 30, { color: win ? "#8a6410" : RED });
+  drawLabel(ctx, "end.again", cx, cy + 200 + 36 + 14, 16);
   const pulse = 1 + Math.sin(now / 280) * 0.05;
-  ctx.save(); ctx.translate(cx, L.Hl - 120); ctx.scale(pulse, pulse); ctx.beginPath(); ctx.arc(0, 0, 40, 0, 7); ctx.fillStyle = "rgba(239,228,200,.95)"; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.4; ctx.stroke(); drawRestart(ctx, 0, 0, 20); ctx.restore();
+  ctx.save(); ctx.translate(cx, cy + 200); ctx.scale(pulse, pulse); ctx.beginPath(); ctx.arc(0, 0, 36, 0, 7); ctx.fillStyle = "rgba(239,228,200,.95)"; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.4; ctx.stroke(); drawRestart(ctx, 0, 0, 18); ctx.restore();
 }
 
 // ---------------- main loop ----------------
@@ -883,7 +1105,7 @@ let slowAcc = 0, slowN = 0;
 function loop(now) {
   const dt = Math.min(100, now - lastT); lastT = now;
   if (WASH_BLUR && mode === "play") { slowAcc += dt; if (++slowN === 120) { if (slowAcc / slowN > 21) WASH_BLUR = false; slowAcc = 0; slowN = 0; } }
-  if (G && R && mode === "play" && !G.ended) {
+  if (G && R && mode === "play" && !G.ended && !SETUI.open) {
     acc += dt;
     const waiting = R.pours === 0 && R.matches === 0 && R.active.length === 0;
     const speed = waiting ? 3 : 1;
@@ -893,7 +1115,7 @@ function loop(now) {
     window.__perf.simMs += performance.now() - t0;
     flushBuckets(now); updateTally(now);
     checkEnd(now);
-  } else if (G && R && mode === "play") { updateTally(now); }
+  } else if (G && R && mode === "play" && !SETUI.open) { updateTally(now); }
   if (G && R) {
     const t1 = performance.now();
     if (G.shownMoney !== G.money && mode === "play") G.shownMoney = G.money;
@@ -901,18 +1123,20 @@ function loop(now) {
     ctx.setTransform(DPR * L.sc, 0, 0, DPR * L.sc, 0, 0);
     const bgUse = mode === "shop" ? bgS : bgC;
     ctx.drawImage(bgUse, 0, 0, bgUse.width / (DPR * L.sc), bgUse.height / (DPR * L.sc));
+    updateTip(now);
     if (mode === "shop") { drawTopBar(now); drawShop(now); }
     else {
       drawBeakerLayers(now);
       drawLidOnBeaker(now); drawPours(now); drawFloats(now); drawChains(now);
       drawPreview(now);
-      drawDial(now);
       drawElements(now, fx.tally);
-      drawFlask(now); drawTallyFx(now);
-      drawHand_(now); drawButtons(now); drawTopBar(now);
+      drawTopBar(now); drawGoalBar(now); drawTallyFx(now);
+      drawHand_(now); drawButtons(now);
       drawTutHand(now); drawCursorHint(now);
+      drawRoundCard(now);
       if (mode === "lose" || mode === "win") drawEndScreen(now);
     }
+    drawTip(now); drawSettings(now);
     window.__perf.drawMs += performance.now() - t1; window.__perf.frames++; frameN++;
   }
   requestAnimationFrame(loop);
@@ -939,6 +1163,7 @@ function roundClear() {
 
 // ---------------- boot ----------------
 window.addEventListener("resize", () => { layout(); });
+try { document.fonts && document.fonts.load("600 14px 'Noto Serif TC'", Object.values(STR.zh).join("")).catch(() => {}); } catch (e) {}
 buildPatterns();
 layout();
 newGame(+QS.get("seed") || 0);
@@ -947,13 +1172,15 @@ requestAnimationFrame(loop);
 window.__game = {
   get G() { return G; }, get R() { return R; }, get L() { return L; }, get mode() { return mode; }, get fx() { return fx; }, get D() { return D; }, M,
   clientOf, cellClient: (cx, cy) => clientOf(cellX(cx), cellY(cy)), slotClient: i => { const s = L.slot(i); return clientOf(s.x + s.w / 2, s.y + s.h / 2); },
+  get ui() { return { goalRect: L.goal && { x: L.goal.x, y: L.goal.y, w: L.goal.w, h: L.goal.h }, goalNum: L.goalNum, card: !!(G && G.card), tip: TIP && TIP.id, settingsOpen: SETUI.open, set: SET, top: L.top }; },
+  showCard: () => { G.card = { t0: null }; }, openSettings, setLang: v => { SET.lang = v; saveSet(); },
   btnClient: k => { const b = L.btn[k]; return clientOf(b.x + b.w / 2, b.y + b.h / 2); }, shopPos: () => { const S = shopLayout(); return { items: G.shopItems.map((it, i) => { const r = it.kind === 'vial' ? 0 : 1, idx = it.kind === 'vial' ? i : i - 2; return S.item(r, idx); }), reroll: S.reroll, exit: S.exit }; }, setSound: v => { soundOn = v; },
   drawIcons: () => drawIconSheet(),
 };
 function drawIconSheet() {
   const mats = [M.SAND, M.WATER, M.OIL, M.LAVA, M.ACID, M.POWDER, M.ICE, M.SEED, M.EMBER, M.SULFUR];
   const rxs = RXK.concat(["steam"]);
-  const cw = 720, ch = 560, c = document.createElement("canvas"); c.width = cw * 2; c.height = ch * 2; const g = c.getContext("2d"); g.scale(2, 2);
+  const cw = 720, ch = 560 + 70, c = document.createElement("canvas"); c.width = cw * 2; c.height = ch * 2; const g = c.getContext("2d"); g.scale(2, 2);
   const draw = (gg, oy) => {
     gg.save(); gg.translate(0, oy);
     mats.forEach((m, i) => drawVial(gg, m, 20 + i * 70, 20, 52, 88, {}));
@@ -962,6 +1189,8 @@ function drawIconSheet() {
     drawMatch(gg, 300, 320, 20, false, 2); drawLid(gg, 360, 322, 22, true); drawLid(gg, 420, 322, 22, false); drawHourglass(gg, 480, 322, 18); drawCoin(gg, 530, 322, 12); drawReroll(gg, 580, 322, 18); drawDoor(gg, 640, 322, 18);
     ARCANA.forEach((a, i) => drawBadge(gg, a.id, 40 + i * 42, 380, 18, a.rare));
     drawNum(gg, "0123456789×+−=/%.,k", 20, 430, 22, {});
+    drawGear(gg, 40, 490, 16); drawBook(gg, 100, 490, 16); drawDice(gg, 160, 490, 16); drawMud(gg, 220, 490, 14); drawGoldPile(gg, 280, 490, 14); drawArrow(gg, 330, 490, 12); drawCross(gg, 380, 490, 10);
+    TRAITS.forEach((t, i) => drawTrait(gg, t, 440 + i * 46, 490, 16));
     gg.restore();
   };
   g.fillStyle = "#e3d6b4"; g.fillRect(0, 0, cw, ch); draw(g, 0);

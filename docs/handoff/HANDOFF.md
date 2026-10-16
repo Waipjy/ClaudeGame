@@ -10,6 +10,9 @@
 - **設計文件**：`docs/design/DEPTH_v1.md`（構築與局外）、`docs/design/UI_NO_TEXT.md`（無字 UI 規範）、`GDD_v1.md`（舊，部分術語已廢）。
 - **Unity**：專案已設定好 PC Steam（`docs/tech/PROJECT_SETUP.md`），尚無玩法。透過 Unity MCP 操作，電腦端 git 用 eval（規則 `docs/tech/PC_BRIDGE.md`）。
 
+## v0.4 進度
+- B1 完成（標籤、目標條、字卡、提示卡、設定、護符右欄、H=120）。紀錄 `docs/design/playtest_log_v04.md`。下一步 B2：計分改造（見 V04_SPEC §9）。
+
 ## 等待中
 - **HSU 正在試玩 v0.3a，會給回饋**。新 session 第一步：收回饋 → 寫進下方「HSU 回饋」→ 依回饋規劃。
 

@@ -1,7 +1,7 @@
 // Pour Decisions《爆鍋煉金》— falling-sand simulation core + round rules (prototype v0.2).
 // Pure and deterministic given seed + inputs. Used by the browser prototype (inlined) and by node (tests / bots).
 (function (root) {
-  const W = 100, H = 150;
+  const W = 100, H = 120;
   const M = { E:0, SAND:1, WATER:2, OIL:3, FIRE:4, LAVA:5, STONE:6, STEAM:7, ACID:8, POWDER:9, ICE:10, GLASS:11,
               SEED:12, PLANT:13, SMOKE:14, WALL:15, EMBER:16, MUD:17, SULFUR:18, FUME:19 };
   const KIND = [], DEN = [];  // kind: 0 empty 1 powder 2 liquid 3 gas 4 solid
@@ -44,7 +44,7 @@
     };
   }
 
-  const MUD_ROWS = 8;
+  const MUD_ROWS = 10;
 
   function createSim(seed, mods) {
     const N = W * H;
@@ -52,7 +52,7 @@
           stamp = new Uint16Array(N), flash = new Uint8Array(N),
           src = new Uint8Array(N), gen = new Uint8Array(N), rk = new Uint8Array(N);
     const rnd = mulberry32(seed >>> 0);
-    const S = { W, H, t, life, shade, flash, src, gen, rk, frame: 0, gas: 0, lid: false, lidMax: 800,
+    const S = { W, H, t, life, shade, flash, src, gen, rk, frame: 0, gas: 0, lid: false, lidMax: 640,
                 mods: mods || {}, onEvent: null, onLidPop: null, lastEventFrame: 0 };
 
     function reset() {

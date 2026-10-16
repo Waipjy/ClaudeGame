@@ -29,26 +29,26 @@ const a = play(7, scr, 900), b = play(7, scr, 900);
 ok(hash(a.events) === hash(b.events) && a.events.length > 100, `決定性：兩次事件序列 hash 相同 (${a.events.length} 事件, ${hash(a.events)})`);
 
 // 2. oil laid first, then match => all burns credited to match ledger
-const c = play(3, [[0, 'pour', M.OIL, 80], [260, 'match', 80, 112]], 900);
+const c = play(3, [[0, 'pour', M.OIL, 80], [260, 'match', 80, 100]], 900);
 const burns = c.events.filter(e => e[3] === 'burn');
 const matchL = c.R.order.find(L => L.kind === 'match');
 ok(burns.length > 200 && burns.every(e => e[1] === matchL.id), `先倒油→火柴：燃燒 ${burns.length} 次全部記在火柴帳 #${matchL.id}`);
 
 // 3. ledger sum equals round gold (exact)
-const d = play(11, [[0, 'pour', M.SULFUR, 50], [30, 'pour', M.OIL, 100], [70, 'pour', M.WATER, 80], [140, 'match', 60, 108], [160, 'pour', M.LAVA, 120]], 1500);
+const d = play(11, [[0, 'pour', M.SULFUR, 50], [30, 'pour', M.OIL, 100], [70, 'pour', M.WATER, 80], [140, 'match', 60, 78], [160, 'pour', M.LAVA, 120]], 1500);
 d.R.closeAll();
 const sum = d.R.closedLog.reduce((s, L) => s + L.result.gold, 0);
 ok(sum === d.R.gold && sum > 0, `帳本加總 ${sum} = 回合金 ${d.R.gold}`);
 
 // 4. sulfur chain lights 3+ elements: sulfur on water, match => blue flame (fire), fume (air), acid rain (water)
-const e = play(5, [[0, 'pour', M.WATER, 80], [70, 'pour', M.SULFUR, 80], [180, 'match', 80, 104]], 1500);
+const e = play(5, [[0, 'pour', M.WATER, 80], [70, 'pour', M.SULFUR, 80], [180, 'match', 80, 74]], 1500);
 const mL = e.R.order.find(L => L.kind === 'match');
 e.R.closeAll();
 console.log('   硫磺帳:', JSON.stringify(mL.counts), 'lit', mL.result.lit.join(''), 'gold', mL.result.gold);
 ok(mL.result.nLit >= 3, `硫磺浮水＋火柴點亮 ${mL.result.nLit} 元素`);
 
 // 5. lid builds pressure and pops
-const f = play(9, [[0, 'pour', M.OIL, 80], [60, 'pour', M.WATER, 60], [120, 'lid'], [130, 'match', 80, 106]], 1500, {});
+const f = play(9, [[0, 'pour', M.OIL, 80], [60, 'pour', M.WATER, 60], [120, 'lid'], [130, 'match', 80, 76]], 1500, {});
 const pops = f.R.order.reduce((s, L) => s + (L.counts.lidpop || 0), 0);
 console.log('   爆蓋 events', pops, 'lid now', f.R.S.lid);
 ok(pops > 0, '蓋蓋子＋點火會爆蓋');

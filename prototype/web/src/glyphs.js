@@ -88,11 +88,11 @@ const SIL = {
   [M.ACID]: g => { g.moveTo(.38, .02); g.lineTo(.62, .02); g.lineTo(.62, .26); g.lineTo(.92, .34); g.lineTo(.92, .99); g.lineTo(.08, .99); g.lineTo(.08, .34); g.lineTo(.38, .26); g.closePath(); },
   [M.POWDER]: g => { g.moveTo(.22, .1); g.lineTo(.78, .1); g.bezierCurveTo(1.02, .3, 1.02, .78, .78, .98); g.lineTo(.22, .98); g.bezierCurveTo(-.02, .78, -.02, .3, .22, .1); g.closePath(); },
   [M.ICE]: g => { g.moveTo(.5, .02); g.lineTo(.95, .26); g.lineTo(.95, .74); g.lineTo(.5, .99); g.lineTo(.05, .74); g.lineTo(.05, .26); g.closePath(); },
-  [M.SEED]: g => { g.moveTo(.5, .2); g.lineTo(.26, .02); g.lineTo(.32, .26); g.bezierCurveTo(.0, .38, -.02, .99, .5, .99); g.bezierCurveTo(1.02, .99, 1.0, .38, .68, .26); g.lineTo(.74, .02); g.closePath(); },
+  [M.SEED]: g => { g.moveTo(.5, .12); g.lineTo(.3, .0); g.lineTo(.36, .2); g.lineTo(.42, .3); g.bezierCurveTo(.0, .38, -.02, .99, .5, .99); g.bezierCurveTo(1.02, .99, 1.0, .38, .58, .3); g.lineTo(.64, .2); g.lineTo(.7, .0); g.closePath(); },
   [M.EMBER]: g => { g.moveTo(.06, .42); g.lineTo(.94, .42); g.lineTo(.94, .99); g.lineTo(.06, .99); g.closePath(); },
   [M.SULFUR]: g => { g.moveTo(.42, .03); g.lineTo(.58, .03); g.lineTo(.58, .38); g.bezierCurveTo(1.02, .44, 1.02, .97, .5, .97); g.bezierCurveTo(-.02, .97, -.02, .44, .42, .38); g.closePath(); },
 };
-const SYMC = { [M.SAND]: [.5, .66], [M.WATER]: [.5, .68], [M.OIL]: [.5, .66], [M.LAVA]: [.5, .6], [M.ACID]: [.5, .66], [M.POWDER]: [.5, .55], [M.ICE]: [.5, .52], [M.SEED]: [.5, .62], [M.EMBER]: [.5, .72], [M.SULFUR]: [.5, .68] };
+const SYMC = { [M.SAND]: [.5, .66], [M.WATER]: [.5, .68], [M.OIL]: [.5, .66], [M.LAVA]: [.5, .6], [M.ACID]: [.5, .66], [M.POWDER]: [.5, .55], [M.ICE]: [.5, .52], [M.SEED]: [.5, .68], [M.EMBER]: [.5, .76], [M.SULFUR]: [.5, .68] };
 const VCOL = { [M.SAND]: COL.sand, [M.WATER]: COL.water, [M.OIL]: COL.oil, [M.LAVA]: COL.lava, [M.ACID]: COL.acid, [M.POWDER]: COL.powder, [M.ICE]: COL.ice, [M.SEED]: COL.seed, [M.EMBER]: COL.ember, [M.SULFUR]: COL.sulfur };
 const SYM = {
   [M.SAND]: (g, s) => { for (const [x, y] of [[-.5, .4], [.5, .4], [0, -.45]]) { g.beginPath(); g.arc(x * s, y * s, s * .24, 0, 7); g.fillStyle = INK; g.fill(); } },
@@ -103,7 +103,7 @@ const SYM = {
   [M.POWDER]: (g, s) => { g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? s * .4 : s * .95; g[i ? "lineTo" : "moveTo"](Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); g.stroke(); },
   [M.ICE]: (g, s) => { for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; g.beginPath(); g.moveTo(Math.cos(a) * s, Math.sin(a) * s); g.lineTo(-Math.cos(a) * s, -Math.sin(a) * s); g.stroke(); } g.beginPath(); g.arc(0, 0, s * .45, 0, 7); g.stroke(); },
   [M.SEED]: (g, s) => { g.beginPath(); g.moveTo(0, s * .9); g.lineTo(0, -s * .1); g.stroke(); for (const d of [-1, 1]) { g.beginPath(); g.moveTo(0, -s * .1); g.quadraticCurveTo(d * s * .9, -s * .1, d * s * .9, -s * .9); g.quadraticCurveTo(d * s * .1, -s * .8, 0, -s * .1); g.stroke(); } },
-  [M.EMBER]: (g, s) => { for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; g.beginPath(); g.moveTo(Math.cos(a) * s * .35, Math.sin(a) * s * .35); g.lineTo(Math.cos(a) * s * .95, Math.sin(a) * s * .95); g.stroke(); } },
+  [M.EMBER]: (g, s) => { g.beginPath(); g.moveTo(0, -s); g.bezierCurveTo(s * .2, -s * .5, s * .8, -s * .1, s * .6, s * .45); g.bezierCurveTo(s * .45, s * .95, -s * .45, s * .95, -s * .6, s * .4); g.bezierCurveTo(-s * .75, -s * .05, -s * .25, -s * .35, 0, -s); g.closePath(); g.stroke(); },
   [M.SULFUR]: (g, s) => { tri(g, [[0, -s], [s * .7, -s * .15], [-s * .7, -s * .15]]); g.stroke(); g.beginPath(); g.moveTo(0, -s * .15); g.lineTo(0, s * .95); g.moveTo(-s * .45, s * .5); g.lineTo(s * .45, s * .5); g.stroke(); },
 };
 // draw a vial in box (x,y,w,h). opt: dim, filled(0..1 liquid level), halo
@@ -126,7 +126,18 @@ function drawVial(g, m, x, y, w, h, opt) {
   g.strokeStyle = opt.dim ? "rgba(42,28,18,.4)" : INK; g.lineWidth = opt.lw || 1.5; g.lineJoin = "round"; g.stroke();
   // cork / lid detail for some
   g.save();
-  if (m === M.EMBER) { g.strokeStyle = INK; g.lineWidth = 1; g.beginPath(); g.moveTo(x + w * .06, y + h * .6); g.lineTo(x + w * .94, y + h * .6); g.stroke(); }
+  if (m === M.EMBER) { // small tin box with a curved fuse and a spark at its end
+    g.strokeStyle = INK; g.lineWidth = 1; g.beginPath(); g.moveTo(x + w * .06, y + h * .56); g.lineTo(x + w * .94, y + h * .56); g.stroke();
+    g.lineCap = "round"; g.lineWidth = Math.max(1.3, w * .045); g.beginPath(); g.moveTo(x + w * .5, y + h * .42); g.bezierCurveTo(x + w * .5, y + h * .22, x + w * .86, y + h * .3, x + w * .76, y + h * .1); g.stroke();
+    const sx = x + w * .76, sy = y + h * .08, sr = Math.min(w, h) * .13; g.lineWidth = Math.max(1.2, w * .04);
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 4; g.beginPath(); g.moveTo(sx - Math.cos(a) * sr, sy - Math.sin(a) * sr); g.lineTo(sx + Math.cos(a) * sr, sy + Math.sin(a) * sr); g.strokeStyle = i % 2 ? INK : "#d9582a"; g.stroke(); }
+  }
+  if (m === M.SEED) { // cord around the neck with a knot
+    g.strokeStyle = INK; g.lineWidth = Math.max(1.3, w * .04); g.lineCap = "round";
+    g.beginPath(); g.moveTo(x + w * .36, y + h * .3); g.lineTo(x + w * .64, y + h * .3); g.stroke();
+    g.beginPath(); g.moveTo(x + w * .5, y + h * .3); g.quadraticCurveTo(x + w * .3, y + h * .36, x + w * .36, y + h * .43); g.moveTo(x + w * .5, y + h * .3); g.quadraticCurveTo(x + w * .72, y + h * .36, x + w * .64, y + h * .43); g.stroke();
+    g.beginPath(); g.arc(x + w * .5, y + h * .3, Math.max(1.3, w * .045), 0, 7); g.fillStyle = INK; g.fill();
+  }
   if (m === M.POWDER) { g.strokeStyle = INK; g.lineWidth = 1; for (const f of [.28, .8]) { g.beginPath(); g.moveTo(x + w * .03, y + h * f); g.lineTo(x + w * .97, y + h * f); g.stroke(); } }
   g.restore();
   // symbol
@@ -150,7 +161,12 @@ function cloud(g, s, col) { g.beginPath(); g.moveTo(-s * .8, s * .2); g.bezierCu
 function wavy(g, x, y, s, n) { for (let i = 0; i < n; i++) { const dx = x + (i - (n - 1) / 2) * s * .55; g.beginPath(); g.moveTo(dx, y + s * .9); g.bezierCurveTo(dx + s * .4, y + s * .4, dx - s * .4, y, dx, y - s * .3); g.bezierCurveTo(dx + s * .35, y - s * .6, dx - s * .2, y - s * .8, dx, y - s); g.stroke(); } }
 const RXICON = {
   burn: (g, s) => flame(g, s, COL.fire),
-  blueflame: (g, s) => flame(g, s, COL.blue),
+  blueflame: (g, s) => { // hollow outline flame + three short ticks + a sulfur mark in the middle
+    g.beginPath(); g.moveTo(0, -s); g.bezierCurveTo(s * .2, -s * .5, s * .85, -s * .1, s * .65, s * .45); g.bezierCurveTo(s * .5, s * .95, -s * .5, s * .95, -s * .65, s * .4); g.bezierCurveTo(-s * .8, -s * .05, -s * .25, -s * .35, 0, -s); g.closePath();
+    wash(g, "#f2ead2", .75); ink(g, 1.6); g.strokeStyle = COL.blue; g.lineWidth = 1.2; g.stroke();
+    g.strokeStyle = COL.blue; g.lineWidth = 1.1; for (const dx of [-.32, 0, .32]) { g.beginPath(); g.moveTo(dx * s, -s * .38 + Math.abs(dx) * s * .5); g.lineTo(dx * s, -s * .08 + Math.abs(dx) * s * .4); g.stroke(); }
+    g.save(); g.translate(0, s * .42); g.strokeStyle = INK; g.lineWidth = 1.1; const q = s * .26; tri(g, [[0, -q], [q * .8, q * .2], [-q * .8, q * .2]]); g.stroke(); g.beginPath(); g.moveTo(0, q * .2); g.lineTo(0, q * 1.1); g.moveTo(-q * .5, q * .7); g.lineTo(q * .5, q * .7); g.stroke(); g.restore();
+  },
   blast: (g, s) => { g.beginPath(); for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8, r = i % 2 ? s * .5 : s; g[i ? "lineTo" : "moveTo"](Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); wash(g, "#e8752f", .92); ink(g, 1.3); g.beginPath(); g.arc(0, 0, s * .3, 0, 7); wash(g, "#f0d27a", .95); },
   steam: (g, s) => { g.strokeStyle = "#6c726e"; g.lineWidth = 1.6; g.lineCap = "round"; wavy(g, 0, 0, s, 3); },
   quench: (g, s) => { g.strokeStyle = "#6c726e"; g.lineWidth = 1.5; wavy(g, -s * .15, -s * .1, s * .85, 3); drop(g, s * .5, s * .5, s * .38, COL.water); },
@@ -236,6 +252,47 @@ function drawHand(g, x, y, k, press) { // fingertip at (x,y), pointing up
   g.restore();
 }
 function drawSkull(g) {}
+// ---- v0.4 icons: gear, book, dice, mud, gold, arrow, cross, six trait marks ----
+function drawGear(g, x, y, s) {
+  g.save(); g.translate(x, y); g.beginPath();
+  for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8, r = (i % 4 < 2) ? s : s * .76; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+  g.closePath(); wash(g, "#a8957a", .85); ink(g, 1.5); g.beginPath(); g.arc(0, 0, s * .32, 0, 7); wash(g, "rgba(246,238,214,.95)", 1); ink(g, 1.3); g.restore();
+}
+function drawBook(g, x, y, s) {
+  g.save(); g.translate(x, y);
+  g.beginPath(); g.moveTo(-s * .8, -s * .85); g.lineTo(s * .7, -s * .85); g.lineTo(s * .7, s * .85); g.lineTo(-s * .8, s * .85); g.closePath(); wash(g, "#8a5a38", .9); ink(g, 1.5);
+  g.beginPath(); g.moveTo(-s * .5, -s * .85); g.lineTo(-s * .5, s * .85); ink(g, 1.2);
+  g.beginPath(); g.moveTo(-s * .2, -s * .35); g.lineTo(s * .45, -s * .35); g.moveTo(-s * .2, -s * .05); g.lineTo(s * .45, -s * .05); g.strokeStyle = PAPER; g.lineWidth = 1.2; g.stroke();
+  g.restore();
+}
+function drawDice(g, x, y, s) {
+  g.save(); g.translate(x, y); g.rotate(-.18);
+  g.beginPath(); g.moveTo(-s * .7, -s * .9); g.lineTo(s * .7, -s * .9); g.quadraticCurveTo(s * .95, -s * .9, s * .95, -s * .65); g.lineTo(s * .95, s * .65); g.quadraticCurveTo(s * .95, s * .9, s * .7, s * .9); g.lineTo(-s * .7, s * .9); g.quadraticCurveTo(-s * .95, s * .9, -s * .95, s * .65); g.lineTo(-s * .95, -s * .65); g.quadraticCurveTo(-s * .95, -s * .9, -s * .7, -s * .9); g.closePath();
+  wash(g, "rgba(246,238,214,.95)", 1); ink(g, 1.6);
+  for (const [px, py] of [[-.5, -.5], [.5, -.5], [0, 0], [-.5, .5], [.5, .5]]) { g.beginPath(); g.arc(px * s, py * s, s * .16, 0, 7); g.fillStyle = INK; g.fill(); }
+  g.restore();
+}
+function drawMud(g, x, y, s) {
+  g.save(); g.translate(x, y); g.beginPath(); g.moveTo(-s, s * .6); g.bezierCurveTo(-s * 1.1, -s * .2, -s * .4, -s * .9, s * .1, -s * .7); g.bezierCurveTo(s * .8, -s * .8, s * 1.15, s * .1, s * .9, s * .6); g.closePath(); wash(g, COL.mud, .95); ink(g, 1.4);
+  g.fillStyle = "rgba(42,28,18,.55)"; for (const [px, py] of [[-.35, .1], [.25, -.2], [.35, .3]]) { g.beginPath(); g.arc(px * s, py * s, s * .1, 0, 7); g.fill(); } g.restore();
+}
+function drawGoldPile(g, x, y, s) {
+  g.save(); g.translate(x, y); g.beginPath(); g.moveTo(-s, s * .7); g.lineTo(-s * .35, -s * .1); g.lineTo(0, -s * .75); g.lineTo(s * .4, -s * .05); g.lineTo(s, s * .7); g.closePath(); wash(g, COL.gold, .95); ink(g, 1.4);
+  g.fillStyle = COL.goldHi; for (const [px, py] of [[-.1, -.25], [.3, .2], [-.45, .35]]) { g.beginPath(); g.arc(px * s, py * s, s * .1, 0, 7); g.fill(); } g.restore();
+}
+function drawArrow(g, x, y, s) { g.save(); g.translate(x, y); g.beginPath(); g.moveTo(-s, 0); g.lineTo(s, 0); g.moveTo(s * .45, -s * .5); g.lineTo(s, 0); g.lineTo(s * .45, s * .5); ink(g, 1.6); g.restore(); }
+function drawCross(g, x, y, s, col) { g.save(); g.translate(x, y); g.beginPath(); g.moveTo(-s, -s); g.lineTo(s, s); g.moveTo(s, -s); g.lineTo(-s, s); g.strokeStyle = col || "#b8381e"; g.lineWidth = 2; g.lineCap = "round"; g.stroke(); g.restore(); }
+const TRAITS = ["burst", "sustain", "chain", "break", "residue", "catalyst"];
+function drawTrait(g, name, x, y, s) { // fixed shape marks, readable at 16px without colour
+  g.save(); g.translate(x, y); g.lineCap = "round"; g.lineJoin = "round"; g.fillStyle = INK;
+  if (name === "burst") { g.beginPath(); for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8 - Math.PI / 2, r = i % 2 ? s * .42 : s; g[i ? "lineTo" : "moveTo"](Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); wash(g, "#e8752f", .9); ink(g, 1.4); }
+  else if (name === "sustain") { for (const dy of [-.6, 0, .6]) { g.beginPath(); g.moveTo(-s, dy * s); g.quadraticCurveTo(-s * .5, dy * s - s * .45, 0, dy * s); g.quadraticCurveTo(s * .5, dy * s + s * .45, s, dy * s); ink(g, 1.6); } }
+  else if (name === "chain") { for (const dx of [-.42, .42]) { g.beginPath(); g.ellipse(dx * s, 0, s * .6, s * .42, 0, 0, 7); ink(g, 1.7); } }
+  else if (name === "break") { g.beginPath(); g.rect(-s * .85, -s * .85, s * 1.7, s * 1.7); wash(g, "rgba(246,238,214,.95)", 1); ink(g, 1.5); g.beginPath(); g.moveTo(-s * .1, -s * .85); g.lineTo(s * .15, -s * .3); g.lineTo(-s * .2, s * .1); g.lineTo(s * .2, s * .85); ink(g, 1.6); }
+  else if (name === "residue") { g.beginPath(); g.rect(-s * .8, -s * .85, s * 1.6, s * 1.4); wash(g, COL.stone, .85); ink(g, 1.5); g.beginPath(); g.moveTo(-s, s * .9); g.lineTo(s, s * .9); ink(g, 2); }
+  else if (name === "catalyst") { g.beginPath(); g.arc(0, 0, s * .85, 0, 7); ink(g, 1.7); g.beginPath(); g.arc(0, 0, s * .22, 0, 7); g.fill(); }
+  g.restore();
+}
 // ---- arcana badges: a reaction icon + a modifier number ----
 const ARC_ICON = {
   pyro: ["burn", "+3"], tower: ["quench", "×3"], glass: ["vitrify", "+1"], demolition: ["blast", "+12"], greenhouse: ["bloom", "×3"],
