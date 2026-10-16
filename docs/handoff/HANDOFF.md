@@ -1,5 +1,12 @@
 # 交接檔（最新狀態寫在最上面）
 
+## 2026-10-16 核心重新設計 v2（遊戲設計子代理）
+- 產出 `docs/design/01_concept_v2.md`：v1 診斷、三個新方向（A 熔岩村／B 淘金槽／C 野火線）、Steam 競品查核（含評論數與 URL）、評分矩陣。
+- **推薦 B 淘金槽**（4.40）：側視水流淘金槽，粒子依密度分選，金子是全畫面唯一的顏色，分數＝被留住的金子，流失當場彈紅字；19 世紀刻版畫＋Obra Dinn 式 1-bit 風格。A 熔岩村（3.95）為備案；C 野火線（3.80）競品在 2026–27 年突增，不建議。
+- 狀態：**提案，待主 session／HSU 拍板**（已在 DECISIONS.md 加「異議／提案」條目）。暫名 Paydirt 已被他人使用，需改名。
+- 下一步：拍板後做 2–3 天瀏覽器原型，第 1 天只做 `sluice_sim.js`＋bot 驗證 H1（最佳／隨機回收率 ≥2×）；H1 不過就轉做 A。
+
+
 ## 2026-10-16 16:00 基礎設施打通
 - Unity 專案 `ClaudeGame/`（6000.3.11f1、URP 2D、com.unity.pipeline）已推上 GitHub。
 - Unity MCP 已接進雲端 session；用 `eval` 在 HSU 電腦跑 git，已驗證 pull/commit/push 全部可用。規則見 `docs/tech/PC_BRIDGE.md`。
