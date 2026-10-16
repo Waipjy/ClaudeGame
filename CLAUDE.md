@@ -40,8 +40,9 @@
 - `docs/marketing/` 商店頁文案、行銷計畫
 - `docs/handoff/` HANDOFF / TASKS / DECISIONS
 - `sim/` 平衡模擬（Python，離線跑）
-- `Game/` Unity 專案（建立後）
+- `ClaudeGame/` Unity 專案（Unity 6000.3.11f1，Universal 2D 範本，已裝 com.unity.pipeline 0.8.0-exp.1）
 
 ## 環境
 - 雲端工作區：`/home/claude/claudegame`（git clone），推送到 GitHub `Waipjy/ClaudeGame`。
-- 使用者電腦（Windows）：`C:\Users\waipj\Documents\ClaudeGame`，透過桌面 App 橋接寫入檔案。Unity 專案會放這裡。
+- 使用者電腦（Windows）：`C:\Users\waipj\Documents\ClaudeGame` 是本 repo 的 git clone；Unity 專案在 `C:\Users\waipj\Documents\ClaudeGame\ClaudeGame`（注意：專案資料夾名稱是 ClaudeGame，不是 Game）。
+- 雲端 session 透過桌面橋接讀寫一般檔案（不能寫 `.claude`、不能執行指令），透過 Unity MCP（`unity mcp`）操作編輯器。
